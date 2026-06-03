@@ -11,4 +11,10 @@
 | 2026-06-02 | La autocaja sera operada por el barbero | El barbero cobra efectivo y cierra su servicio en autocaja | El cierre registra monto, constancia, cash drawer, comision y estado final | Confirmada |
 | 2026-06-02 | Booking web pertenece a Fase 2 | Separar reservas online del sistema local inicial | Fase 1 no implementa booking web, pero debe integrarse luego por sincronizacion | Confirmada |
 | 2026-06-02 | App movil pertenece a Fase 3 | Validar primero Fase 1 y booking web antes de app iOS/Android | La app movil reutilizara el backend de Fase 2 | Confirmada |
+| 2026-06-03 | Solucion .NET por proyectos separados | Separar UI, dominio, datos, sync, hardware, API client y contratos | Fase 1 se implementara con responsabilidades claras por proyecto desktop | Confirmada |
+| 2026-06-03 | Barberia.Core sin dependencias externas | Mantener reglas de negocio puras y testeables | Core no dependera de WinUI, SQLite, EF Core, Supabase, hardware ni APIs | Confirmada |
+| 2026-06-03 | Pruebas del motor antes de UI | Proteger reglas de asignacion antes de crear pantallas | El motor de turnos se validara en Barberia.Core.Tests antes de integrarse visualmente | Confirmada |
+| 2026-06-03 | Hardware detras de interfaces | Evitar acoplar pantallas y dominio a drivers o dispositivos especificos | Impresora, escaner QR y cash drawer se consumiran mediante abstracciones | Confirmada |
+| 2026-06-03 | SQLite como primera escritura local | Garantizar operacion offline-first en la barberia | Los flujos locales escribiran primero en SQLite antes de cualquier sincronizacion | Confirmada |
+| 2026-06-03 | Sync no bloqueante | La nube no debe impedir la operacion local | La sincronizacion usara cola de eventos y reintentos sin bloquear check-in, turnos ni autocaja | Confirmada |
 | PENDIENTE | Licencia del proyecto | Falta seleccionar licencia | No distribuir hasta confirmar | Pendiente |
