@@ -1,14 +1,18 @@
-# Estructura Propuesta De Solucion Para Fase 1
+# Estructura De Solucion Para Fase 1
+
+## Nota De Estado
+
+El skeleton de solucion .NET para Fase 1 ya fue creado y mergeado a `main`. Este documento sigue siendo referencia arquitectonica para estructura, responsabilidades y dependencias; el tracking real de progreso vive en `docs/fases/phase-1-current-status.md`.
 
 ## Solucion
 
-La solucion futura se llamara:
+La solucion se llama:
 
 ```text
 BarberiaSystem.sln
 ```
 
-Este documento solo propone la estructura. No se debe crear la solucion ni proyectos hasta que se apruebe la implementacion.
+Este documento describe la estructura aprobada. La implementacion funcional de cada paso debe seguir `docs/fases/phase-1-current-status.md` y los prompts de `ai/agent-tasks/phase-1/`.
 
 ## Proyectos Desktop
 

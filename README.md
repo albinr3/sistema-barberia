@@ -22,13 +22,15 @@ Las fases del producto se gestionaran con milestones, labels e issues, no con ca
 - Fase 2: booking web, panel admin web y cuenta web.
 - Fase 3: app movil iOS/Android.
 
-## Estado inicial
+## Estado actual
 
-Este repositorio solo contiene estructura y plantillas documentales.
+El repositorio ya contiene la estructura base del monorepo, contexto IA en Markdown, plan tecnico de Fase 1 y skeleton de solucion .NET para Fase 1.
 
-Pendiente:
+El estado vivo de Fase 1 esta en:
 
-- Definir decisiones tecnicas confirmadas.
-- Inicializar proyectos cuando se apruebe el inicio de Fase 1.
-- Agregar documentacion fuente oficial en `ai/context/`.
+- `docs/fases/phase-1-current-status.md`
+
+Antes de abrir una nueva tarea se debe revisar ese archivo para detectar el proximo paso. Las tareas de Fase 1 se ejecutan usando los prompts de:
+
+- `ai/agent-tasks/phase-1/`
 

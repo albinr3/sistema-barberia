@@ -1,10 +1,22 @@
 # Tareas Para Agentes - Fase 1
 
+## Antes De Ejecutar Cualquier Tarea
+
+1. Leer `docs/fases/phase-1-current-status.md`.
+2. Buscar la primera tarea que no este `completed`.
+3. Confirmar que `git status --short` esta limpio.
+4. Crear la rama recomendada en la tabla.
+5. Ejecutar unicamente el archivo guia de esa tarea.
+6. Al terminar, correr el comando de verificacion.
+7. Actualizar `docs/fases/phase-1-current-status.md`.
+8. Marcar la tarea como `completed`, `partial` o `blocked`.
+9. No avanzar a la siguiente tarea en la misma sesion sin aprobacion humana.
+
 ## Proposito
 
 Este directorio divide la implementacion futura de Fase 1 en tareas pequenas y revisables. Cada tarea debe ejecutarse solo cuando el usuario apruebe implementar esa parte.
 
-La existencia de estos archivos no autoriza crear codigo, solucion, proyectos, pantallas, paquetes, base de datos ni logica de negocio en esta preparacion documental.
+La existencia de estos archivos no autoriza crear codigo, pantallas, paquetes, base de datos ni logica de negocio fuera de la tarea aprobada y registrada en `docs/fases/phase-1-current-status.md`.
 
 ## Orden De Trabajo
 

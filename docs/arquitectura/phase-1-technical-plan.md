@@ -1,12 +1,16 @@
 # Plan Tecnico De Fase 1
 
+## Nota De Estado
+
+El skeleton de solucion .NET para Fase 1 ya fue creado y mergeado a `main`. Este documento sigue siendo referencia arquitectonica para la implementacion; el tracking real de progreso vive en `docs/fases/phase-1-current-status.md`.
+
 ## Objetivo Tecnico
 
 Preparar la primera implementacion operativa del sistema local Windows para la barberia, manteniendo una arquitectura offline-first donde la operacion diaria no dependa de internet ni de servicios cloud.
 
 Fase 1 debe permitir, cuando se implemente, operar el flujo local desde check-in hasta cierre de servicio por autocaja: kiosco, turnos automaticos, pantalla publica, panel de barbero, cobro en efectivo, hardware POS, reportes locales y base para sincronizacion futura.
 
-Este documento no autoriza crear codigo, solucion, proyectos, base de datos ni pantallas. Define limites tecnicos para la implementacion posterior.
+Este documento no autoriza crear codigo funcional, base de datos ni pantallas por si solo. Define limites tecnicos para la implementacion posterior.
 
 ## Alcance Implementable
 
