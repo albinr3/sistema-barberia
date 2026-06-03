@@ -54,3 +54,21 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 | 12 | Foundation de sincronizacion | `ai/agent-tasks/phase-1/12-sync-foundation.md` | `phase-1/12-sync-foundation` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Sync.Tests/Barberia.Sync.Tests.csproj` | Sync no bloqueante. |
 | 13 | Reportes administrativos locales | `ai/agent-tasks/phase-1/13-admin-reports.md` | `phase-1/13-admin-reports` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Reportes desde datos locales. |
 | 14 | Packaging y actualizaciones | `ai/agent-tasks/phase-1/14-packaging-updates.md` | `phase-1/14-packaging-updates` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | No publicar instaladores sin aprobacion. |
+
+## Cierre De Fase 1
+
+Esta seccion no forma parte de los 14 pasos de implementacion. Es una checklist de validacion, instalacion y entrega antes de considerar Fase 1 lista para cliente.
+
+- [ ] Ejecutar `dotnet test BarberiaSystem.sln`.
+- [ ] Validar flujo completo check-in -> ticket -> asignacion -> inicio de servicio -> autocaja -> completed.
+- [ ] Validar operacion offline local.
+- [ ] Validar impresion de ticket con QR.
+- [ ] Validar impresion de comprobante de deposito.
+- [ ] Validar apertura de cash drawer.
+- [ ] Validar que el barbero vuelve a `available` despues de autocaja.
+- [ ] Validar reportes diarios y comisiones.
+- [ ] Revisar auditoria de autocaja.
+- [ ] Preparar notas de instalacion.
+- [ ] Preparar guia rapida de uso para el cliente.
+- [ ] Preparar checklist de hardware real.
+- [ ] Confirmar aprobacion humana antes de publicar instalador.
