@@ -17,4 +17,5 @@
 | 2026-06-03 | Hardware detras de interfaces | Evitar acoplar pantallas y dominio a drivers o dispositivos especificos | Impresora, escaner QR y cash drawer se consumiran mediante abstracciones | Confirmada |
 | 2026-06-03 | SQLite como primera escritura local | Garantizar operacion offline-first en la barberia | Los flujos locales escribiran primero en SQLite antes de cualquier sincronizacion | Confirmada |
 | 2026-06-03 | Sync no bloqueante | La nube no debe impedir la operacion local | La sincronizacion usara cola de eventos y reintentos sin bloquear check-in, turnos ni autocaja | Confirmada |
+| 2026-06-03 | Estados y modelos iniciales viven en Barberia.Core | Mantener el dominio central sin duplicacion en UI o infraestructura | Barbero, turno, cita sincronizada minima y estados centrales se prueban desde Barberia.Core.Tests | Confirmada |
 | PENDIENTE | Licencia del proyecto | Falta seleccionar licencia | No distribuir hasta confirmar | Pendiente |

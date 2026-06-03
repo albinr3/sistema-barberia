@@ -4,10 +4,10 @@
 
 - Ultima actualizacion: 2026-06-03
 - Rama actual esperada: `main`
-- Estado general de Fase 1: skeleton tecnico creado; implementacion funcional no iniciada.
-- Ultimo paso completado: `01 - Crear solucion .NET y proyectos vacios`.
-- Proximo paso recomendado: `02 - Modelos de dominio Core`.
-- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/02-core-domain-models.md`.
+- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos.
+- Ultimo paso completado: `02 - Modelos de dominio Core`.
+- Proximo paso recomendado: `03 - Pruebas del motor de asignacion de turnos`.
+- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/03-turn-assignment-tests.md`.
 
 ## Verificacion Antes De Empezar
 
@@ -41,7 +41,7 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 | Orden | Tarea | Archivo guia | Rama recomendada | Estado | Fecha de ultimo cambio | Evidencia de completado | Proximo comando de verificacion | Notas |
 | ----- | ----- | ------------ | ---------------- | ------ | ---------------------- | ----------------------- | -------------------------------- | ----- |
 | 1 | Crear solucion .NET y proyectos vacios | `ai/agent-tasks/phase-1/01-create-dotnet-solution.md` | `phase-1/01-create-dotnet-solution` | `completed` | 2026-06-03 | `BarberiaSystem.sln`, proyectos `src/desktop/*`, proyectos `tests/desktop/*` | `dotnet test BarberiaSystem.sln` | Mergeado a `main`. |
-| 2 | Modelos de dominio Core | `ai/agent-tasks/phase-1/02-core-domain-models.md` | `phase-1/02-core-domain-models` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Proximo paso recomendado. |
+| 2 | Modelos de dominio Core | `ai/agent-tasks/phase-1/02-core-domain-models.md` | `phase-1/02-core-domain-models` | `completed` | 2026-06-03 | Estados y modelos en `src/desktop/Barberia.Core/Domain`; 4 pruebas en `Barberia.Core.Tests` pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Completado sin implementar motor de asignacion. |
 | 3 | Pruebas del motor de asignacion de turnos | `ai/agent-tasks/phase-1/03-turn-assignment-tests.md` | `phase-1/03-turn-assignment-tests` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Debe ejecutarse antes del motor. |
 | 4 | Motor de asignacion de turnos | `ai/agent-tasks/phase-1/04-turn-assignment-engine.md` | `phase-1/04-turn-assignment-engine` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Depende de pruebas del paso 03. |
 | 5 | Capa de datos SQLite | `ai/agent-tasks/phase-1/05-sqlite-data-layer.md` | `phase-1/05-sqlite-data-layer` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Data.Tests/Barberia.Data.Tests.csproj` | Mantener reglas de negocio fuera de Data. |
