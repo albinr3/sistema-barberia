@@ -4,6 +4,7 @@ Thumbs.db
 Desktop.ini
 
 # Editores
+.vs/
 .vscode/
 .idea/
 *.swp
@@ -46,4 +47,3 @@ ios/Pods/
 tmp/
 temp/
 *.tmp
-

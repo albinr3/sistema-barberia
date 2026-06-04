@@ -31,6 +31,8 @@ Implementar el modulo local de autocaja operada por el barbero para cerrar servi
 - `ai/context/business-rules.md`
 - `docs/hardware/pos-hardware-notes.md`
 - `docs/arquitectura/phase-1-technical-plan.md`
+- `ai/instructions/desktop-winui.md`
+- `docs/diseno/desktop-visual-theme.md`
 
 ## Resultado Esperado
 
@@ -38,6 +40,7 @@ Autocaja local que valida ticket/barbero, registra monto en efectivo, calcula co
 
 ## Criterios De Aceptacion
 
+- Respeta `docs/diseno/desktop-visual-theme.md` y reutiliza patrones visuales de la shell WinUI existente.
 - Solo efectivo en Fase 1.
 - No hay precio sugerido.
 - El turno pasa a `completed`.

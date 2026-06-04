@@ -27,6 +27,7 @@ Implementar la pantalla publica local para mostrar turnos, llamados, barberos y 
 - `ai/context/turn-assignment-rules.md`
 - `ai/context/glossary.md`
 - `ai/instructions/desktop-winui.md`
+- `docs/diseno/desktop-visual-theme.md`
 
 ## Resultado Esperado
 
@@ -34,6 +35,7 @@ Pantalla publica que diferencia visualmente walk-ins y citas programadas sincron
 
 ## Criterios De Aceptacion
 
+- Respeta `docs/diseno/desktop-visual-theme.md` y reutiliza patrones visuales de la shell WinUI existente.
 - Muestra informacion desde estado local.
 - Diferencia walk-ins de citas.
 - Puede mostrar "Reservado para cita" o equivalente cuando aplique proteccion.

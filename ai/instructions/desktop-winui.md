@@ -14,8 +14,25 @@ Plantilla para trabajo futuro en la aplicacion Windows local.
 
 - No crear proyectos WinUI hasta que se apruebe el inicio de Fase 1.
 - No asumir patrones de arquitectura no confirmados.
+- Toda pantalla nueva en `Barberia.Desktop` debe respetar el tema visual aprobado en `docs/diseno/desktop-visual-theme.md`.
+- Reutilizar la shell, navegacion lateral, paleta, espaciado, tarjetas, badges e iconografia existentes antes de crear un estilo nuevo.
+- Mantener la UI operacional: moderna, limpia, legible y util para trabajo diario, sin composiciones tipo landing page.
+- No duplicar reglas de negocio ni estados de dominio para fines visuales.
+- Si un modulo requiere un nuevo patron visual reutilizable, documentarlo o dejarlo encapsulado en `Barberia.Desktop`.
 
-## Pendiente
+## Tema Visual Actual
 
-- TODO: definir estructura tecnica de la app desktop.
+- Sidebar oscuro calido.
+- Fondo principal gris claro.
+- Superficies blancas con borde sutil y radio maximo de 8.
+- Acento dorado para marca/seleccion.
+- Acento verde sobrio para estado operativo.
+- Iconos Segoe Fluent mediante `FontIcon` mientras no exista una libreria de iconos aprobada.
+- Header por modulo con titulo y contexto corto.
+- Tarjetas solo para bloques funcionales, resumenes o elementos repetidos.
 
+## Referencias Obligatorias Para UI
+
+- `docs/diseno/desktop-visual-theme.md`
+- `src/desktop/Barberia.Desktop/MainWindow.cs`
+- `src/desktop/Barberia.Desktop/Views/ModulePlaceholderPage.cs`
