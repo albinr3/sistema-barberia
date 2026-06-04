@@ -4,10 +4,10 @@
 
 - Ultima actualizacion: 2026-06-03
 - Rama actual esperada: `main`
-- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos.
-- Ultimo paso completado: `02 - Modelos de dominio Core`.
-- Proximo paso recomendado: `03 - Pruebas del motor de asignacion de turnos`.
-- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/03-turn-assignment-tests.md`.
+- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado.
+- Ultimo paso completado: `04 - Motor de asignacion de turnos`.
+- Proximo paso recomendado: `05 - Capa de datos SQLite`.
+- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/05-sqlite-data-layer.md`.
 
 ## Verificacion Antes De Empezar
 
@@ -43,7 +43,7 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 | 1 | Crear solucion .NET y proyectos vacios | `ai/agent-tasks/phase-1/01-create-dotnet-solution.md` | `phase-1/01-create-dotnet-solution` | `completed` | 2026-06-03 | `BarberiaSystem.sln`, proyectos `src/desktop/*`, proyectos `tests/desktop/*` | `dotnet test BarberiaSystem.sln` | Mergeado a `main`. |
 | 2 | Modelos de dominio Core | `ai/agent-tasks/phase-1/02-core-domain-models.md` | `phase-1/02-core-domain-models` | `completed` | 2026-06-03 | Estados y modelos en `src/desktop/Barberia.Core/Domain`; 4 pruebas en `Barberia.Core.Tests` pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Completado sin implementar motor de asignacion. |
 | 3 | Pruebas del motor de asignacion de turnos | `ai/agent-tasks/phase-1/03-turn-assignment-tests.md` | `phase-1/03-turn-assignment-tests` | `completed` | 2026-06-03 | 14 pruebas nuevas del motor compilan y fallan por `NotImplementedException`; 4 pruebas de dominio existentes pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Requiere implementar motor en paso 04 para poner la suite en verde. |
-| 4 | Motor de asignacion de turnos | `ai/agent-tasks/phase-1/04-turn-assignment-engine.md` | `phase-1/04-turn-assignment-engine` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Depende de pruebas del paso 03. |
+| 4 | Motor de asignacion de turnos | `ai/agent-tasks/phase-1/04-turn-assignment-engine.md` | `phase-1/04-turn-assignment-engine` | `completed` | 2026-06-03 | `TurnAssignmentEngine` implementado; 18 pruebas de `Barberia.Core.Tests` pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Completado en Core sin dependencias de UI, Data, hardware ni cloud. |
 | 5 | Capa de datos SQLite | `ai/agent-tasks/phase-1/05-sqlite-data-layer.md` | `phase-1/05-sqlite-data-layer` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Data.Tests/Barberia.Data.Tests.csproj` | Mantener reglas de negocio fuera de Data. |
 | 6 | Shell WinUI | `ai/agent-tasks/phase-1/06-winui-shell.md` | `phase-1/06-winui-shell` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | No implementar flujos completos. |
 | 7 | Modulo de kiosco | `ai/agent-tasks/phase-1/07-kiosk-module.md` | `phase-1/07-kiosk-module` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Check-in local de walk-ins. |
