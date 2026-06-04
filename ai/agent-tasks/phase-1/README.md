@@ -5,12 +5,14 @@
 1. Leer `docs/fases/phase-1-current-status.md`.
 2. Buscar la primera tarea que no este `completed`.
 3. Confirmar que `git status --short` esta limpio.
-4. Crear la rama recomendada en la tabla.
-5. Ejecutar unicamente el archivo guia de esa tarea.
-6. Al terminar, correr el comando de verificacion.
-7. Actualizar `docs/fases/phase-1-current-status.md`.
-8. Marcar la tarea como `completed`, `partial` o `blocked`.
-9. No avanzar a la siguiente tarea en la misma sesion sin aprobacion humana.
+4. Crear una rama nueva desde `main` antes de modificar archivos, aunque el usuario no lo pida explicitamente.
+5. Usar la rama recomendada en la tabla; si ya existe o falta, crear una variante descriptiva con formato `phase-1/NN-descripcion`.
+6. No implementar tareas de fase directamente sobre `main`.
+7. Ejecutar unicamente el archivo guia de esa tarea.
+8. Al terminar, correr el comando de verificacion.
+9. Actualizar `docs/fases/phase-1-current-status.md`.
+10. Marcar la tarea como `completed`, `partial` o `blocked`.
+11. No avanzar a la siguiente tarea en la misma sesion sin aprobacion humana.
 
 ## Proposito
 
