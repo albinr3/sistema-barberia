@@ -2,23 +2,25 @@
 
 Aplicacion Windows local de Fase 1 con WinUI 3.
 
-Responsabilidades futuras:
+Responsabilidades:
 
 - Navegacion y composicion visual.
 - Wiring de dependencias entre modulos.
 - Pantallas de kiosco, pantalla publica, panel de barbero, autocaja, administracion local y reportes.
 
-Shell actual:
+Shell y UI actual:
 
-- Entrada WinUI con `App.xaml`, `App`, `MainWindow` y navegacion lateral simple.
+- Entrada WinUI con `App.xaml`, `App.xaml.cs`, `MainWindow.xaml` y `MainWindow.xaml.cs`.
+- Toda nueva `Window` o `Page` concreta debe crearse como par `.xaml` + `.xaml.cs`, con `partial` e `InitializeComponent()`.
+- Recursos visuales compartidos en `Styles/DesktopTheme.xaml`, mezclados desde `App.xaml`.
 - Catalogo de modulos visuales en `Shell/ShellModuleCatalog.cs`.
-- Paginas placeholder separadas por responsabilidad visual en `Views/`, con estilo base para la shell.
+- Paginas operativas en `Views/` declaradas en XAML y con logica de servicio en code-behind.
 - Rutas locales estables en `Services/LocalAppPaths.cs` para preservar SQLite, configuracion futura y logs durante updates.
 - Perfil de publicacion `Properties/PublishProfiles/Phase1LocalWinX64.pubxml` y artefactos base en `Packaging/` para preparar instalacion/update sin publicar instaladores.
+- Guard de arquitectura en `tests/desktop/Barberia.Desktop.Tests` para evitar nuevas pantallas C# puras sin XAML.
 
 Restricciones actuales:
 
-- No contiene flujos operativos completos.
 - No contiene reglas de negocio.
-- No contiene persistencia ni acceso directo a hardware o servicios cloud.
+- No mover persistencia, hardware ni sincronizacion al code-behind de UI.
 - No publica MSIX, MSI, EXE ni App Installer sin aprobacion humana.

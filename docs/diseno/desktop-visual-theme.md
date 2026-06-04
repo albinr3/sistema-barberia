@@ -8,13 +8,15 @@ Este documento aplica a toda pantalla nueva en `Barberia.Desktop`: kiosco, panta
 
 ## Fuente Actual
 
-El tema aprobado parte de la shell creada en la tarea 6:
+El tema aprobado parte de la shell y recursos XAML actuales:
 
-- `src/desktop/Barberia.Desktop/MainWindow.cs`
+- `src/desktop/Barberia.Desktop/App.xaml`
+- `src/desktop/Barberia.Desktop/Styles/DesktopTheme.xaml`
+- `src/desktop/Barberia.Desktop/MainWindow.xaml`
 - `src/desktop/Barberia.Desktop/Shell/`
-- `src/desktop/Barberia.Desktop/Views/ModulePlaceholderPage.cs`
+- `src/desktop/Barberia.Desktop/Views/*.xaml`
 
-Cuando se implementen pantallas reales, deben reemplazar placeholders sin romper la identidad visual de la shell.
+Toda nueva pantalla real debe declararse en XAML y reutilizar los recursos compartidos antes de introducir estilos locales.
 
 ## Direccion Visual
 
@@ -58,7 +60,8 @@ No convertir la app en una paleta de un solo color. Mantener contraste suficient
 ## Reglas Para Agentes
 
 - Antes de crear o modificar una vista WinUI, revisar este documento y `ai/instructions/desktop-winui.md`.
-- Reutilizar patrones existentes de `MainWindow`, `Shell` y `Views` antes de inventar un estilo nuevo.
+- Reutilizar `Styles/DesktopTheme.xaml`, `MainWindow.xaml`, `Shell` y las vistas XAML existentes antes de inventar un estilo nuevo.
+- Crear toda nueva `Window` o `Page` concreta como `.xaml` + `.xaml.cs`; el layout principal no debe construirse programaticamente en C#.
 - Si un modulo necesita un patron nuevo, debe verse compatible con la shell y documentarse si se vuelve reutilizable.
 - No implementar reglas de negocio solo para mostrar datos visuales.
 - No duplicar estados de dominio como strings locales para pintar la UI.

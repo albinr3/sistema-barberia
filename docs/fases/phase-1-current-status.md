@@ -4,8 +4,8 @@
 
 - Ultima actualizacion: 2026-06-04
 - Rama actual esperada: `main`
-- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada; shell WinUI inicial implementada; tema visual desktop documentado; modulo de kiosco local implementado para check-in de walk-ins; pantalla publica local implementada para sala de espera; panel local de barbero implementado para disponibilidad, tickets asignados e inicio de atencion; modulo local de autocaja implementado para cierre en efectivo; abstracciones de hardware POS implementadas con simuladores para impresora, escaner QR y cash drawer; foundation de sincronizacion no bloqueante implementada con outbox SQLite local y reintentos; reportes administrativos locales implementados para operaciones, pagos en efectivo y comisiones registradas; packaging local y estrategia de actualizaciones preparados sin publicar instaladores.
-- Ultimo paso completado: `14 - Packaging y actualizaciones`.
+- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada; shell WinUI inicial implementada; tema visual desktop documentado; modulo de kiosco local implementado para check-in de walk-ins; pantalla publica local implementada para sala de espera; panel local de barbero implementado para disponibilidad, tickets asignados e inicio de atencion; modulo local de autocaja implementado para cierre en efectivo; abstracciones de hardware POS implementadas con simuladores para impresora, escaner QR y cash drawer; foundation de sincronizacion no bloqueante implementada con outbox SQLite local y reintentos; reportes administrativos locales implementados para operaciones, pagos en efectivo y comisiones registradas; packaging local y estrategia de actualizaciones preparados sin publicar instaladores; UI WinUI migrada a XAML por defecto con recursos compartidos y guard de arquitectura.
+- Ultimo paso completado: `Migracion WinUI a XAML por defecto`.
 - Proximo paso recomendado: `Cierre de Fase 1 - validacion integral e instalacion piloto`.
 - Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/14-packaging-updates.md`.
 
@@ -62,6 +62,12 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 ## Cierre De Fase 1
 
 Esta seccion no forma parte de los 14 pasos de implementacion. Es una checklist de validacion, instalacion y entrega antes de considerar Fase 1 lista para cliente.
+
+## Cambios Transversales Posteriores
+
+| Fecha | Cambio | Evidencia | Verificacion |
+| ----- | ------ | --------- | ------------ |
+| 2026-06-04 | Migracion WinUI a XAML por defecto | `App.xaml.cs`, `MainWindow.xaml`, paginas concretas en `Views/*.xaml`, recursos `Styles/DesktopTheme.xaml`, test `Barberia.Desktop.Tests` y documentacion actualizada | `dotnet build src/desktop/Barberia.Desktop/Barberia.Desktop.csproj --no-restore -v:minimal`; `dotnet test tests/desktop/Barberia.Desktop.Tests/Barberia.Desktop.Tests.csproj --no-restore -v:minimal`; `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` correcto, 43 pruebas pasan; validacion manual integral pendiente |
 
 - [ ] Ejecutar `dotnet test BarberiaSystem.sln`.
 - [ ] Validar flujo completo check-in -> ticket -> asignacion -> inicio de servicio -> autocaja -> completed.

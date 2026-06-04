@@ -1,0 +1,263 @@
+<Page
+    x:Class="Barberia.Desktop.Views.CashBoxPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:input="using:Microsoft.UI.Xaml.Input"
+    Loaded="OnLoaded">
+
+    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
+        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
+            <Border Style="{StaticResource HeroCardBorderStyle}">
+                <Grid ColumnSpacing="18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource HeroIconBoxStyle}">
+                        <FontIcon
+                            FontSize="30"
+                            Foreground="{StaticResource SurfaceBrush}"
+                            Glyph="&#xE8C7;" />
+                    </Border>
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Spacing="5">
+                        <TextBlock
+                            Style="{StaticResource HeroTitleTextStyle}"
+                            Text="Autocaja" />
+                        <TextBlock
+                            FontSize="15"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Cierre local de servicios pagados en efectivo" />
+                        <TextBlock
+                            x:Name="_lastRefreshText"
+                            FontSize="13"
+                            Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+
+                    <Border
+                        x:Name="_statusBadge"
+                        Grid.Column="2"
+                        Style="{StaticResource StatusBadgeStyle}">
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="7">
+                            <Ellipse
+                                Width="8"
+                                Height="8"
+                                Fill="{StaticResource AccentGreenBrush}"
+                                VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="_statusBadgeText"
+                                Style="{StaticResource StatusBadgeTextStyle}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource FormPanelBorderStyle}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="2">
+                            <TextBlock
+                                Style="{StaticResource SectionTitleTextStyle}"
+                                Text="Deposito de efectivo" />
+                            <TextBlock
+                                Style="{StaticResource SmallMutedTextStyle}"
+                                Text="El barbero escanea su ticket y registra el monto cobrado" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="14">
+                            <ComboBox
+                                x:Name="_barberSelector"
+                                DisplayMemberPath="DisplayName"
+                                PlaceholderText="Seleccionar barbero"
+                                Style="{StaticResource OperationalComboBoxStyle}" />
+                            <TextBox
+                                x:Name="_ticketInput"
+                                Header="Ticket"
+                                KeyDown="OnInputKeyDown"
+                                PlaceholderText="Escanear o escribir numero de ticket"
+                                Style="{StaticResource OperationalTextBoxStyle}" />
+                            <TextBox
+                                x:Name="_amountInput"
+                                Header="Monto cobrado en efectivo"
+                                KeyDown="OnInputKeyDown"
+                                PlaceholderText="0.00"
+                                Style="{StaticResource OperationalTextBoxStyle}">
+                                <TextBox.InputScope>
+                                    <input:InputScope>
+                                        <input:InputScope.Names>
+                                            <input:InputScopeName NameValue="Number" />
+                                        </input:InputScope.Names>
+                                    </input:InputScope>
+                                </TextBox.InputScope>
+                            </TextBox>
+                            <Button
+                                Click="OnCloseClick"
+                                Style="{StaticResource PrimaryActionButtonStyle}"
+                                ToolTipService.ToolTip="Cerrar servicio en efectivo">
+                                <StackPanel
+                                    HorizontalAlignment="Center"
+                                    Orientation="Horizontal"
+                                    Spacing="10">
+                                    <FontIcon
+                                        FontSize="18"
+                                        Glyph="&#xE73E;" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text="Cerrar servicio" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock
+                                x:Name="_messageText"
+                                Style="{StaticResource BodyTextStyle}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Grid.Column="1"
+                    Style="{StaticResource FormPanelBorderStyle}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="2">
+                            <TextBlock
+                                Style="{StaticResource SectionTitleTextStyle}"
+                                Text="Constancia local" />
+                            <TextBlock
+                                Style="{StaticResource SmallMutedTextStyle}"
+                                Text="Resumen del ultimo cierre completado" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="12">
+                            <Border Style="{StaticResource InsetPanelBorderStyle}">
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="Recibo" />
+                                    <TextBlock
+                                        x:Name="_receiptText"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InsetPanelBorderStyle}">
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="Monto" />
+                                    <TextBlock
+                                        x:Name="_amountText"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InsetPanelBorderStyle}">
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="Comision" />
+                                    <TextBlock
+                                        x:Name="_commissionText"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource NoteCardBorderStyle}">
+                    <StackPanel Spacing="10">
+                        <Border Style="{StaticResource NoteIconBoxStyle}">
+                            <FontIcon
+                                FontSize="18"
+                                Foreground="{StaticResource AccentGreenBrush}"
+                                Glyph="&#xE8C7;" />
+                        </Border>
+                        <TextBlock
+                            FontSize="17"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="Solo efectivo" />
+                        <TextBlock
+                            Style="{StaticResource SmallMutedTextStyle}"
+                            Text="No se registran tarjetas ni pagos online en Fase 1." />
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Grid.Column="1"
+                    Style="{StaticResource NoteCardBorderStyle}">
+                    <StackPanel Spacing="10">
+                        <Border Style="{StaticResource NoteIconBoxStyle}">
+                            <FontIcon
+                                FontSize="18"
+                                Foreground="{StaticResource AccentGreenBrush}"
+                                Glyph="&#xE8D7;" />
+                        </Border>
+                        <TextBlock
+                            FontSize="17"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="Hardware" />
+                        <TextBlock
+                            Style="{StaticResource SmallMutedTextStyle}"
+                            Text="La impresion y el cash drawer pasan por abstracciones simuladas." />
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Grid.Column="2"
+                    Style="{StaticResource NoteCardBorderStyle}">
+                    <StackPanel Spacing="10">
+                        <Border Style="{StaticResource NoteIconBoxStyle}">
+                            <FontIcon
+                                FontSize="18"
+                                Foreground="{StaticResource AccentGreenBrush}"
+                                Glyph="&#xE8EF;" />
+                        </Border>
+                        <TextBlock
+                            FontSize="17"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="Cola" />
+                        <TextBlock
+                            Style="{StaticResource SmallMutedTextStyle}"
+                            Text="Al cerrar, el barbero vuelve disponible y pasa al final de la rotacion." />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

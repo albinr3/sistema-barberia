@@ -1,0 +1,89 @@
+using System.Text.RegularExpressions;
+using Xunit;
+
+namespace Barberia.Desktop.Tests;
+
+public sealed class XamlArchitectureTests
+{
+    private static readonly Regex VisualClassPattern = new(
+        @"^\s*public\s+(?<modifiers>(?:(?:sealed|abstract|partial)\s+)*)class\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?<base>[A-Za-z0-9_.]+)",
+        RegexOptions.Compiled | RegexOptions.Multiline);
+
+    [Fact]
+    public void ConcreteWinUiWindowsAndPagesUseXamlPairs()
+    {
+        var desktopRoot = Path.Combine(FindRepositoryRoot(), "src", "desktop", "Barberia.Desktop");
+        var visualClasses = new List<string>();
+
+        foreach (var codeBehindPath in Directory.EnumerateFiles(desktopRoot, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !IsBuildOutputPath(desktopRoot, path)))
+        {
+            var source = File.ReadAllText(codeBehindPath);
+
+            foreach (Match match in VisualClassPattern.Matches(source))
+            {
+                var baseType = match.Groups["base"].Value;
+                if (!IsWinUiVisualBase(baseType))
+                {
+                    continue;
+                }
+
+                var modifiers = match.Groups["modifiers"].Value;
+                if (modifiers.Contains("abstract", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var className = match.Groups["name"].Value;
+                visualClasses.Add(className);
+
+                var expectedXamlPath = Path.Combine(
+                    Path.GetDirectoryName(codeBehindPath)!,
+                    $"{className}.xaml");
+
+                Assert.True(
+                    File.Exists(expectedXamlPath),
+                    $"{className} must have a sibling {className}.xaml file.");
+                Assert.EndsWith(
+                    $"{className}.xaml.cs",
+                    codeBehindPath.Replace(Path.DirectorySeparatorChar, '/'),
+                    StringComparison.Ordinal);
+                Assert.Contains("partial", modifiers, StringComparison.Ordinal);
+                Assert.Contains("InitializeComponent();", source, StringComparison.Ordinal);
+            }
+        }
+
+        Assert.NotEmpty(visualClasses);
+    }
+
+    private static bool IsWinUiVisualBase(string baseType)
+    {
+        return baseType is "Window" or "Page" or "Microsoft.UI.Xaml.Window" or "Microsoft.UI.Xaml.Controls.Page";
+    }
+
+    private static bool IsBuildOutputPath(string root, string path)
+    {
+        var relativePath = Path.GetRelativePath(root, path);
+        var segments = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return segments.Contains("bin", StringComparer.OrdinalIgnoreCase) ||
+            segments.Contains("obj", StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "BarberiaSystem.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Could not locate repository root from test output directory.");
+    }
+}

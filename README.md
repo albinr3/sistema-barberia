@@ -24,7 +24,7 @@ Las fases del producto se gestionaran con milestones, labels e issues, no con ca
 
 ## Estado actual
 
-El repositorio ya contiene la estructura base del monorepo, contexto IA en Markdown, plan tecnico de Fase 1 y skeleton de solucion .NET para Fase 1.
+El repositorio ya contiene la estructura base del monorepo, contexto IA en Markdown, plan tecnico de Fase 1 y solucion .NET para Fase 1. La aplicacion Windows local usa WinUI 3 con ventanas y paginas declaradas en XAML por defecto; la regla se protege con pruebas en `tests/desktop/Barberia.Desktop.Tests`.
 
 El estado vivo de Fase 1 esta en:
 
