@@ -2,12 +2,12 @@
 
 ## Resumen Operativo
 
-- Ultima actualizacion: 2026-06-03
-- Rama actual esperada: `main`
-- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado.
-- Ultimo paso completado: `04 - Motor de asignacion de turnos`.
-- Proximo paso recomendado: `05 - Capa de datos SQLite`.
-- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/05-sqlite-data-layer.md`.
+- Ultima actualizacion: 2026-06-04
+- Rama actual esperada: `task-5-sqlite-data-layer`
+- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada.
+- Ultimo paso completado: `05 - Capa de datos SQLite`.
+- Proximo paso recomendado: `06 - Shell WinUI`.
+- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/06-winui-shell.md`.
 
 ## Verificacion Antes De Empezar
 
@@ -31,7 +31,9 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 - Trabajar solo en la primera tarea que no este `completed`, salvo aprobacion humana explicita.
 - Cambiar el estado de la tarea a `in_progress` al iniciar trabajo real.
 - Al terminar, marcar la tarea como `completed`, `partial` o `blocked`.
-- Registrar la fecha de ultimo cambio y evidencia concreta de completado.
+- Actualizar este archivo es parte obligatoria del cierre de cada tarea.
+- Una tarea no se considera completada si este archivo no fue actualizado.
+- Registrar la fecha de ultimo cambio, evidencia concreta de completado, comandos ejecutados y siguiente paso recomendado.
 - Registrar notas si una tarea queda `partial` o `blocked`.
 - No avanzar a la siguiente tarea en la misma sesion sin aprobacion humana.
 - Mantener los estados limitados a: `not_started`, `in_progress`, `partial`, `blocked`, `completed`.
@@ -44,7 +46,7 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 | 2 | Modelos de dominio Core | `ai/agent-tasks/phase-1/02-core-domain-models.md` | `phase-1/02-core-domain-models` | `completed` | 2026-06-03 | Estados y modelos en `src/desktop/Barberia.Core/Domain`; 4 pruebas en `Barberia.Core.Tests` pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Completado sin implementar motor de asignacion. |
 | 3 | Pruebas del motor de asignacion de turnos | `ai/agent-tasks/phase-1/03-turn-assignment-tests.md` | `phase-1/03-turn-assignment-tests` | `completed` | 2026-06-03 | 14 pruebas nuevas del motor compilan y fallan por `NotImplementedException`; 4 pruebas de dominio existentes pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Requiere implementar motor en paso 04 para poner la suite en verde. |
 | 4 | Motor de asignacion de turnos | `ai/agent-tasks/phase-1/04-turn-assignment-engine.md` | `phase-1/04-turn-assignment-engine` | `completed` | 2026-06-03 | `TurnAssignmentEngine` implementado; 18 pruebas de `Barberia.Core.Tests` pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Completado en Core sin dependencias de UI, Data, hardware ni cloud. |
-| 5 | Capa de datos SQLite | `ai/agent-tasks/phase-1/05-sqlite-data-layer.md` | `phase-1/05-sqlite-data-layer` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Data.Tests/Barberia.Data.Tests.csproj` | Mantener reglas de negocio fuera de Data. |
+| 5 | Capa de datos SQLite | `ai/agent-tasks/phase-1/05-sqlite-data-layer.md` | `phase-1/05-sqlite-data-layer` | `completed` | 2026-06-03 | Esquema SQLite, repositorios, transacciones locales y 4 pruebas de `Barberia.Data.Tests` pasan | `dotnet test tests/desktop/Barberia.Data.Tests/Barberia.Data.Tests.csproj` | Implementado en `task-5-sqlite-data-layer`; reglas de negocio permanecen fuera de Data. `dotnet build BarberiaSystem.sln --no-restore` falla sin errores visibles del compilador. |
 | 6 | Shell WinUI | `ai/agent-tasks/phase-1/06-winui-shell.md` | `phase-1/06-winui-shell` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | No implementar flujos completos. |
 | 7 | Modulo de kiosco | `ai/agent-tasks/phase-1/07-kiosk-module.md` | `phase-1/07-kiosk-module` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Check-in local de walk-ins. |
 | 8 | Pantalla publica | `ai/agent-tasks/phase-1/08-public-display.md` | `phase-1/08-public-display` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Mostrar estado local sin depender de internet. |

@@ -1,14 +1,9 @@
 # Barberia.Data.Tests
 
-Pruebas futuras para `Barberia.Data`.
+Pruebas de persistencia local para `Barberia.Data`.
 
-Alcance futuro:
+Alcance:
 
-- Persistencia local.
-- Transacciones, mapeos y repositorios.
-- Migraciones locales cuando se aprueben.
-
-Estado actual:
-
-- Solo referencia el proyecto bajo prueba.
-- No configura SQLite, EF Core ni base de datos real.
+- Inicializacion de SQLite.
+- Repositorios y mapeos.
+- Transacciones locales criticas.

@@ -49,3 +49,18 @@ Modulo de check-in local que registra walk-ins para entrar a la cola local segun
 - No crear precio sugerido.
 - No duplicar reglas de turnos en la pantalla.
 
+## Cierre Obligatorio
+
+Antes de finalizar, el agente debe actualizar:
+
+- `docs/fases/phase-1-current-status.md`
+
+Debe registrar:
+
+- Estado final de esta tarea: `completed`, `partial` o `blocked`.
+- Fecha de ultimo cambio.
+- Evidencia concreta: archivos creados/modificados, pruebas ejecutadas y resultado.
+- Proximo paso recomendado.
+- Notas si hubo fallos de verificacion o limitaciones.
+
+No responder como tarea completada si este archivo no fue actualizado.

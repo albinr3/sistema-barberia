@@ -51,3 +51,18 @@ Modelos y estados centrales definidos en Core o Shared segun corresponda, listos
 - No modelar booking web completo.
 - No implementar app movil.
 
+## Cierre Obligatorio
+
+Antes de finalizar, el agente debe actualizar:
+
+- `docs/fases/phase-1-current-status.md`
+
+Debe registrar:
+
+- Estado final de esta tarea: `completed`, `partial` o `blocked`.
+- Fecha de ultimo cambio.
+- Evidencia concreta: archivos creados/modificados, pruebas ejecutadas y resultado.
+- Proximo paso recomendado.
+- Notas si hubo fallos de verificacion o limitaciones.
+
+No responder como tarea completada si este archivo no fue actualizado.
