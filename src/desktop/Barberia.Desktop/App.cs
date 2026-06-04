@@ -1,3 +1,4 @@
+using Barberia.Desktop.Services;
 using Microsoft.UI.Xaml;
 
 namespace Barberia.Desktop;
@@ -20,9 +21,17 @@ public sealed partial class App : Application
 
     private static void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs args)
     {
-        var logPath = Path.Combine(AppContext.BaseDirectory, "Barberia.Desktop.error.log");
-        File.AppendAllText(
-            logPath,
-            $"[{DateTimeOffset.Now:O}] {args.Exception}{Environment.NewLine}");
+        try
+        {
+            File.AppendAllText(
+                LocalAppPaths.ErrorLogPath,
+                $"[{DateTimeOffset.Now:O}] {args.Exception}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 }
