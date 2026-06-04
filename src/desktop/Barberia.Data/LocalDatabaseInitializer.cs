@@ -87,6 +87,29 @@ public sealed class LocalDatabaseInitializer
 
             CREATE INDEX IF NOT EXISTS idx_audit_events_order
                 ON audit_events(occurred_at, event_type);
+
+            CREATE TABLE IF NOT EXISTS sync_outbox_events (
+                id TEXT NOT NULL PRIMARY KEY,
+                occurred_at TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                aggregate_type TEXT NOT NULL,
+                aggregate_id TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                device_id TEXT NULL,
+                created_at TEXT NOT NULL,
+                state INTEGER NOT NULL,
+                attempt_count INTEGER NOT NULL,
+                next_attempt_at TEXT NULL,
+                last_attempted_at TEXT NULL,
+                synced_at TEXT NULL,
+                last_error TEXT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_sync_outbox_pending
+                ON sync_outbox_events(state, next_attempt_at, occurred_at);
+
+            CREATE INDEX IF NOT EXISTS idx_sync_outbox_aggregate
+                ON sync_outbox_events(aggregate_type, aggregate_id);
             """;
         command.ExecuteNonQuery();
     }

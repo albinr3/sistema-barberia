@@ -10,6 +10,7 @@ Responsabilidades futuras:
 
 Restricciones actuales:
 
-- Depende de `Barberia.Core`.
+- Depende de `Barberia.Core`, `Barberia.Data` para el outbox SQLite local y `Barberia.ApiClient` para el contrato cloud futuro.
 - No configura Supabase.
-- No implementa cola, reintentos ni reglas de sincronizacion.
+- No implementa HTTP, autenticacion ni backend cloud.
+- Registra eventos locales en una cola outbox y procesa reintentos sin bloquear los flujos locales.

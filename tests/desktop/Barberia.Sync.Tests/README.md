@@ -10,5 +10,5 @@ Alcance futuro:
 
 Estado actual:
 
-- Solo referencia el proyecto bajo prueba.
+- Cubre outbox SQLite local, envio exitoso, fallos cloud convertidos en reintentos y omision de eventos hasta su proximo intento.
 - No configura Supabase ni sincronizacion real.

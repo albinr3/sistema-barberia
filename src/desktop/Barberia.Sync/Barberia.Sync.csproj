@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Barberia.ApiClient\Barberia.ApiClient.csproj" />
     <ProjectReference Include="..\Barberia.Core\Barberia.Core.csproj" />
+    <ProjectReference Include="..\Barberia.Data\Barberia.Data.csproj" />
   </ItemGroup>
 </Project>
