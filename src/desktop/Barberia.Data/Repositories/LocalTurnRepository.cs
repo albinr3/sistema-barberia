@@ -64,6 +64,22 @@ public sealed class LocalTurnRepository
         return reader.Read() ? ReadTurn(reader) : null;
     }
 
+    public Turn? GetByTicketNumber(string ticketNumber)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids
+            FROM turns
+            WHERE ticket_number = $ticket_number;
+            """;
+        command.AddText("$ticket_number", ticketNumber.Trim());
+
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadTurn(reader) : null;
+    }
+
     public IReadOnlyList<Turn> ListWaiting()
     {
         using var command = _connection.CreateCommand();
@@ -121,6 +137,32 @@ public sealed class LocalTurnRepository
         return turns;
     }
 
+    public IReadOnlyList<Turn> ListAssignedToBarber(Guid barberId)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids
+            FROM turns
+            WHERE assigned_barber_id = $barber_id
+              AND state IN ($assigned, $called)
+            ORDER BY checked_in_at, ticket_number;
+            """;
+        command.AddText("$barber_id", barberId.ToString());
+        command.AddInteger("$assigned", (int)TurnState.Assigned);
+        command.AddInteger("$called", (int)TurnState.Called);
+
+        using var reader = command.ExecuteReader();
+        var turns = new List<Turn>();
+        while (reader.Read())
+        {
+            turns.Add(ReadTurn(reader));
+        }
+
+        return turns;
+    }
+
     public void ApplyAssignment(Guid turnId, Guid barberId, TurnState state, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();
@@ -160,6 +202,31 @@ public sealed class LocalTurnRepository
         if (command.ExecuteNonQuery() != 1)
         {
             throw new InvalidOperationException("Turn was not found for completion.");
+        }
+    }
+
+    public void MarkInService(Guid turnId, Guid barberId, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE turns
+            SET state = $state,
+                updated_at = $updated_at
+            WHERE id = $turn_id
+              AND assigned_barber_id = $barber_id
+              AND state IN ($assigned, $called);
+            """;
+        command.AddText("$turn_id", turnId.ToString());
+        command.AddText("$barber_id", barberId.ToString());
+        command.AddInteger("$state", (int)TurnState.InService);
+        command.AddInteger("$assigned", (int)TurnState.Assigned);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddText("$updated_at", updatedAt.ToString("O"));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Assigned turn was not found for service start.");
         }
     }
 

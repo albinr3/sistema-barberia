@@ -111,6 +111,54 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void TurnRepository_ReturnsAssignedTurnsForSelectedBarber()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T14:00:00Z");
+        var barberId = Guid.NewGuid();
+        var otherBarberId = Guid.NewGuid();
+        var barberRepository = new LocalBarberRepository(database.Connection);
+        var repository = new LocalTurnRepository(database.Connection);
+
+        barberRepository.Upsert(new Barber(barberId, "Luis", BarberState.Called, 0, 0, now), now);
+        barberRepository.Upsert(new Barber(otherBarberId, "Ana", BarberState.Called, 0, 1, now), now);
+
+        repository.Upsert(new Turn(Guid.NewGuid(), "B-001", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
+        repository.Upsert(new Turn(Guid.NewGuid(), "B-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(1), barberId), now);
+        repository.Upsert(new Turn(Guid.NewGuid(), "B-003", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(2), barberId), now);
+        repository.Upsert(new Turn(Guid.NewGuid(), "B-004", TurnState.Assigned, TurnSource.WalkIn, now.AddMinutes(3), otherBarberId), now);
+
+        var turns = repository.ListAssignedToBarber(barberId);
+
+        Assert.Collection(
+            turns,
+            turn => Assert.Equal("B-001", turn.TicketNumber),
+            turn => Assert.Equal("B-002", turn.TicketNumber));
+    }
+
+    [Fact]
+    public void Repositories_StartServiceForAssignedTicket()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T14:30:00Z");
+        var barberId = Guid.NewGuid();
+        var turnId = Guid.NewGuid();
+
+        var barberRepository = new LocalBarberRepository(database.Connection);
+        var turnRepository = new LocalTurnRepository(database.Connection);
+        barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.Called, 0, 0, now), now);
+        turnRepository.Upsert(new Turn(turnId, "B-010", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
+
+        var turnByTicket = turnRepository.GetByTicketNumber("B-010");
+        turnRepository.MarkInService(turnId, barberId, now.AddMinutes(1));
+        barberRepository.SetState(barberId, BarberState.InService, now.AddMinutes(1));
+
+        Assert.Equal(turnId, turnByTicket?.Id);
+        Assert.Equal(TurnState.InService, turnRepository.GetById(turnId)?.State);
+        Assert.Equal(BarberState.InService, barberRepository.GetById(barberId)?.State);
+    }
+
+    [Fact]
     public void Transaction_CommitsCashBoxClosePersistenceAtomically()
     {
         using var database = TestDatabase.Create();
