@@ -11,7 +11,7 @@ public sealed class KioskCheckInService
     private readonly TurnAssignmentEngine _assignmentEngine = new();
 
     public KioskCheckInService()
-        : this(CreateDefaultConnectionFactory())
+        : this(LocalDesktopDatabase.CreateConnectionFactory())
     {
     }
 
@@ -95,17 +95,6 @@ public sealed class KioskCheckInService
         });
 
         return result ?? throw new InvalidOperationException("Walk-in check-in did not produce a result.");
-    }
-
-    private static SqliteConnectionFactory CreateDefaultConnectionFactory()
-    {
-        var dataDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BarberiaSystem");
-        Directory.CreateDirectory(dataDirectory);
-
-        var databasePath = Path.Combine(dataDirectory, "barberia-local.db");
-        return new SqliteConnectionFactory($"Data Source={databasePath}");
     }
 
     private static string CreateTicketNumber(DateTimeOffset timestamp)

@@ -86,6 +86,31 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void TurnRepository_ReturnsOnlyActiveTurnsForPublicDisplay()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T12:00:00Z");
+        var repository = new LocalTurnRepository(database.Connection);
+        var called = new Turn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
+        var assigned = new Turn(Guid.NewGuid(), "A-001", TurnState.Assigned, TurnSource.Appointment, now);
+        var waiting = new Turn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
+        var completed = new Turn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
+
+        repository.Upsert(waiting, now);
+        repository.Upsert(completed, now);
+        repository.Upsert(called, now);
+        repository.Upsert(assigned, now);
+
+        var activeTurns = repository.ListActiveForPublicDisplay();
+
+        Assert.Collection(
+            activeTurns,
+            turn => Assert.Equal(called.Id, turn.Id),
+            turn => Assert.Equal(assigned.Id, turn.Id),
+            turn => Assert.Equal(waiting.Id, turn.Id));
+    }
+
+    [Fact]
     public void Transaction_CommitsCashBoxClosePersistenceAtomically()
     {
         using var database = TestDatabase.Create();

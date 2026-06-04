@@ -87,6 +87,40 @@ public sealed class LocalTurnRepository
         return turns;
     }
 
+    public IReadOnlyList<Turn> ListActiveForPublicDisplay()
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids
+            FROM turns
+            WHERE state IN ($waiting, $assigned, $called, $in_service)
+            ORDER BY
+                CASE state
+                    WHEN $called THEN 0
+                    WHEN $assigned THEN 1
+                    WHEN $in_service THEN 2
+                    ELSE 3
+                END,
+                checked_in_at,
+                ticket_number;
+            """;
+        command.AddInteger("$waiting", (int)TurnState.Waiting);
+        command.AddInteger("$assigned", (int)TurnState.Assigned);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddInteger("$in_service", (int)TurnState.InService);
+
+        using var reader = command.ExecuteReader();
+        var turns = new List<Turn>();
+        while (reader.Read())
+        {
+            turns.Add(ReadTurn(reader));
+        }
+
+        return turns;
+    }
+
     public void ApplyAssignment(Guid turnId, Guid barberId, TurnState state, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();

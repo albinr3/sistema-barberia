@@ -3,11 +3,11 @@
 ## Resumen Operativo
 
 - Ultima actualizacion: 2026-06-04
-- Rama actual esperada: `task-7-kiosk-module`
-- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada; shell WinUI inicial implementada; tema visual desktop documentado; modulo de kiosco local implementado para check-in de walk-ins.
-- Ultimo paso completado: `07 - Modulo de kiosco`.
-- Proximo paso recomendado: `08 - Pantalla publica`.
-- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/08-public-display.md`.
+- Rama actual esperada: `main`
+- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada; shell WinUI inicial implementada; tema visual desktop documentado; modulo de kiosco local implementado para check-in de walk-ins; pantalla publica local implementada para sala de espera.
+- Ultimo paso completado: `08 - Pantalla publica`.
+- Proximo paso recomendado: `09 - Panel de barbero`.
+- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/09-barber-panel.md`.
 
 ## Verificacion Antes De Empezar
 
@@ -29,6 +29,8 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 
 - Leer este archivo antes de ejecutar cualquier tarea de Fase 1.
 - Trabajar solo en la primera tarea que no este `completed`, salvo aprobacion humana explicita.
+- Antes de iniciar trabajo real, crear una rama nueva desde `main` usando la columna `Rama recomendada`; si ya existe, crear una variante descriptiva.
+- No implementar tareas de Fase 1 directamente sobre `main`.
 - Cambiar el estado de la tarea a `in_progress` al iniciar trabajo real.
 - Al terminar, marcar la tarea como `completed`, `partial` o `blocked`.
 - Actualizar este archivo es parte obligatoria del cierre de cada tarea.
@@ -49,8 +51,8 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 | 5 | Capa de datos SQLite | `ai/agent-tasks/phase-1/05-sqlite-data-layer.md` | `phase-1/05-sqlite-data-layer` | `completed` | 2026-06-03 | Esquema SQLite, repositorios, transacciones locales y 4 pruebas de `Barberia.Data.Tests` pasan | `dotnet test tests/desktop/Barberia.Data.Tests/Barberia.Data.Tests.csproj` | Implementado en `task-5-sqlite-data-layer`; reglas de negocio permanecen fuera de Data. `dotnet build BarberiaSystem.sln --no-restore` falla sin errores visibles del compilador. |
 | 6 | Shell WinUI | `ai/agent-tasks/phase-1/06-winui-shell.md` | `phase-1/06-winui-shell` | `completed` | 2026-06-04 | Shell WinUI en `Barberia.Desktop`: `App.xaml`, `App`, `MainWindow`, `Shell/ShellModuleCatalog.cs`, paginas placeholder en `Views/`, referencia `Microsoft.WindowsAppSDK`; navegacion lateral simple con `ContentControl` e instancia directa de pagina; se reemplazo el arranque manual por `App.xaml` estandar para corregir cierre automatico con crash nativo `Microsoft.UI.Xaml.dll`; pasada visual base aplicada a shell, navegacion, header y placeholders sin implementar flujos; tema visual fijado en `docs/diseno/desktop-visual-theme.md`, `ai/instructions/desktop-winui.md` y tareas UI pendientes; `dotnet build src/desktop/Barberia.Desktop/Barberia.Desktop.csproj --no-restore -v:minimal` correcto; `Barberia.Desktop.exe` siguio corriendo tras 8 segundos; `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` correcto, 18 Core + 4 Data pasan | `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` | No implementa flujos completos ni reglas de negocio. El build/test de solucion sin `-m:1` falla sin diagnosticos visibles por paralelismo MSBuild. |
 | 7 | Modulo de kiosco | `ai/agent-tasks/phase-1/07-kiosk-module.md` | `phase-1/07-kiosk-module` | `completed` | 2026-06-04 | Rama `task-7-kiosk-module`; `KioskPage` reemplaza placeholder con UI touch de check-in; `KioskCheckInService` registra turnos `WalkIn` en SQLite local `%LocalAppData%/BarberiaSystem/barberia-local.db`; no hay seleccion de servicio ni cuenta de usuario cliente; asignacion delegada a `TurnAssignmentEngine`; `LocalBarberRepository.ApplyAssignment` persiste el estado del barbero devuelto por Core; `dotnet build src/desktop/Barberia.Desktop/Barberia.Desktop.csproj --no-restore -v:minimal` correcto; `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` correcto, 18 Core + 4 Data pasan | `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` | El comando literal `dotnet test BarberiaSystem.sln` termino con codigo 1 sin salida diagnostica visible, igual que la limitacion previa de paralelismo documentada; Sync/Hardware no tienen pruebas detectables todavia. |
-| 8 | Pantalla publica | `ai/agent-tasks/phase-1/08-public-display.md` | `phase-1/08-public-display` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Mostrar estado local sin depender de internet. |
-| 9 | Panel de barbero | `ai/agent-tasks/phase-1/09-barber-panel.md` | `phase-1/09-barber-panel` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | El cierre queda para autocaja. |
+| 8 | Pantalla publica | `ai/agent-tasks/phase-1/08-public-display.md` | `phase-1/08-public-display` | `completed` | 2026-06-04 | Rama `phase-1/08-public-display`; `PublicDisplayPage` reemplaza placeholder con vista de sala de espera, resumen de llamados/en sala/citas, lista de turnos activos, barberos y citas programadas; `PublicDisplaySnapshotService` lee SQLite local sin internet; `LocalDesktopDatabase` centraliza la ruta `%LocalAppData%/BarberiaSystem/barberia-local.db`; `LocalTurnRepository.ListActiveForPublicDisplay` consulta solo estados activos; prueba nueva `TurnRepository_ReturnsOnlyActiveTurnsForPublicDisplay`; `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` correcto, 18 Core + 5 Data pasan; `dotnet build src/desktop/Barberia.Desktop/Barberia.Desktop.csproj --no-restore -v:minimal` correcto | `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` | Un primer `dotnet build` ejecutado en paralelo con `dotnet test` fallo por bloqueo de escritura en `Barberia.Core.dll`; repetido de forma aislada paso sin errores. Sync/Hardware siguen sin pruebas detectables. |
+| 9 | Panel de barbero | `ai/agent-tasks/phase-1/09-barber-panel.md` | `phase-1/09-barber-panel` | `not_started` | - | - | `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` | El cierre queda para autocaja. |
 | 10 | Modulo de autocaja | `ai/agent-tasks/phase-1/10-autocaja-module.md` | `phase-1/10-autocaja-module` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Solo efectivo en Fase 1. |
 | 11 | Abstracciones de hardware | `ai/agent-tasks/phase-1/11-hardware-abstractions.md` | `phase-1/11-hardware-abstractions` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Hardware.Tests/Barberia.Hardware.Tests.csproj` | Usar interfaces y simuladores. |
 | 12 | Foundation de sincronizacion | `ai/agent-tasks/phase-1/12-sync-foundation.md` | `phase-1/12-sync-foundation` | `not_started` | - | - | `dotnet test tests/desktop/Barberia.Sync.Tests/Barberia.Sync.Tests.csproj` | Sync no bloqueante. |
