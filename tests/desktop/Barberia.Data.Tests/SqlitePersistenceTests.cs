@@ -208,6 +208,38 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void BarberRepository_PersistsCashBoxRotationQueue()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T18:00:00Z");
+        var firstBarber = Guid.NewGuid();
+        var closingBarber = Guid.NewGuid();
+        var thirdBarber = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(firstBarber, "Ana", BarberState.Available, 1, 0, now), now);
+        repository.Upsert(new Barber(closingBarber, "Luis", BarberState.InService, 2, 1, now), now);
+        repository.Upsert(new Barber(thirdBarber, "Mia", BarberState.Available, 1, 2, now), now);
+
+        repository.SetRotationOrder(firstBarber, 0, now.AddMinutes(1));
+        repository.SetRotationOrder(thirdBarber, 1, now.AddMinutes(1));
+        repository.ApplyCashBoxClose(closingBarber, BarberState.Available, 2, now.AddMinutes(1));
+
+        var barbers = repository.ListAll();
+
+        Assert.Collection(
+            barbers,
+            barber => Assert.Equal(firstBarber, barber.Id),
+            barber => Assert.Equal(thirdBarber, barber.Id),
+            barber =>
+            {
+                Assert.Equal(closingBarber, barber.Id);
+                Assert.Equal(BarberState.Available, barber.State);
+                Assert.Equal(3, barber.ClientsServedToday);
+            });
+    }
+
+    [Fact]
     public void Transaction_RollsBackWhenAnyLocalWriteFails()
     {
         using var database = TestDatabase.Create();

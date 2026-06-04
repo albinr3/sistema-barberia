@@ -140,6 +140,26 @@ public sealed class LocalBarberRepository
         }
     }
 
+    public void SetRotationOrder(Guid barberId, int rotationOrder, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE barbers
+            SET rotation_order = $rotation_order,
+                updated_at = $updated_at
+            WHERE id = $id;
+            """;
+        command.AddText("$id", barberId.ToString());
+        command.AddInteger("$rotation_order", rotationOrder);
+        command.AddText("$updated_at", Format(updatedAt));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Barber was not found for rotation update.");
+        }
+    }
+
     private static Barber ReadBarber(SqliteDataReader reader)
     {
         return new Barber(
