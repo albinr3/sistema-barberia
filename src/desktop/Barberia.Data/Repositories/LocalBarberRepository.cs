@@ -97,6 +97,26 @@ public sealed class LocalBarberRepository
         }
     }
 
+    public void SetState(Guid barberId, BarberState state, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE barbers
+            SET state = $state,
+                updated_at = $updated_at
+            WHERE id = $id;
+            """;
+        command.AddText("$id", barberId.ToString());
+        command.AddInteger("$state", (int)state);
+        command.AddText("$updated_at", Format(updatedAt));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Barber was not found for state update.");
+        }
+    }
+
     public void ApplyCashBoxClose(Guid barberId, BarberState state, int rotationOrder, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();
