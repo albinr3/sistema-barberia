@@ -1,14 +1,10 @@
 # Barberia.Hardware.Tests
 
-Pruebas futuras para `Barberia.Hardware`.
+Pruebas para `Barberia.Hardware`.
 
-Alcance futuro:
+Alcance:
 
 - Contratos de impresora, scanner QR y cash drawer.
 - Adaptadores simulados.
 - Manejo de errores de hardware.
-
-Estado actual:
-
-- Solo referencia el proyecto bajo prueba.
-- No implementa hardware real.
+- No usa hardware real ni drivers.
