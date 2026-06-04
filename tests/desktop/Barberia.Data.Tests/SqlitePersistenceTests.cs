@@ -1,5 +1,6 @@
 using Barberia.Core.Domain;
 using Barberia.Data.Models;
+using Barberia.Data.Reports;
 using Barberia.Data.Repositories;
 using Microsoft.Data.Sqlite;
 using Xunit;
@@ -274,5 +275,131 @@ public sealed class SqlitePersistenceTests
 
         Assert.Equal(TurnState.InService, savedTurn?.State);
         Assert.Empty(payments);
+    }
+
+    [Fact]
+    public void AdminReportRepository_ReturnsDailyOperationsCashAndCommissions()
+    {
+        using var database = TestDatabase.Create();
+        var from = DateTimeOffset.Parse("2026-06-04T00:00:00Z");
+        var to = from.AddDays(1);
+        var luisId = Guid.NewGuid();
+        var anaId = Guid.NewGuid();
+        var miaId = Guid.NewGuid();
+        var luisTurnId = Guid.NewGuid();
+        var anaTurnId = Guid.NewGuid();
+        var waitingTurnId = Guid.NewGuid();
+        var noShowTurnId = Guid.NewGuid();
+        var oldTurnId = Guid.NewGuid();
+
+        var barberRepository = new LocalBarberRepository(database.Connection);
+        var turnRepository = new LocalTurnRepository(database.Connection);
+        var paymentRepository = new CashPaymentRepository(database.Connection);
+
+        barberRepository.Upsert(new Barber(luisId, "Luis", BarberState.Available, 3, 0, from), from);
+        barberRepository.Upsert(new Barber(anaId, "Ana", BarberState.Available, 1, 1, from), from);
+        barberRepository.Upsert(new Barber(miaId, "Mia", BarberState.Offline, 0, 2, from), from);
+
+        turnRepository.Upsert(new Turn(luisTurnId, "A-001", TurnState.Completed, TurnSource.WalkIn, from.AddHours(9), luisId), from.AddHours(10));
+        turnRepository.Upsert(new Turn(anaTurnId, "A-002", TurnState.Completed, TurnSource.Appointment, from.AddHours(9).AddMinutes(10), anaId), from.AddHours(10).AddMinutes(20));
+        turnRepository.Upsert(new Turn(waitingTurnId, "A-003", TurnState.Waiting, TurnSource.WalkIn, from.AddHours(11)), from.AddHours(11));
+        turnRepository.Upsert(new Turn(noShowTurnId, "A-004", TurnState.NoShow, TurnSource.WalkIn, from.AddHours(12)), from.AddHours(12));
+        turnRepository.Upsert(new Turn(oldTurnId, "OLD-001", TurnState.Completed, TurnSource.WalkIn, from.AddDays(-1), luisId), from.AddDays(-1));
+
+        paymentRepository.Add(new CashPayment(
+            Guid.NewGuid(),
+            luisTurnId,
+            luisId,
+            2500,
+            "USD",
+            from.AddHours(10),
+            "autocaja-1",
+            "R-001",
+            true,
+            500));
+        paymentRepository.Add(new CashPayment(
+            Guid.NewGuid(),
+            anaTurnId,
+            anaId,
+            4000,
+            "USD",
+            from.AddHours(10).AddMinutes(20),
+            "autocaja-1",
+            "R-002",
+            true,
+            null));
+        paymentRepository.Add(new CashPayment(
+            Guid.NewGuid(),
+            oldTurnId,
+            luisId,
+            9900,
+            "USD",
+            from.AddDays(-1).AddHours(18),
+            "autocaja-1",
+            "OLD",
+            true,
+            1980));
+
+        var snapshot = new LocalAdminReportRepository(database.Connection)
+            .Load(from, to, from.AddHours(13));
+
+        Assert.Equal(4, snapshot.Operations.CheckIns);
+        Assert.Equal(3, snapshot.Operations.WalkIns);
+        Assert.Equal(1, snapshot.Operations.Appointments);
+        Assert.Equal(2, snapshot.Operations.CompletedServices);
+        Assert.Equal(1, snapshot.Operations.ActiveTurns);
+        Assert.Equal(1, snapshot.Operations.NoShows);
+        Assert.Equal(2, snapshot.Cash.PaymentCount);
+        Assert.Equal(6500, snapshot.Cash.TotalAmountCents);
+        Assert.Equal(500, snapshot.Cash.CommissionCents);
+        Assert.Equal(1, snapshot.Cash.PaymentsMissingCommission);
+        Assert.Equal(2, snapshot.Cash.CashDrawerOpenCount);
+
+        Assert.Collection(
+            snapshot.Barbers,
+            row =>
+            {
+                Assert.Equal(anaId, row.BarberId);
+                Assert.Equal(1, row.ServicesClosed);
+                Assert.Equal(4000, row.CashCollectedCents);
+                Assert.Equal(1, row.PaymentsMissingCommission);
+            },
+            row =>
+            {
+                Assert.Equal(luisId, row.BarberId);
+                Assert.Equal(1, row.ServicesClosed);
+                Assert.Equal(2500, row.CashCollectedCents);
+                Assert.Equal(500, row.CommissionCents);
+            },
+            row =>
+            {
+                Assert.Equal(miaId, row.BarberId);
+                Assert.Equal(0, row.ServicesClosed);
+                Assert.Equal(0, row.CashCollectedCents);
+            });
+        Assert.Collection(
+            snapshot.RecentPayments,
+            payment =>
+            {
+                Assert.Equal("A-002", payment.TicketNumber);
+                Assert.Equal("Ana", payment.BarberName);
+                Assert.Null(payment.CommissionCents);
+            },
+            payment =>
+            {
+                Assert.Equal("A-001", payment.TicketNumber);
+                Assert.Equal("Luis", payment.BarberName);
+                Assert.Equal(500, payment.CommissionCents);
+            });
+    }
+
+    [Fact]
+    public void AdminReportRepository_RejectsInvalidDateRange()
+    {
+        using var database = TestDatabase.Create();
+        var from = DateTimeOffset.Parse("2026-06-04T00:00:00Z");
+
+        Assert.Throws<ArgumentException>(() =>
+            new LocalAdminReportRepository(database.Connection).Load(from, from, from));
     }
 }
