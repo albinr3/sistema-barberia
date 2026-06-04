@@ -28,6 +28,7 @@ Implementar el modulo local de kiosco touch para check-in de walk-ins en Fase 1.
 - `ai/context/glossary.md`
 - `docs/arquitectura/phase-1-technical-plan.md`
 - `ai/instructions/desktop-winui.md`
+- `docs/diseno/desktop-visual-theme.md`
 
 ## Resultado Esperado
 
@@ -35,6 +36,7 @@ Modulo de check-in local que registra walk-ins para entrar a la cola local segun
 
 ## Criterios De Aceptacion
 
+- Respeta `docs/diseno/desktop-visual-theme.md` y reutiliza patrones visuales de la shell WinUI existente.
 - No hay seleccion de servicio en kiosco.
 - El flujo funciona sin internet.
 - El registro queda preparado para persistencia local SQLite.

@@ -26,6 +26,7 @@ Preparar empaquetado y estrategia de actualizaciones para la aplicacion Windows 
 - `docs/arquitectura/phase-1-technical-plan.md`
 - `docs/arquitectura/phase-1-solution-structure.md`
 - `ai/instructions/desktop-winui.md`
+- `docs/diseno/desktop-visual-theme.md`
 
 ## Resultado Esperado
 
@@ -33,6 +34,7 @@ Estrategia de packaging local documentada e implementada solo con aprobacion, li
 
 ## Criterios De Aceptacion
 
+- No cambia el tema visual desktop aprobado salvo decision registrada en `docs/decisiones/decision-log.md`.
 - El packaging no requiere internet para operar despues de instalado.
 - No rompe la base SQLite local existente.
 - Define como tratar configuracion, logs y datos locales durante actualizaciones.

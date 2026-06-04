@@ -29,6 +29,7 @@ Implementar el panel local de barbero para check-in operativo, estado disponible
 - `ai/context/business-rules.md`
 - `docs/arquitectura/phase-1-technical-plan.md`
 - `ai/instructions/desktop-winui.md`
+- `docs/diseno/desktop-visual-theme.md`
 
 ## Resultado Esperado
 
@@ -36,6 +37,7 @@ Panel que permite al barbero participar en el flujo local sin cerrar servicios d
 
 ## Criterios De Aceptacion
 
+- Respeta `docs/diseno/desktop-visual-theme.md` y reutiliza patrones visuales de la shell WinUI existente.
 - Solo barberos `available` reciben walk-ins.
 - Escanear ticket asignado mueve turno y barbero a `in_service`.
 - El panel no tiene boton obligatorio de terminar servicio.

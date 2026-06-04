@@ -3,11 +3,11 @@
 ## Resumen Operativo
 
 - Ultima actualizacion: 2026-06-04
-- Rama actual esperada: `task-5-sqlite-data-layer`
-- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada.
-- Ultimo paso completado: `05 - Capa de datos SQLite`.
-- Proximo paso recomendado: `06 - Shell WinUI`.
-- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/06-winui-shell.md`.
+- Rama actual esperada: `tarea-6`
+- Estado general de Fase 1: skeleton tecnico creado; modelos iniciales de dominio Core definidos; motor de asignacion implementado; capa SQLite local implementada; shell WinUI inicial implementada; tema visual desktop documentado para modulos futuros.
+- Ultimo paso completado: `06 - Shell WinUI`.
+- Proximo paso recomendado: `07 - Modulo de kiosco`.
+- Archivo prompt base del proximo paso: `ai/agent-tasks/phase-1/07-kiosk-module.md`.
 
 ## Verificacion Antes De Empezar
 
@@ -47,7 +47,7 @@ Si una tarea tiene un comando mas especifico, usarlo adicionalmente y registrar 
 | 3 | Pruebas del motor de asignacion de turnos | `ai/agent-tasks/phase-1/03-turn-assignment-tests.md` | `phase-1/03-turn-assignment-tests` | `completed` | 2026-06-03 | 14 pruebas nuevas del motor compilan y fallan por `NotImplementedException`; 4 pruebas de dominio existentes pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Requiere implementar motor en paso 04 para poner la suite en verde. |
 | 4 | Motor de asignacion de turnos | `ai/agent-tasks/phase-1/04-turn-assignment-engine.md` | `phase-1/04-turn-assignment-engine` | `completed` | 2026-06-03 | `TurnAssignmentEngine` implementado; 18 pruebas de `Barberia.Core.Tests` pasan | `dotnet test tests/desktop/Barberia.Core.Tests/Barberia.Core.Tests.csproj` | Completado en Core sin dependencias de UI, Data, hardware ni cloud. |
 | 5 | Capa de datos SQLite | `ai/agent-tasks/phase-1/05-sqlite-data-layer.md` | `phase-1/05-sqlite-data-layer` | `completed` | 2026-06-03 | Esquema SQLite, repositorios, transacciones locales y 4 pruebas de `Barberia.Data.Tests` pasan | `dotnet test tests/desktop/Barberia.Data.Tests/Barberia.Data.Tests.csproj` | Implementado en `task-5-sqlite-data-layer`; reglas de negocio permanecen fuera de Data. `dotnet build BarberiaSystem.sln --no-restore` falla sin errores visibles del compilador. |
-| 6 | Shell WinUI | `ai/agent-tasks/phase-1/06-winui-shell.md` | `phase-1/06-winui-shell` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | No implementar flujos completos. |
+| 6 | Shell WinUI | `ai/agent-tasks/phase-1/06-winui-shell.md` | `phase-1/06-winui-shell` | `completed` | 2026-06-04 | Shell WinUI en `Barberia.Desktop`: `App.xaml`, `App`, `MainWindow`, `Shell/ShellModuleCatalog.cs`, paginas placeholder en `Views/`, referencia `Microsoft.WindowsAppSDK`; navegacion lateral simple con `ContentControl` e instancia directa de pagina; se reemplazo el arranque manual por `App.xaml` estandar para corregir cierre automatico con crash nativo `Microsoft.UI.Xaml.dll`; pasada visual base aplicada a shell, navegacion, header y placeholders sin implementar flujos; tema visual fijado en `docs/diseno/desktop-visual-theme.md`, `ai/instructions/desktop-winui.md` y tareas UI pendientes; `dotnet build src/desktop/Barberia.Desktop/Barberia.Desktop.csproj --no-restore -v:minimal` correcto; `Barberia.Desktop.exe` siguio corriendo tras 8 segundos; `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` correcto, 18 Core + 4 Data pasan | `dotnet test BarberiaSystem.sln --no-restore -m:1 -v:minimal` | No implementa flujos completos ni reglas de negocio. El build/test de solucion sin `-m:1` falla sin diagnosticos visibles por paralelismo MSBuild. |
 | 7 | Modulo de kiosco | `ai/agent-tasks/phase-1/07-kiosk-module.md` | `phase-1/07-kiosk-module` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Check-in local de walk-ins. |
 | 8 | Pantalla publica | `ai/agent-tasks/phase-1/08-public-display.md` | `phase-1/08-public-display` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | Mostrar estado local sin depender de internet. |
 | 9 | Panel de barbero | `ai/agent-tasks/phase-1/09-barber-panel.md` | `phase-1/09-barber-panel` | `not_started` | - | - | `dotnet test BarberiaSystem.sln` | El cierre queda para autocaja. |

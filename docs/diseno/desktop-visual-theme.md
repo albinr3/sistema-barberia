@@ -1,0 +1,66 @@
+# Tema Visual Desktop WinUI
+
+## Proposito
+
+Definir el tema visual base que debe mantenerse en la aplicacion Windows local de Fase 1.
+
+Este documento aplica a toda pantalla nueva en `Barberia.Desktop`: kiosco, pantalla publica, panel de barbero, autocaja, administracion local, reportes y cualquier vista auxiliar futura.
+
+## Fuente Actual
+
+El tema aprobado parte de la shell creada en la tarea 6:
+
+- `src/desktop/Barberia.Desktop/MainWindow.cs`
+- `src/desktop/Barberia.Desktop/Shell/`
+- `src/desktop/Barberia.Desktop/Views/ModulePlaceholderPage.cs`
+
+Cuando se implementen pantallas reales, deben reemplazar placeholders sin romper la identidad visual de la shell.
+
+## Direccion Visual
+
+- Moderno, limpio y operacional.
+- Interfaz sobria para uso diario en una barberia, no una landing page.
+- Alta legibilidad a distancia razonable y en pantallas touch.
+- Navegacion clara, con iconos y labels consistentes.
+- Secciones ordenadas por flujo operativo, no por decoracion.
+
+## Paleta Base
+
+- Fondo principal: gris claro casi blanco.
+- Sidebar: oscuro calido.
+- Superficies: blanco.
+- Acento primario: dorado calido.
+- Acento operativo: verde sobrio.
+- Texto principal: casi negro.
+- Texto secundario: gris medio.
+- Bordes: gris claro.
+
+No convertir la app en una paleta de un solo color. Mantener contraste suficiente y evitar gradientes decorativos innecesarios.
+
+## Layout
+
+- Mantener la navegacion lateral global de la shell.
+- Mantener header superior con titulo de modulo y contexto operativo.
+- Usar tarjetas solo para bloques funcionales, elementos repetidos o resumenes concretos.
+- No anidar tarjetas dentro de tarjetas.
+- Usar espaciado amplio, pero no convertir pantallas operativas en paginas de marketing.
+- Preparar controles touch con areas comodas para kiosco, autocaja y panel de barbero.
+
+## Componentes
+
+- Botones de navegacion: icono + titulo + subtitulo corto.
+- Acciones principales: botones claros, visibles y con jerarquia.
+- Estados: badges o indicadores compactos, no textos largos flotantes.
+- Formularios: labels claros, inputs grandes cuando sean touch, validacion visible.
+- Reportes: tablas o listas densas pero legibles, con resumenes superiores.
+- Pantalla publica: tipografia mas grande y composicion optimizada para lectura a distancia.
+
+## Reglas Para Agentes
+
+- Antes de crear o modificar una vista WinUI, revisar este documento y `ai/instructions/desktop-winui.md`.
+- Reutilizar patrones existentes de `MainWindow`, `Shell` y `Views` antes de inventar un estilo nuevo.
+- Si un modulo necesita un patron nuevo, debe verse compatible con la shell y documentarse si se vuelve reutilizable.
+- No implementar reglas de negocio solo para mostrar datos visuales.
+- No duplicar estados de dominio como strings locales para pintar la UI.
+- Si una decision visual cambia el tema global, registrar la decision en `docs/decisiones/decision-log.md`.
+

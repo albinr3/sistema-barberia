@@ -43,4 +43,5 @@ La existencia de estos archivos no autoriza crear codigo, pantallas, paquetes, b
 - No mezclar app movil de Fase 3.
 - Registrar decisiones tecnicas nuevas en `docs/decisiones/decision-log.md`.
 - Mantener `Barberia.Core` libre de dependencias externas de UI, datos, hardware y APIs.
+- Para cualquier pantalla WinUI, respetar `docs/diseno/desktop-visual-theme.md` y `ai/instructions/desktop-winui.md`.
 

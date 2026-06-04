@@ -27,6 +27,7 @@ Implementar reportes administrativos locales para Fase 1 usando datos de SQLite 
 - `ai/context/glossary.md`
 - `docs/arquitectura/phase-1-technical-plan.md`
 - `ai/instructions/desktop-winui.md`
+- `docs/diseno/desktop-visual-theme.md`
 - `ai/instructions/testing.md`
 
 ## Resultado Esperado
@@ -35,6 +36,7 @@ Reportes locales basicos para operaciones, pagos en efectivo y comisiones, sin d
 
 ## Criterios De Aceptacion
 
+- Respeta `docs/diseno/desktop-visual-theme.md` y reutiliza patrones visuales de la shell WinUI existente.
 - Los reportes leen de la base local.
 - No requieren sincronizacion cloud para funcionar.
 - No asumen exportacion Excel/PDF si sigue pendiente.
