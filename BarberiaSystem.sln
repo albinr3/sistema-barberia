@@ -3,26 +3,57 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Desktop", "src\desktop\Barberia.Desktop\Barberia.Desktop.csproj", "{D3816CFB-1EB2-4F12-A2AB-59C8E5D5C634}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE} = {0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}
+		{7CDE949D-35A7-4D7F-8F9B-730B9FE1DD25} = {7CDE949D-35A7-4D7F-8F9B-730B9FE1DD25}
+		{0A8CF5A9-85F0-49D5-9062-8E2BA8E0331B} = {0A8CF5A9-85F0-49D5-9062-8E2BA8E0331B}
+		{6676D0D2-D1BB-49F1-A55B-564F451ED33E} = {6676D0D2-D1BB-49F1-A55B-564F451ED33E}
+		{DAF98826-F33A-4A7C-B7D1-F14ED28D5733} = {DAF98826-F33A-4A7C-B7D1-F14ED28D5733}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Core", "src\desktop\Barberia.Core\Barberia.Core.csproj", "{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Data", "src\desktop\Barberia.Data\Barberia.Data.csproj", "{7CDE949D-35A7-4D7F-8F9B-730B9FE1DD25}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE} = {0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Sync", "src\desktop\Barberia.Sync\Barberia.Sync.csproj", "{0A8CF5A9-85F0-49D5-9062-8E2BA8E0331B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE} = {0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Hardware", "src\desktop\Barberia.Hardware\Barberia.Hardware.csproj", "{6676D0D2-D1BB-49F1-A55B-564F451ED33E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE} = {0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.ApiClient", "src\desktop\Barberia.ApiClient\Barberia.ApiClient.csproj", "{DAF98826-F33A-4A7C-B7D1-F14ED28D5733}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE} = {0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Shared", "src\desktop\Barberia.Shared\Barberia.Shared.csproj", "{2D0FA40F-0998-4E8B-89F6-7238D18D20CB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Core.Tests", "tests\desktop\Barberia.Core.Tests\Barberia.Core.Tests.csproj", "{9C471D0E-3760-4014-9835-28E573D3310B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B46F186-C5E3-4F8E-8790-5DC0E797C3DE} = {0B46F186-C5E3-4F8E-8790-5DC0E797C3DE}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Data.Tests", "tests\desktop\Barberia.Data.Tests\Barberia.Data.Tests.csproj", "{899D7793-62FA-4182-914E-0678371391E9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7CDE949D-35A7-4D7F-8F9B-730B9FE1DD25} = {7CDE949D-35A7-4D7F-8F9B-730B9FE1DD25}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Sync.Tests", "tests\desktop\Barberia.Sync.Tests\Barberia.Sync.Tests.csproj", "{B66946A7-06E2-4D8F-ADCF-F407568DE2D1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0A8CF5A9-85F0-49D5-9062-8E2BA8E0331B} = {0A8CF5A9-85F0-49D5-9062-8E2BA8E0331B}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barberia.Hardware.Tests", "tests\desktop\Barberia.Hardware.Tests\Barberia.Hardware.Tests.csproj", "{95345557-A092-4A79-9300-6B7D7585396C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6676D0D2-D1BB-49F1-A55B-564F451ED33E} = {6676D0D2-D1BB-49F1-A55B-564F451ED33E}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
