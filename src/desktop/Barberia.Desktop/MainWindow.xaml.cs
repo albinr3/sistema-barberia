@@ -1,4 +1,5 @@
 using Barberia.Desktop.Shell;
+using Barberia.Desktop.Views;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -120,6 +121,7 @@ public sealed partial class MainWindow : Window
 
         _header.Text = module.Title;
         _subtitle.Text = module.Subtitle;
+        ApplyModuleChrome(moduleKey);
 
         if (_currentModuleKey == moduleKey)
         {
@@ -131,10 +133,32 @@ public sealed partial class MainWindow : Window
         UpdateNavigationState(moduleKey);
     }
 
-    private static Page CreateModulePage(ShellModuleDefinition module)
+    private void ApplyModuleChrome(ShellModuleKey moduleKey)
     {
-        return Activator.CreateInstance(module.PageType) as Page
+        var isKiosk = moduleKey == ShellModuleKey.Kiosk;
+        _navigationColumn.Width = isKiosk ? new GridLength(0) : new GridLength(292);
+        _sidebar.Visibility = isKiosk ? Visibility.Collapsed : Visibility.Visible;
+        _moduleHeader.Visibility = isKiosk ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private Page CreateModulePage(ShellModuleDefinition module)
+    {
+        var page = Activator.CreateInstance(module.PageType) as Page
             ?? throw new InvalidOperationException($"Could not create shell page '{module.PageType.FullName}'.");
+
+        if (page is KioskPage kioskPage)
+        {
+            kioskPage.ShellMenuRequested += (_, _) => ShowShellMenu();
+        }
+
+        return page;
+    }
+
+    private void ShowShellMenu()
+    {
+        _navigationColumn.Width = new GridLength(292);
+        _sidebar.Visibility = Visibility.Visible;
+        _moduleHeader.Visibility = Visibility.Visible;
     }
 
     private void UpdateNavigationState(ShellModuleKey selectedModuleKey)

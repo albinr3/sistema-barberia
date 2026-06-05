@@ -20,9 +20,9 @@ public sealed class LocalBarberRepository
         command.Transaction = _transaction;
         command.CommandText = """
             INSERT INTO barbers (
-                id, display_name, state, clients_served_today, rotation_order, checked_in_at, updated_at
+                id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active, updated_at
             ) VALUES (
-                $id, $display_name, $state, $clients_served_today, $rotation_order, $checked_in_at, $updated_at
+                $id, $display_name, $state, $clients_served_today, $rotation_order, $checked_in_at, $profile_image_path, $is_active, $updated_at
             )
             ON CONFLICT(id) DO UPDATE SET
                 display_name = excluded.display_name,
@@ -30,6 +30,8 @@ public sealed class LocalBarberRepository
                 clients_served_today = excluded.clients_served_today,
                 rotation_order = excluded.rotation_order,
                 checked_in_at = excluded.checked_in_at,
+                profile_image_path = excluded.profile_image_path,
+                is_active = excluded.is_active,
                 updated_at = excluded.updated_at;
             """;
         command.AddText("$id", barber.Id.ToString());
@@ -38,6 +40,8 @@ public sealed class LocalBarberRepository
         command.AddInteger("$clients_served_today", barber.ClientsServedToday);
         command.AddInteger("$rotation_order", barber.RotationOrder);
         command.AddText("$checked_in_at", Format(barber.CheckedInAt));
+        command.AddText("$profile_image_path", barber.ProfileImagePath);
+        command.AddInteger("$is_active", barber.IsActive ? 1 : 0);
         command.AddText("$updated_at", Format(updatedAt));
         command.ExecuteNonQuery();
     }
@@ -47,7 +51,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, checked_in_at
+            SELECT id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active
             FROM barbers
             WHERE id = $id;
             """;
@@ -62,7 +66,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, checked_in_at
+            SELECT id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active
             FROM barbers
             ORDER BY rotation_order, display_name;
             """;
@@ -94,6 +98,42 @@ public sealed class LocalBarberRepository
         if (command.ExecuteNonQuery() != 1)
         {
             throw new InvalidOperationException("Barber was not found for assignment.");
+        }
+    }
+
+    public void Delete(Guid barberId)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            DELETE FROM barbers
+            WHERE id = $id;
+            """;
+        command.AddText("$id", barberId.ToString());
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Barber was not found for delete.");
+        }
+    }
+
+    public void SetActive(Guid barberId, bool isActive, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE barbers
+            SET is_active = $is_active,
+                updated_at = $updated_at
+            WHERE id = $id;
+            """;
+        command.AddText("$id", barberId.ToString());
+        command.AddInteger("$is_active", isActive ? 1 : 0);
+        command.AddText("$updated_at", Format(updatedAt));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Barber was not found for active update.");
         }
     }
 
@@ -168,7 +208,9 @@ public sealed class LocalBarberRepository
             (BarberState)reader.GetInt32(2),
             reader.GetInt32(3),
             reader.GetInt32(4),
-            reader.IsDBNull(5) ? null : DateTimeOffset.Parse(reader.GetString(5)));
+            reader.IsDBNull(5) ? null : DateTimeOffset.Parse(reader.GetString(5)),
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.GetInt32(7) == 1);
     }
 
     private static string? Format(DateTimeOffset? value)

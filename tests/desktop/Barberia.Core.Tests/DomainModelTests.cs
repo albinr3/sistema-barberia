@@ -39,7 +39,7 @@ public sealed class DomainModelTests
     }
 
     [Fact]
-    public void Turn_NormalizesRequestedBarbersWithoutDuplicatingIds()
+    public void Turn_NormalizesCustomerNameAndRequestedBarbersWithoutDuplicatingIds()
     {
         var barberId = Guid.NewGuid();
 
@@ -49,10 +49,29 @@ public sealed class DomainModelTests
             TurnState.Waiting,
             TurnSource.WalkIn,
             DateTimeOffset.UtcNow,
-            requestedBarberIds: [barberId, barberId]);
+            requestedBarberIds: [barberId, barberId],
+            customerName: " Mia ");
 
         Assert.Equal("A-001", turn.TicketNumber);
+        Assert.Equal("Mia", turn.CustomerName);
         Assert.Equal([barberId], turn.RequestedBarberIds);
+    }
+
+    [Fact]
+    public void Barber_NormalizesOptionalProfileImagePath()
+    {
+        var barber = new Barber(
+            Guid.NewGuid(),
+            " Marcus ",
+            BarberState.Available,
+            0,
+            1,
+            profileImagePath: " Assets/barber1.png ",
+            isActive: false);
+
+        Assert.Equal("Marcus", barber.DisplayName);
+        Assert.Equal("Assets/barber1.png", barber.ProfileImagePath);
+        Assert.False(barber.IsActive);
     }
 
     [Fact]

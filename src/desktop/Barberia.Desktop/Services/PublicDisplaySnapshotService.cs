@@ -31,7 +31,10 @@ public sealed class PublicDisplaySnapshotService
         var appointmentRepository = new AppointmentReservationRepository(connection);
 
         var turns = turnRepository.ListActiveForPublicDisplay();
-        var barbers = barberRepository.ListAll();
+        var barbers = barberRepository
+            .ListAll()
+            .Where(barber => barber.IsActive)
+            .ToArray();
         var appointments = appointmentRepository.ListBetween(
             now.Subtract(AppointmentReservation.DefaultProtectionWindow),
             now.Add(AppointmentLookAhead));

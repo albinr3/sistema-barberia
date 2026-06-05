@@ -30,6 +30,8 @@ public sealed class LocalDatabaseInitializer
                 clients_served_today INTEGER NOT NULL,
                 rotation_order INTEGER NOT NULL,
                 checked_in_at TEXT NULL,
+                profile_image_path TEXT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
                 updated_at TEXT NOT NULL
             );
 
@@ -48,6 +50,7 @@ public sealed class LocalDatabaseInitializer
                 ticket_number TEXT NOT NULL UNIQUE,
                 state INTEGER NOT NULL,
                 source INTEGER NOT NULL,
+                customer_name TEXT NULL,
                 checked_in_at TEXT NOT NULL,
                 assigned_barber_id TEXT NULL,
                 appointment_id TEXT NULL,
@@ -112,5 +115,38 @@ public sealed class LocalDatabaseInitializer
                 ON sync_outbox_events(aggregate_type, aggregate_id);
             """;
         command.ExecuteNonQuery();
+
+        EnsureColumn(connection, "turns", "customer_name", "TEXT NULL");
+        EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
+        EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
+    }
+
+    private static void EnsureColumn(SqliteConnection connection, string tableName, string columnName, string columnDefinition)
+    {
+        if (ColumnExists(connection, tableName, columnName))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};";
+        command.ExecuteNonQuery();
+    }
+
+    private static bool ColumnExists(SqliteConnection connection, string tableName, string columnName)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({tableName});";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

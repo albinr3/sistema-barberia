@@ -16,6 +16,11 @@
 - El barbero cierra el servicio en autocaja.
 - El panel del barbero no debe tener un boton obligatorio de terminar servicio; el cierre operativo ocurre en autocaja.
 - Solo barberos en estado `available` pueden recibir nuevos walk-ins.
+- Un barbero tambien debe tener `is_active=true` para aparecer en kiosco, pantalla publica y flujos operativos locales.
+- Desactivar un barbero (`is_active=false`) lo oculta de nuevos turnos y reservas futuras sin borrar su historial.
+- Al desactivar un barbero desde administracion local, si no esta `called` ni `in_service`, su estado operativo local pasa a `offline`.
+- No se debe eliminar fisicamente un barbero con historial operativo; se debe desactivar para mantener reportes, auditoria y sincronizacion futura.
+- La administracion local puede cancelar tickets activos (`waiting`, `assigned`, `called`, `in_service`); si el ticket tenia barbero asignado, el barbero activo vuelve a `available` en la misma transaccion y se intenta asignar automaticamente el siguiente ticket `waiting` compatible.
 - Las citas pertenecen a Fase 2, pero deben integrarse con Fase 1 mediante sincronizacion.
 - La pantalla publica debe diferenciar visualmente citas programadas y turnos walk-in.
 - La pantalla publica debe mostrar un estado como "Reservado para cita" cuando un barbero este protegido por cita proxima.
@@ -37,7 +42,5 @@
 - POR CONFIRMAR: si el `no_show` de citas es automatico al minuto 10 o requiere confirmacion manual del administrador.
 - POR CONFIRMAR: si el administrador remoto debe estar disponible desde Fase 1 o esperar a Fase 2.
 - POR CONFIRMAR: si los barberos pueden modificar su disponibilidad libremente o requieren aprobacion.
-- POR CONFIRMAR: si desactivar un barbero aplica a citas online, walk-ins locales o ambos.
 - POR CONFIRMAR: regla final para citas confirmadas cuando un barbero se desactiva o sale `offline` antes de la cita.
 - POR CONFIRMAR: quien compra, instala y valida el hardware POS.
-

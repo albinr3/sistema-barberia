@@ -1,9 +1,18 @@
+using Barberia.Core.Domain;
+
 namespace Barberia.Desktop.Services;
+
+public sealed record KioskCheckInSnapshot(
+    DateTimeOffset LoadedAt,
+    IReadOnlyList<Barber> Barbers);
 
 public sealed record KioskCheckInResult(
     string TicketNumber,
+    string CustomerName,
     DateTimeOffset CheckedInAt,
     string? AssignedBarberName,
+    IReadOnlyList<string> RequestedBarberNames,
+    bool AcceptsAnyBarber,
     KioskCheckInStatus Status,
     string Message);
 

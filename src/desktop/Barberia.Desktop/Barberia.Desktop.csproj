@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Assets\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Barberia.Core\Barberia.Core.csproj" />
     <ProjectReference Include="..\Barberia.Data\Barberia.Data.csproj" />
     <ProjectReference Include="..\Barberia.Sync\Barberia.Sync.csproj" />

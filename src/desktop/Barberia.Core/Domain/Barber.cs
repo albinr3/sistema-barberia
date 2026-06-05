@@ -8,7 +8,9 @@ public sealed record Barber
         BarberState state,
         int clientsServedToday,
         int rotationOrder,
-        DateTimeOffset? checkedInAt = null)
+        DateTimeOffset? checkedInAt = null,
+        string? profileImagePath = null,
+        bool isActive = true)
     {
         if (id == Guid.Empty)
         {
@@ -36,6 +38,8 @@ public sealed record Barber
         ClientsServedToday = clientsServedToday;
         RotationOrder = rotationOrder;
         CheckedInAt = checkedInAt;
+        ProfileImagePath = string.IsNullOrWhiteSpace(profileImagePath) ? null : profileImagePath.Trim();
+        IsActive = isActive;
     }
 
     public Guid Id { get; }
@@ -49,4 +53,8 @@ public sealed record Barber
     public int RotationOrder { get; }
 
     public DateTimeOffset? CheckedInAt { get; }
+
+    public string? ProfileImagePath { get; }
+
+    public bool IsActive { get; }
 }

@@ -24,7 +24,10 @@ public sealed class BarberPanelService
         using var connection = _connectionFactory.OpenConnection();
         var barberRepository = new LocalBarberRepository(connection);
         var turnRepository = new LocalTurnRepository(connection);
-        var barbers = barberRepository.ListAll();
+        var barbers = barberRepository
+            .ListAll()
+            .Where(barber => barber.IsActive)
+            .ToArray();
         var assignedTurns = selectedBarberId is null
             ? []
             : turnRepository.ListAssignedToBarber(selectedBarberId.Value);
@@ -59,6 +62,11 @@ public sealed class BarberPanelService
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var barber = barberRepository.GetById(barberId)
                 ?? throw new InvalidOperationException("Barbero no encontrado en la base local.");
+            if (!barber.IsActive)
+            {
+                throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
+            }
+
             var turn = turnRepository.GetByTicketNumber(scannedTicketNumber)
                 ?? throw new InvalidOperationException("Ticket no encontrado en la base local.");
 
@@ -96,6 +104,10 @@ public sealed class BarberPanelService
         var barberRepository = new LocalBarberRepository(connection);
         var barber = barberRepository.GetById(barberId)
             ?? throw new InvalidOperationException("Barbero no encontrado en la base local.");
+        if (!barber.IsActive)
+        {
+            throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
+        }
 
         if (barber.State is BarberState.Called or BarberState.InService)
         {

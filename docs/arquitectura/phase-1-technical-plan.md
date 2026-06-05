@@ -8,7 +8,7 @@ El skeleton de solucion .NET para Fase 1 ya fue creado y mergeado a `main`. Este
 
 Preparar la primera implementacion operativa del sistema local Windows para la barberia, manteniendo una arquitectura offline-first donde la operacion diaria no dependa de internet ni de servicios cloud.
 
-Fase 1 debe permitir, cuando se implemente, operar el flujo local desde check-in hasta cierre de servicio por autocaja: kiosco, turnos automaticos, pantalla publica, panel de barbero, cobro en efectivo, hardware POS, reportes locales y base para sincronizacion futura.
+Fase 1 debe permitir operar el flujo local desde check-in hasta cierre de servicio por autocaja: kiosco, turnos automaticos, pantalla publica, panel de barbero, cobro en efectivo, hardware POS, administracion local, CRUD local de barberos, reportes locales y base para sincronizacion futura.
 
 Este documento no autoriza crear codigo funcional, base de datos ni pantallas por si solo. Define limites tecnicos para la implementacion posterior.
 
@@ -25,6 +25,7 @@ Cuando se apruebe implementar Fase 1, el alcance tecnico sera:
 - Autocaja operada por el barbero para cierre en efectivo.
 - Abstracciones de impresora, escaner QR y cash drawer.
 - Reportes locales basicos para operacion, pagos y comisiones.
+- Administracion local con CRUD de barberos, imagen opcional, orden de rotacion y bandera `is_active`.
 - Cola de eventos local para sincronizacion futura no bloqueante.
 - Cliente API futuro aislado de la operacion local.
 
@@ -46,6 +47,8 @@ Fase 1 no debe implementar:
 - Dependencia obligatoria de internet para operar.
 
 Las citas pertenecen a Fase 2, pero Fase 1 debe reservar espacio tecnico para recibirlas por sincronizacion y proteger barberos por cita proxima.
+
+El CRUD local de barberos de Fase 1 no reemplaza el CRUD web futuro: crea el contrato operativo minimo que Fase 2/3 deben sincronizar con la nube. `BarberState` representa disponibilidad operativa; `is_active` representa habilitacion administrativa para kiosco, booking y nuevos turnos.
 
 ## Arquitectura Offline-First
 

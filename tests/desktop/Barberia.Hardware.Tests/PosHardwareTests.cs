@@ -6,6 +6,83 @@ namespace Barberia.Hardware.Tests;
 public sealed class PosHardwareTests
 {
     [Fact]
+    public void SimulatedKioskTicketPrinter_ReturnsSuccess()
+    {
+        var printer = new SimulatedKioskTicketPrinter();
+
+        var result = printer.Print(new KioskTicketPrintJob(
+            "W20260604120000000",
+            "W20260604120000000",
+            "Mia",
+            ["Luis"],
+            AcceptsAnyBarber: false,
+            "Luis",
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "kiosk-1"));
+
+        Assert.True(result.Succeeded);
+        Assert.Null(result.ErrorMessage);
+    }
+
+    [Fact]
+    public void SimulatedKioskTicketPrinter_ReturnsFailureWithoutSelection()
+    {
+        var printer = new SimulatedKioskTicketPrinter();
+
+        var result = printer.Print(new KioskTicketPrintJob(
+            "W20260604120000000",
+            "W20260604120000000",
+            "Mia",
+            [],
+            AcceptsAnyBarber: false,
+            null,
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "kiosk-1"));
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public void SimulatedKioskTicketPrinter_ReturnsFailureWithoutQrPayload()
+    {
+        var printer = new SimulatedKioskTicketPrinter();
+
+        var result = printer.Print(new KioskTicketPrintJob(
+            "W20260604120000000",
+            "",
+            "Mia",
+            [],
+            AcceptsAnyBarber: true,
+            null,
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "kiosk-1"));
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public void SimulatedKioskTicketPrinter_CanSimulateDeviceFailure()
+    {
+        var printer = new SimulatedKioskTicketPrinter(
+            HardwareOperationResult.Failure("Ticket printer offline."));
+
+        var result = printer.Print(new KioskTicketPrintJob(
+            "W20260604120000000",
+            "W20260604120000000",
+            "Mia",
+            [],
+            AcceptsAnyBarber: true,
+            null,
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "kiosk-1"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Ticket printer offline.", result.ErrorMessage);
+    }
+
+    [Fact]
     public void SimulatedCashBoxReceiptPrinter_ReturnsSuccess()
     {
         var printer = new SimulatedCashBoxReceiptPrinter();

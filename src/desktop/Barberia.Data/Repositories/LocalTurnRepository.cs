@@ -20,16 +20,17 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             INSERT INTO turns (
-                id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+                id, ticket_number, state, source, customer_name, checked_in_at, assigned_barber_id,
                 appointment_id, requested_barber_ids, updated_at
             ) VALUES (
-                $id, $ticket_number, $state, $source, $checked_in_at, $assigned_barber_id,
+                $id, $ticket_number, $state, $source, $customer_name, $checked_in_at, $assigned_barber_id,
                 $appointment_id, $requested_barber_ids, $updated_at
             )
             ON CONFLICT(id) DO UPDATE SET
                 ticket_number = excluded.ticket_number,
                 state = excluded.state,
                 source = excluded.source,
+                customer_name = excluded.customer_name,
                 checked_in_at = excluded.checked_in_at,
                 assigned_barber_id = excluded.assigned_barber_id,
                 appointment_id = excluded.appointment_id,
@@ -40,6 +41,7 @@ public sealed class LocalTurnRepository
         command.AddText("$ticket_number", turn.TicketNumber);
         command.AddInteger("$state", (int)turn.State);
         command.AddInteger("$source", (int)turn.Source);
+        command.AddText("$customer_name", turn.CustomerName);
         command.AddText("$checked_in_at", turn.CheckedInAt.ToString("O"));
         command.AddText("$assigned_barber_id", turn.AssignedBarberId?.ToString());
         command.AddText("$appointment_id", turn.AppointmentId?.ToString());
@@ -54,7 +56,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids
+                   appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE id = $id;
             """;
@@ -70,7 +72,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids
+                   appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE ticket_number = $ticket_number;
             """;
@@ -86,7 +88,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids
+                   appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE state = $state
             ORDER BY checked_in_at, ticket_number;
@@ -109,7 +111,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids
+                   appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE state IN ($waiting, $assigned, $called, $in_service)
             ORDER BY
@@ -143,7 +145,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids
+                   appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE assigned_barber_id = $barber_id
               AND state IN ($assigned, $called)
@@ -205,6 +207,31 @@ public sealed class LocalTurnRepository
         }
     }
 
+    public void MarkCancelled(Guid turnId, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE turns
+            SET state = $state,
+                updated_at = $updated_at
+            WHERE id = $turn_id
+              AND state IN ($waiting, $assigned, $called, $in_service);
+            """;
+        command.AddText("$turn_id", turnId.ToString());
+        command.AddInteger("$state", (int)TurnState.Cancelled);
+        command.AddInteger("$waiting", (int)TurnState.Waiting);
+        command.AddInteger("$assigned", (int)TurnState.Assigned);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddInteger("$in_service", (int)TurnState.InService);
+        command.AddText("$updated_at", updatedAt.ToString("O"));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Active turn was not found for cancellation.");
+        }
+    }
+
     public void MarkInService(Guid turnId, Guid barberId, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();
@@ -240,7 +267,8 @@ public sealed class LocalTurnRepository
             DateTimeOffset.Parse(reader.GetString(4)),
             reader.IsDBNull(5) ? null : Guid.Parse(reader.GetString(5)),
             reader.IsDBNull(6) ? null : Guid.Parse(reader.GetString(6)),
-            ParseIds(reader.IsDBNull(7) ? null : reader.GetString(7)));
+            ParseIds(reader.IsDBNull(7) ? null : reader.GetString(7)),
+            reader.IsDBNull(8) ? null : reader.GetString(8));
     }
 
     private static string? FormatIds(IReadOnlyCollection<Guid>? ids)

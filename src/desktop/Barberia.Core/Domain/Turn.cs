@@ -10,7 +10,8 @@ public sealed record Turn
         DateTimeOffset checkedInAt,
         Guid? assignedBarberId = null,
         Guid? appointmentId = null,
-        IReadOnlyCollection<Guid>? requestedBarberIds = null)
+        IReadOnlyCollection<Guid>? requestedBarberIds = null,
+        string? customerName = null)
     {
         if (id == Guid.Empty)
         {
@@ -45,6 +46,7 @@ public sealed record Turn
         AssignedBarberId = assignedBarberId;
         AppointmentId = appointmentId;
         RequestedBarberIds = requestedBarberIds?.Distinct().ToArray();
+        CustomerName = string.IsNullOrWhiteSpace(customerName) ? null : customerName.Trim();
     }
 
     public Guid Id { get; }
@@ -62,4 +64,6 @@ public sealed record Turn
     public Guid? AppointmentId { get; }
 
     public IReadOnlyCollection<Guid>? RequestedBarberIds { get; }
+
+    public string? CustomerName { get; }
 }

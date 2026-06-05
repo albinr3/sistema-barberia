@@ -6,16 +6,22 @@ Aplicacion Windows local para operacion inicial de la barberia.
 
 ## Incluye
 
-- POR CONFIRMAR: turnos automaticos.
-- POR CONFIRMAR: kiosco.
-- POR CONFIRMAR: pantalla publica.
-- POR CONFIRMAR: panel de barbero.
-- POR CONFIRMAR: autocaja.
-- POR CONFIRMAR: reportes, comisiones, hardware POS y sincronizacion cloud.
+- Turnos automaticos locales para walk-ins.
+- Kiosco local touch para check-in, nombre del cliente, seleccion de barberos activos y ticket impreso con payload QR basado en el numero de ticket.
+- Pantalla publica local para sala de espera.
+- Panel local de barbero para disponibilidad, tickets asignados e inicio de atencion.
+- Autocaja local para cierre en efectivo operada por el barbero.
+- Reportes administrativos locales, comisiones persistidas, hardware POS con simuladores y foundation de sincronizacion.
+- Panel de administracion local para estado operativo, cola activa, cancelacion de tickets activos, auditoria y base SQLite.
+- CRUD local de barberos con nombre, orden de rotacion, imagen de perfil opcional importada desde Explorador de Windows y bandera `is_active`.
+- Desactivacion local de barberos: un barbero inactivo no aparece en kiosco ni en flujos operativos locales; queda visible en administracion para reactivacion e historial.
 
 ## Fuera De Alcance Por Ahora
 
-- Implementacion de codigo.
-- Proyectos `.csproj` o `.sln`.
-- Base de datos real.
-
+- Booking web publico.
+- Panel admin web.
+- App movil.
+- API/backend cloud real.
+- Migraciones cloud reales.
+- Pagos online o depositos.
+- Eliminacion fisica de barberos con historial operativo; se debe preferir `is_active=false`.
