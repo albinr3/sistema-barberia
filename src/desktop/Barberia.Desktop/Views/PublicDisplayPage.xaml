@@ -159,14 +159,6 @@
                             x:Name="_barberItems"
                             ColumnSpacing="16"
                             RowSpacing="16" />
-
-                        <TextBlock
-                            Margin="0,4,0,0"
-                            HorizontalAlignment="Center"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="#FF444655"
-                            Text="Need assistance? Please see the front desk." />
                     </StackPanel>
                 </Border>
             </Grid>

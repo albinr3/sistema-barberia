@@ -150,13 +150,7 @@ public sealed partial class KioskPage : Page
 
     private void OnStartNewButtonClick(object sender, RoutedEventArgs args)
     {
-        _customerNameInput.Text = string.Empty;
-        _customerName = string.Empty;
-        ResetToAnyBarber();
-        _checkInPanel.Visibility = Visibility.Visible;
-        _ticketPanel.Visibility = Visibility.Collapsed;
-        _customerNameInput.Focus(FocusState.Programmatic);
-        UpdateInteractionState();
+        ResetCheckInForm();
     }
 
     private void PrintTicket()
@@ -166,12 +160,12 @@ public sealed partial class KioskPage : Page
 
         try
         {
-            var result = _checkInService.RegisterWalkIn(
+            _checkInService.RegisterWalkIn(
                 _customerName,
                 _acceptsAnyBarber,
                 _selectedBarberIds.ToArray());
-            ShowPrintedTicket(result);
             LoadBarbers();
+            ResetCheckInForm();
             RenderBarberChoices();
         }
         catch (Exception exception)
@@ -181,10 +175,7 @@ public sealed partial class KioskPage : Page
         }
         finally
         {
-            if (_ticketPanel.Visibility != Visibility.Visible)
-            {
-                UpdateInteractionState();
-            }
+            UpdateInteractionState();
         }
     }
 
@@ -462,27 +453,24 @@ public sealed partial class KioskPage : Page
         UpdateSelectionVisuals();
     }
 
-    private void ShowPrintedTicket(KioskCheckInResult result)
+    private void ResetCheckInForm()
     {
-        _ticketNumberText.Text = result.DisplayTicketNumber.ToString();
-        _ticketCustomerText.Text = result.CustomerName;
-        _ticketBarberText.Text = result.AssignedBarberName
-            is not null
-                ? FormatBarberLabel(result.AssignedBarberStationCode, result.AssignedBarberName)
-                : result.AcceptsAnyBarber
-                    ? "Any Barber"
-                    : string.Join(", ", FormatRequestedBarberLabels(result));
-        _ticketMessageText.Text = result.Message;
-        _ticketTimeText.Text = result.CheckedInAt.ToString("hh:mm tt");
-        _checkInPanel.Visibility = Visibility.Collapsed;
-        _ticketPanel.Visibility = Visibility.Visible;
+        _customerNameInput.Text = string.Empty;
+        _customerName = string.Empty;
+        _nameErrorText.Visibility = Visibility.Collapsed;
+        _barberErrorText.Visibility = Visibility.Collapsed;
+        ResetToAnyBarber();
+        _checkInPanel.Visibility = Visibility.Visible;
+        _ticketPanel.Visibility = Visibility.Collapsed;
+        _customerNameInput.Focus(FocusState.Programmatic);
+        UpdateInteractionState();
     }
 
     private bool CanSelectBarbers => true;
 
     private static bool IsSelectable(Barber barber)
     {
-        return barber.State == BarberState.Available;
+        return barber.State is BarberState.Available or BarberState.Called or BarberState.InService;
     }
 
     private static (string Text, SolidColorBrush Background, SolidColorBrush Foreground) GetStatusBadge(Barber barber)
@@ -517,24 +505,6 @@ public sealed partial class KioskPage : Page
 
         var initials = string.Concat(parts);
         return string.IsNullOrWhiteSpace(initials) ? "?" : initials;
-    }
-
-    private static IEnumerable<string> FormatRequestedBarberLabels(KioskCheckInResult result)
-    {
-        return result.RequestedBarberNames.Select((name, index) =>
-        {
-            var stationCode = index < result.RequestedBarberStationCodes.Count
-                ? result.RequestedBarberStationCodes[index]
-                : null;
-            return FormatBarberLabel(stationCode, name);
-        });
-    }
-
-    private static string FormatBarberLabel(string? stationCode, string barberName)
-    {
-        return string.IsNullOrWhiteSpace(stationCode)
-            ? barberName
-            : $"{stationCode} - {barberName}";
     }
 
     private static SolidColorBrush Brush(byte red, byte green, byte blue)

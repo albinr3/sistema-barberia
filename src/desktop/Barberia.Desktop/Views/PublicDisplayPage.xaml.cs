@@ -4,6 +4,7 @@ using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
@@ -255,15 +256,104 @@ public sealed partial class PublicDisplayPage : Page
         Grid.SetColumn(destination, 2);
         grid.Children.Add(destination);
 
-        return new Border
+        var flashOverlay = new Border
+        {
+            Background = Brush(223, 224, 255),
+            Opacity = 0,
+            IsHitTestVisible = false
+        };
+
+        var cardContent = new Grid
+        {
+            Children =
+            {
+                grid,
+                flashOverlay
+            }
+        };
+
+        var card = new Border
         {
             Background = Brush(255, 255, 255),
             BorderBrush = Brush(152, 163, 255),
             BorderThickness = new Thickness(2),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(0, 16, 18, 16),
-            Child = grid
+            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
+            RenderTransform = new ScaleTransform(),
+            Child = cardContent
         };
+
+        AttachCallingPopupAnimation(card, flashOverlay);
+        return card;
+    }
+
+    private static void AttachCallingPopupAnimation(Border card, UIElement flashOverlay)
+    {
+        Storyboard? storyboard = null;
+
+        card.Loaded += (_, _) =>
+        {
+            if (card.RenderTransform is not ScaleTransform scale)
+            {
+                return;
+            }
+
+            storyboard?.Stop();
+            scale.ScaleX = 1;
+            scale.ScaleY = 1;
+            flashOverlay.Opacity = 0;
+
+            storyboard = new Storyboard
+            {
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+
+            storyboard.Children.Add(CreateScalePulseAnimation(card, "ScaleX", TimeSpan.Zero));
+            storyboard.Children.Add(CreateScalePulseAnimation(card, "ScaleY", TimeSpan.Zero));
+            storyboard.Children.Add(CreateFlashAnimation(flashOverlay, TimeSpan.FromMilliseconds(90)));
+            storyboard.Begin();
+        };
+
+        card.Unloaded += (_, _) =>
+        {
+            storyboard?.Stop();
+            storyboard = null;
+        };
+    }
+
+    private static Timeline CreateScalePulseAnimation(UIElement target, string property, TimeSpan beginTime)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = 1,
+            To = 1.035,
+            Duration = TimeSpan.FromMilliseconds(575),
+            AutoReverse = true,
+            BeginTime = beginTime,
+            EnableDependentAnimation = true
+        };
+
+        Storyboard.SetTarget(animation, target);
+        Storyboard.SetTargetProperty(animation, $"(UIElement.RenderTransform).(ScaleTransform.{property})");
+        return animation;
+    }
+
+    private static Timeline CreateFlashAnimation(UIElement target, TimeSpan beginTime)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = 0,
+            To = 0.34,
+            Duration = TimeSpan.FromMilliseconds(575),
+            AutoReverse = true,
+            BeginTime = beginTime,
+            EnableDependentAnimation = true
+        };
+
+        Storyboard.SetTarget(animation, target);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        return animation;
     }
 
     private static FrameworkElement CreateWaitingCard(Turn turn, IReadOnlyList<Barber> barbers)
