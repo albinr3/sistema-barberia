@@ -133,7 +133,9 @@
 
             <ContentControl
                 x:Name="_contentHost"
-                Grid.Row="1" />
+                Grid.Row="1"
+                HorizontalContentAlignment="Stretch"
+                VerticalContentAlignment="Stretch" />
         </Grid>
     </Grid>
 </Window>

@@ -135,10 +135,10 @@ public sealed partial class MainWindow : Window
 
     private void ApplyModuleChrome(ShellModuleKey moduleKey)
     {
-        var isKiosk = moduleKey == ShellModuleKey.Kiosk;
-        _navigationColumn.Width = isKiosk ? new GridLength(0) : new GridLength(292);
-        _sidebar.Visibility = isKiosk ? Visibility.Collapsed : Visibility.Visible;
-        _moduleHeader.Visibility = isKiosk ? Visibility.Collapsed : Visibility.Visible;
+        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay;
+        _navigationColumn.Width = usesFullScreenChrome ? new GridLength(0) : new GridLength(292);
+        _sidebar.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
+        _moduleHeader.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private Page CreateModulePage(ShellModuleDefinition module)
@@ -149,6 +149,10 @@ public sealed partial class MainWindow : Window
         if (page is KioskPage kioskPage)
         {
             kioskPage.ShellMenuRequested += (_, _) => ShowShellMenu();
+        }
+        else if (page is PublicDisplayPage publicDisplayPage)
+        {
+            publicDisplayPage.ShellMenuRequested += (_, _) => ShowShellMenu();
         }
 
         return page;
