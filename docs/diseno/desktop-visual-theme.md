@@ -41,8 +41,9 @@ No convertir la app en una paleta de un solo color. Mantener contraste suficient
 
 ## Layout
 
-- Mantener la navegacion lateral global de la shell.
-- Mantener header superior con titulo de modulo y contexto operativo.
+- Mantener la navegacion lateral global de la shell en modulos administrativos y operativos generales.
+- Kiosco, pantalla publica y panel de barbero pueden ocultar navegacion lateral y header superior cuando funcionen como superficies dedicadas de atencion.
+- Mantener header superior con titulo de modulo y contexto operativo en modulos que usan la shell completa.
 - Usar tarjetas solo para bloques funcionales, elementos repetidos o resumenes concretos.
 - No anidar tarjetas dentro de tarjetas.
 - Usar espaciado amplio, pero no convertir pantallas operativas en paginas de marketing.

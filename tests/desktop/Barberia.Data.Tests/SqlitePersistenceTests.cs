@@ -294,6 +294,32 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void TurnRepository_ReturnsAllAssignedCalledTurns()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T14:00:00Z");
+        var firstBarberId = Guid.NewGuid();
+        var secondBarberId = Guid.NewGuid();
+        var barberRepository = new LocalBarberRepository(database.Connection);
+        var repository = new LocalTurnRepository(database.Connection);
+
+        barberRepository.Upsert(new Barber(firstBarberId, "Luis", BarberState.Called, 0, 0, now, stationNumber: 1), now);
+        barberRepository.Upsert(new Barber(secondBarberId, "Ana", BarberState.Called, 0, 1, now, stationNumber: 2), now);
+
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-001", TurnState.Called, TurnSource.WalkIn, now, firstBarberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-002", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(1)), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-003", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2), secondBarberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-004", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(3), firstBarberId), now);
+
+        var turns = repository.ListAssignedCalled();
+
+        Assert.Collection(
+            turns,
+            turn => Assert.Equal("B-001", turn.TicketNumber),
+            turn => Assert.Equal("B-003", turn.TicketNumber));
+    }
+
+    [Fact]
     public void TurnRepository_CancelsActiveTurns()
     {
         using var database = TestDatabase.Create();

@@ -4,282 +4,170 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Loaded="OnLoaded">
 
-    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
-        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
-            <Border Style="{StaticResource HeroCardBorderStyle}">
-                <Grid ColumnSpacing="18">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+    <Grid Background="{StaticResource SurfaceBrush}">
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="0,24,24,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderSubtleBrush}"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="{StaticResource TextPrimaryBrush}"
+                Glyph="&#xE700;" />
+        </Button>
 
-                    <Border Style="{StaticResource HeroIconBoxStyle}">
-                        <FontIcon
-                            FontSize="30"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Glyph="&#xE77B;" />
-                    </Border>
-
+        <Grid Padding="24">
+            <Border
+                MaxWidth="440"
+                Padding="32"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="26">
                     <StackPanel
-                        Grid.Column="1"
-                        Spacing="5">
-                        <TextBlock
-                            Style="{StaticResource HeroTitleTextStyle}"
-                            Text="Panel de barbero" />
-                        <TextBlock
-                            FontSize="15"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Disponibilidad local, tickets asignados e inicio de atencion" />
-                        <TextBlock
-                            x:Name="_lastRefreshText"
-                            FontSize="13"
-                            Foreground="{StaticResource TextSecondaryBrush}" />
+                        HorizontalAlignment="Center"
+                        Spacing="14">
+                        <Border
+                            Width="64"
+                            Height="64"
+                            Background="{StaticResource SurfaceMutedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="32">
+                            <FontIcon
+                                FontSize="30"
+                                Foreground="{StaticResource AccentBlueTextBrush}"
+                                Glyph="&#xE8B6;" />
+                        </Border>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="24"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Start Service" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="15"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Scan or enter the customer's ticket code to begin."
+                                TextAlignment="Center"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
                     </StackPanel>
 
-                    <Border
-                        x:Name="_statusBadge"
-                        Grid.Column="2"
-                        Style="{StaticResource StatusBadgeStyle}">
-                        <StackPanel
-                            Orientation="Horizontal"
-                            Spacing="7">
-                            <Ellipse
-                                Width="8"
-                                Height="8"
-                                Fill="{StaticResource AccentGreenBrush}"
-                                VerticalAlignment="Center" />
+                    <StackPanel Spacing="18">
+                        <StackPanel Spacing="8">
                             <TextBlock
-                                x:Name="_statusBadgeText"
-                                Style="{StaticResource StatusBadgeTextStyle}" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
-
-            <Grid ColumnSpacing="14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.9*" />
-                    <ColumnDefinition Width="1.1*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Style="{StaticResource FormPanelBorderStyle}">
-                    <StackPanel Spacing="16">
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Estado operativo" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Seleccion local del barbero" />
-                        </StackPanel>
-
-                        <StackPanel Spacing="14">
-                            <ComboBox
-                                x:Name="_barberSelector"
-                                DisplayMemberPath="DisplayNameWithStation"
-                                PlaceholderText="Seleccionar barbero"
-                                SelectionChanged="OnBarberSelectionChanged"
-                                Style="{StaticResource OperationalComboBoxStyle}" />
-
-                            <Border Style="{StaticResource InsetPanelBorderStyle}">
-                                <StackPanel Spacing="6">
-                                    <TextBlock
-                                        x:Name="_barberStateText"
-                                        FontSize="18"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource TextPrimaryBrush}"
-                                        TextWrapping="Wrap" />
-                                    <TextBlock
-                                        x:Name="_clientsTodayText"
-                                        Style="{StaticResource SmallMutedTextStyle}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Grid ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition />
-                                    <ColumnDefinition />
-                                </Grid.ColumnDefinitions>
-
-                                <Button
-                                    MinHeight="54"
-                                    Padding="16,10,16,10"
-                                    Background="{StaticResource AccentGreenBrush}"
-                                    BorderBrush="{StaticResource AccentGreenBrush}"
-                                    Click="OnAvailableClick"
-                                    Foreground="{StaticResource SidebarBrush}"
-                                    HorizontalAlignment="Stretch"
-                                    ToolTipService.ToolTip="Disponible">
-                                    <StackPanel
-                                        HorizontalAlignment="Center"
-                                        Orientation="Horizontal"
-                                        Spacing="10">
-                                        <FontIcon
-                                            FontSize="18"
-                                            Glyph="&#xE8FB;" />
-                                        <TextBlock
-                                            VerticalAlignment="Center"
-                                            FontSize="16"
-                                            FontWeight="SemiBold"
-                                            Text="Disponible" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button
-                                    Grid.Column="1"
-                                    MinHeight="54"
-                                    Padding="16,10,16,10"
-                                    Background="{StaticResource AccentBlueTextBrush}"
-                                    BorderBrush="{StaticResource AccentBlueTextBrush}"
-                                    Click="OnOfflineClick"
-                                    Foreground="{StaticResource SidebarBrush}"
-                                    HorizontalAlignment="Stretch"
-                                    ToolTipService.ToolTip="Fuera de linea">
-                                    <StackPanel
-                                        HorizontalAlignment="Center"
-                                        Orientation="Horizontal"
-                                        Spacing="10">
-                                        <FontIcon
-                                            FontSize="18"
-                                            Glyph="&#xE711;" />
-                                        <TextBlock
-                                            VerticalAlignment="Center"
-                                            FontSize="16"
-                                            FontWeight="SemiBold"
-                                            Text="Fuera de linea" />
-                                    </StackPanel>
-                                </Button>
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Ticket Code" />
+                            <Grid>
+                                <TextBox
+                                    x:Name="_ticketInput"
+                                    Padding="14,12,48,12"
+                                    CharacterCasing="Upper"
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    HorizontalContentAlignment="Center"
+                                    KeyDown="OnTicketInputKeyDown"
+                                    PlaceholderText="e.g. 24"
+                                    TextAlignment="Center" />
+                                <FontIcon
+                                    Margin="0,0,14,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    FontSize="20"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Glyph="&#xE8B6;" />
                             </Grid>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
 
-                <Border
-                    Grid.Column="1"
-                    Style="{StaticResource FormPanelBorderStyle}">
-                    <StackPanel Spacing="16">
-                        <StackPanel Spacing="2">
+                        <StackPanel Spacing="8">
                             <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Escaneo de ticket" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Inicia atencion solo con ticket asignado" />
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Assigned Barber" />
+                            <Border
+                                Background="{StaticResource SurfaceMutedBrush}"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <FontIcon
+                                        VerticalAlignment="Center"
+                                        FontSize="18"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Glyph="&#xE77B;" />
+                                    <TextBlock
+                                        x:Name="_assignedBarberText"
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        FontSize="15"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="Waiting for scan..."
+                                        TextTrimming="CharacterEllipsis" />
+                                    <FontIcon
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        FontSize="14"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Glyph="&#xE72E;" />
+                                </Grid>
+                            </Border>
                         </StackPanel>
 
-                        <StackPanel Spacing="14">
-                            <TextBox
-                                x:Name="_ticketInput"
-                                Header="Ticket"
-                                KeyDown="OnTicketInputKeyDown"
-                                PlaceholderText="Escanear o escribir numero de ticket"
-                                Style="{StaticResource OperationalTextBoxStyle}" />
-                            <Button
-                                Click="OnStartServiceClick"
-                                Style="{StaticResource PrimaryActionButtonStyle}"
-                                ToolTipService.ToolTip="Iniciar atencion">
-                                <StackPanel
-                                    HorizontalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    Spacing="10">
-                                    <FontIcon
-                                        FontSize="18"
-                                        Glyph="&#xE768;" />
-                                    <TextBlock
-                                        VerticalAlignment="Center"
-                                        FontSize="16"
-                                        FontWeight="SemiBold"
-                                        Text="Iniciar atencion" />
-                                </StackPanel>
-                            </Button>
-                            <TextBlock
-                                x:Name="_messageText"
-                                Style="{StaticResource BodyTextStyle}" />
-
-                            <StackPanel Spacing="10">
+                        <Button
+                            Click="OnStartServiceClick"
+                            HorizontalAlignment="Stretch"
+                            MinHeight="58"
+                            Background="{StaticResource AccentGreenBrush}"
+                            BorderBrush="{StaticResource AccentGreenBrush}"
+                            Foreground="{StaticResource SurfaceBrush}"
+                            ToolTipService.ToolTip="Start service">
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="10">
                                 <TextBlock
+                                    VerticalAlignment="Center"
                                     FontSize="18"
                                     FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Tickets asignados" />
-                                <StackPanel
-                                    x:Name="_assignedTurns"
-                                    Spacing="10" />
+                                    Text="Start Service" />
+                                <FontIcon
+                                    FontSize="18"
+                                    Glyph="&#xE72A;" />
                             </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </Grid>
+                        </Button>
 
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                </Grid.ColumnDefinitions>
-
-                <Border Style="{StaticResource NoteCardBorderStyle}">
-                    <StackPanel Spacing="10">
-                        <Border Style="{StaticResource NoteIconBoxStyle}">
-                            <FontIcon
-                                FontSize="18"
-                                Foreground="{StaticResource AccentGreenBrush}"
-                                Glyph="&#xE73E;" />
-                        </Border>
                         <TextBlock
-                            FontSize="17"
+                            x:Name="_messageText"
+                            FontSize="18"
                             FontWeight="SemiBold"
-                            Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="Local" />
-                        <TextBlock
-                            Style="{StaticResource SmallMutedTextStyle}"
-                            Text="El panel lee y escribe en SQLite sin depender de internet." />
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            TextWrapping="Wrap" />
                     </StackPanel>
-                </Border>
-
-                <Border
-                    Grid.Column="1"
-                    Style="{StaticResource NoteCardBorderStyle}">
-                    <StackPanel Spacing="10">
-                        <Border Style="{StaticResource NoteIconBoxStyle}">
-                            <FontIcon
-                                FontSize="18"
-                                Foreground="{StaticResource AccentGreenBrush}"
-                                Glyph="&#xE8A5;" />
-                        </Border>
-                        <TextBlock
-                            FontSize="17"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="Sin cierre" />
-                        <TextBlock
-                            Style="{StaticResource SmallMutedTextStyle}"
-                            Text="No hay boton de terminar servicio en este panel." />
-                    </StackPanel>
-                </Border>
-
-                <Border
-                    Grid.Column="2"
-                    Style="{StaticResource NoteCardBorderStyle}">
-                    <StackPanel Spacing="10">
-                        <Border Style="{StaticResource NoteIconBoxStyle}">
-                            <FontIcon
-                                FontSize="18"
-                                Foreground="{StaticResource AccentGreenBrush}"
-                                Glyph="&#xE8EF;" />
-                        </Border>
-                        <TextBlock
-                            FontSize="17"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="Autocaja" />
-                        <TextBlock
-                            Style="{StaticResource SmallMutedTextStyle}"
-                            Text="El pago y cierre operativo ocurren en autocaja." />
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </StackPanel>
-    </ScrollViewer>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
 </Page>

@@ -29,7 +29,7 @@ public sealed class BarberPanelService
             .Where(barber => barber.IsActive)
             .ToArray();
         var assignedTurns = selectedBarberId is null
-            ? []
+            ? turnRepository.ListAssignedCalled()
             : turnRepository.ListAssignedToBarber(selectedBarberId.Value);
 
         return new BarberPanelSnapshot(DateTimeOffset.Now, barbers, assignedTurns);
@@ -45,11 +45,11 @@ public sealed class BarberPanelService
         UpdateOperationalState(barberId, BarberState.Offline);
     }
 
-    public BarberPanelStartResult StartService(Guid barberId, string scannedTicketNumber)
+    public BarberPanelStartResult StartService(string scannedTicketNumber)
     {
         if (string.IsNullOrWhiteSpace(scannedTicketNumber))
         {
-            throw new InvalidOperationException("Escanea o introduce un ticket asignado.");
+            throw new InvalidOperationException("Scan or enter an assigned ticket.");
         }
 
         var now = DateTimeOffset.Now;
@@ -60,44 +60,43 @@ public sealed class BarberPanelService
         {
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
-            var barber = barberRepository.GetById(barberId)
-                ?? throw new InvalidOperationException("Barbero no encontrado en la base local.");
-            if (!barber.IsActive)
-            {
-                throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
-            }
 
             var turn = turnRepository.GetByTicketInputForToday(scannedTicketNumber, now)
-                ?? throw new InvalidOperationException("Ticket no encontrado en la base local.");
+                ?? throw new InvalidOperationException("Ticket was not found in the local database.");
 
-            if (turn.AssignedBarberId != barberId)
+            var barberId = turn.AssignedBarberId
+                ?? throw new InvalidOperationException("The ticket does not have an assigned barber.");
+            var barber = barberRepository.GetById(barberId)
+                ?? throw new InvalidOperationException("The assigned barber does not exist in the local database.");
+            if (!barber.IsActive)
             {
-                throw new InvalidOperationException("El ticket no esta asignado al barbero seleccionado.");
+                throw new InvalidOperationException("The assigned barber is disabled by administration.");
             }
 
             if (turn.State is not TurnState.Called)
             {
-                throw new InvalidOperationException("El ticket no esta listo para iniciar atencion.");
+                throw new InvalidOperationException("The ticket is not ready to start service.");
             }
 
             if (barber.State != BarberState.Called)
             {
-                throw new InvalidOperationException("El barbero debe tener un turno llamado antes de iniciar atencion.");
+                throw new InvalidOperationException("The barber must have a called ticket before starting service.");
             }
 
             turnRepository.MarkInService(turn.Id, barberId, now);
             barberRepository.SetState(barberId, BarberState.InService, now);
 
             result = new BarberPanelStartResult(
+                barber.Id,
                 turn.DisplayTicketNumber,
                 turn.TicketNumber,
                 barber.DisplayName,
-                barber.StationCode ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada."),
+                barber.StationCode ?? throw new InvalidOperationException("The active barber does not have an assigned station."),
                 now,
-                "Atencion iniciada localmente. El cierre operativo queda en autocaja.");
+                "Service started locally. Payment and closeout remain in Cash Box.");
         });
 
-        return result ?? throw new InvalidOperationException("No se pudo iniciar la atencion.");
+        return result ?? throw new InvalidOperationException("Service could not be started.");
     }
 
     private void UpdateOperationalState(Guid barberId, BarberState state)
@@ -105,15 +104,15 @@ public sealed class BarberPanelService
         using var connection = _connectionFactory.OpenConnection();
         var barberRepository = new LocalBarberRepository(connection);
         var barber = barberRepository.GetById(barberId)
-            ?? throw new InvalidOperationException("Barbero no encontrado en la base local.");
+            ?? throw new InvalidOperationException("Barber was not found in the local database.");
         if (!barber.IsActive)
         {
-            throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
+            throw new InvalidOperationException("This barber is disabled by administration.");
         }
 
         if (barber.State is BarberState.Called or BarberState.InService)
         {
-            throw new InvalidOperationException("No se puede cambiar disponibilidad con un turno llamado o en servicio.");
+            throw new InvalidOperationException("Availability cannot be changed while a ticket is called or in service.");
         }
 
         barberRepository.SetState(barberId, state, DateTimeOffset.Now);

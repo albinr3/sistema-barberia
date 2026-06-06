@@ -218,6 +218,30 @@ public sealed class LocalTurnRepository
         return turns;
     }
 
+    public IReadOnlyList<Turn> ListAssignedCalled()
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids, customer_name
+            FROM turns
+            WHERE assigned_barber_id IS NOT NULL
+              AND state = $called
+            ORDER BY checked_in_at, ticket_number;
+            """;
+        command.AddInteger("$called", (int)TurnState.Called);
+
+        using var reader = command.ExecuteReader();
+        var turns = new List<Turn>();
+        while (reader.Read())
+        {
+            turns.Add(ReadTurn(reader));
+        }
+
+        return turns;
+    }
+
     public void ApplyAssignment(Guid turnId, Guid barberId, TurnState state, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();
