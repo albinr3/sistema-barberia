@@ -278,7 +278,7 @@ public sealed partial class LocalAdminPage : Page
                     {
                         new TextBlock
                         {
-                            Text = $"{turn.TicketNumber} - {customerName}",
+                            Text = $"{turn.DisplayTicketNumber} - {customerName}",
                             FontSize = 17,
                             FontWeight = FontWeights.SemiBold,
                             Foreground = Brush(30, 31, 34),
@@ -286,7 +286,7 @@ public sealed partial class LocalAdminPage : Page
                         },
                         new TextBlock
                         {
-                            Text = $"{FormatTurnSource(turn.Source)} - {barberName} - {turn.CheckedInAt:hh:mm tt}",
+                            Text = $"{FormatTurnSource(turn.Source)} - {barberName} - {turn.CheckedInAt:hh:mm tt} - Interno {turn.TicketNumber}",
                             FontSize = 13,
                             Foreground = Brush(101, 108, 116),
                             TextWrapping = TextWrapping.WrapWholeWords

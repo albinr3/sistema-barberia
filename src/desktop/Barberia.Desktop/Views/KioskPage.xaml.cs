@@ -117,11 +117,6 @@ public sealed partial class KioskPage : Page
     private void OnCustomerNameChanged(object sender, TextChangedEventArgs args)
     {
         _customerName = _customerNameInput.Text.Trim();
-        if (string.IsNullOrWhiteSpace(_customerName))
-        {
-            ResetToAnyBarber();
-        }
-
         _nameErrorText.Visibility = Visibility.Collapsed;
         UpdateInteractionState();
     }
@@ -166,13 +161,6 @@ public sealed partial class KioskPage : Page
 
     private void PrintTicket()
     {
-        if (string.IsNullOrWhiteSpace(_customerName))
-        {
-            _nameErrorText.Text = "Enter your name before printing.";
-            _nameErrorText.Visibility = Visibility.Visible;
-            return;
-        }
-
         _printTicketButton.IsEnabled = false;
         _barberErrorText.Visibility = Visibility.Collapsed;
 
@@ -421,9 +409,9 @@ public sealed partial class KioskPage : Page
 
         var hasSelection = _acceptsAnyBarber || _selectedBarberIds.Count > 0;
         _printTicketButton.IsEnabled = canSelect && hasSelection;
-        _selectionSummaryText.Text = canSelect
-            ? hasSelection ? FormatSelectionSummary() : "Choose a barber"
-            : "Enter name first";
+        _selectionSummaryText.Text = hasSelection
+            ? FormatSelectionSummary()
+            : "Choose a barber";
     }
 
     private void UpdateSelectionVisuals()
@@ -476,7 +464,7 @@ public sealed partial class KioskPage : Page
 
     private void ShowPrintedTicket(KioskCheckInResult result)
     {
-        _ticketNumberText.Text = result.TicketNumber;
+        _ticketNumberText.Text = result.DisplayTicketNumber.ToString();
         _ticketCustomerText.Text = result.CustomerName;
         _ticketBarberText.Text = result.AssignedBarberName
             is not null
@@ -490,7 +478,7 @@ public sealed partial class KioskPage : Page
         _ticketPanel.Visibility = Visibility.Visible;
     }
 
-    private bool CanSelectBarbers => !string.IsNullOrWhiteSpace(_customerName);
+    private bool CanSelectBarbers => true;
 
     private static bool IsSelectable(Barber barber)
     {

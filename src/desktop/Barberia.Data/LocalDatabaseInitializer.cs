@@ -49,6 +49,8 @@ public sealed class LocalDatabaseInitializer
             CREATE TABLE IF NOT EXISTS turns (
                 id TEXT NOT NULL PRIMARY KEY,
                 ticket_number TEXT NOT NULL UNIQUE,
+                display_ticket_number INTEGER NULL,
+                ticket_date TEXT NULL,
                 state INTEGER NOT NULL,
                 source INTEGER NOT NULL,
                 customer_name TEXT NULL,
@@ -118,11 +120,89 @@ public sealed class LocalDatabaseInitializer
         command.ExecuteNonQuery();
 
         EnsureColumn(connection, "turns", "customer_name", "TEXT NULL");
+        EnsureColumn(connection, "turns", "display_ticket_number", "INTEGER NULL");
+        EnsureColumn(connection, "turns", "ticket_date", "TEXT NULL");
+        BackfillDisplayTicketNumbers(connection);
+        EnsureDisplayTicketIndex(connection);
         EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
         EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
         EnsureColumn(connection, "barbers", "station_number", "INTEGER NULL");
         NormalizeBarberStations(connection);
         EnsureActiveStationIndex(connection);
+    }
+
+    private static void BackfillDisplayTicketNumbers(SqliteConnection connection)
+    {
+        var turnsByDay = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT id, checked_in_at
+                FROM turns
+                WHERE display_ticket_number IS NULL
+                   OR ticket_date IS NULL
+                ORDER BY checked_in_at, ticket_number;
+                """;
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var id = reader.GetString(0);
+                var checkedInAt = DateTimeOffset.Parse(reader.GetString(1));
+                var ticketDate = DateOnly.FromDateTime(checkedInAt.LocalDateTime).ToString("yyyy-MM-dd");
+                if (!turnsByDay.TryGetValue(ticketDate, out var ids))
+                {
+                    ids = [];
+                    turnsByDay.Add(ticketDate, ids);
+                }
+
+                ids.Add(id);
+            }
+        }
+
+        foreach (var day in turnsByDay)
+        {
+            var nextNumber = GetMaxDisplayTicketNumber(connection, day.Key) + 1;
+            foreach (var turnId in day.Value)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    UPDATE turns
+                    SET ticket_date = $ticket_date,
+                        display_ticket_number = $display_ticket_number
+                    WHERE id = $id;
+                    """;
+                command.AddText("$ticket_date", day.Key);
+                command.AddInteger("$display_ticket_number", nextNumber);
+                command.AddText("$id", turnId);
+                command.ExecuteNonQuery();
+                nextNumber++;
+            }
+        }
+    }
+
+    private static int GetMaxDisplayTicketNumber(SqliteConnection connection, string ticketDate)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COALESCE(MAX(display_ticket_number), 0)
+            FROM turns
+            WHERE ticket_date = $ticket_date
+              AND display_ticket_number IS NOT NULL;
+            """;
+        command.AddText("$ticket_date", ticketDate);
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private static void EnsureDisplayTicketIndex(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_turns_ticket_date_display_number
+                ON turns(ticket_date, display_ticket_number)
+                WHERE ticket_date IS NOT NULL AND display_ticket_number IS NOT NULL;
+            """;
+        command.ExecuteNonQuery();
     }
 
     private static void NormalizeBarberStations(SqliteConnection connection)

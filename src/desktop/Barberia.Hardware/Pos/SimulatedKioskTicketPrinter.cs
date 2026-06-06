@@ -18,7 +18,7 @@ public sealed class SimulatedKioskTicketPrinter : IKioskTicketPrinter
     {
         ArgumentNullException.ThrowIfNull(job);
 
-        if (string.IsNullOrWhiteSpace(job.TicketNumber))
+        if (job.DisplayTicketNumber <= 0)
         {
             return HardwareOperationResult.Failure("Ticket number is required.");
         }

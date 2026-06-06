@@ -22,13 +22,13 @@ public sealed class SqlitePersistenceTests
         barberRepository.Upsert(new Barber(requestedBarberId, "Ana", BarberState.Available, 1, 2, now, stationNumber: 1), now);
 
         var turnRepository = new LocalTurnRepository(database.Connection);
-        var laterTurn = new Turn(
+        var laterTurn = CreateTurn(
             Guid.NewGuid(),
             "A-002",
             TurnState.Waiting,
             TurnSource.WalkIn,
             now.AddMinutes(2));
-        var firstTurn = new Turn(
+        var firstTurn = CreateTurn(
             Guid.NewGuid(),
             "A-001",
             TurnState.Waiting,
@@ -56,6 +56,8 @@ public sealed class SqlitePersistenceTests
                 Assert.Equal(firstTurn.Id, turn.Id);
                 Assert.Equal([requestedBarberId], turn.RequestedBarberIds);
                 Assert.Equal("Mia", turn.CustomerName);
+                Assert.Equal(1, turn.DisplayTicketNumber);
+                Assert.Equal(DateOnly.Parse("2026-06-03"), turn.TicketDate);
             },
             turn => Assert.Equal(laterTurn.Id, turn.Id));
     }
@@ -246,10 +248,10 @@ public sealed class SqlitePersistenceTests
         using var database = TestDatabase.Create();
         var now = DateTimeOffset.Parse("2026-06-03T12:00:00Z");
         var repository = new LocalTurnRepository(database.Connection);
-        var called = new Turn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
-        var assigned = new Turn(Guid.NewGuid(), "A-001", TurnState.Assigned, TurnSource.Appointment, now);
-        var waiting = new Turn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
-        var completed = new Turn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
+        var called = CreateTurn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
+        var assigned = CreateTurn(Guid.NewGuid(), "A-001", TurnState.Assigned, TurnSource.Appointment, now);
+        var waiting = CreateTurn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
+        var completed = CreateTurn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
 
         repository.Upsert(waiting, now);
         repository.Upsert(completed, now);
@@ -278,10 +280,10 @@ public sealed class SqlitePersistenceTests
         barberRepository.Upsert(new Barber(barberId, "Luis", BarberState.Called, 0, 0, now, stationNumber: 1), now);
         barberRepository.Upsert(new Barber(otherBarberId, "Ana", BarberState.Called, 0, 1, now, stationNumber: 2), now);
 
-        repository.Upsert(new Turn(Guid.NewGuid(), "B-001", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
-        repository.Upsert(new Turn(Guid.NewGuid(), "B-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(1), barberId), now);
-        repository.Upsert(new Turn(Guid.NewGuid(), "B-003", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(2), barberId), now);
-        repository.Upsert(new Turn(Guid.NewGuid(), "B-004", TurnState.Assigned, TurnSource.WalkIn, now.AddMinutes(3), otherBarberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-001", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(1), barberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-003", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(2), barberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-004", TurnState.Assigned, TurnSource.WalkIn, now.AddMinutes(3), otherBarberId), now);
 
         var turns = repository.ListAssignedToBarber(barberId);
 
@@ -299,7 +301,7 @@ public sealed class SqlitePersistenceTests
         var turnId = Guid.NewGuid();
         var repository = new LocalTurnRepository(database.Connection);
 
-        repository.Upsert(new Turn(turnId, "C-001", TurnState.Called, TurnSource.WalkIn, now), now);
+        repository.Upsert(CreateTurn(turnId, "C-001", TurnState.Called, TurnSource.WalkIn, now), now);
         repository.MarkCancelled(turnId, now.AddMinutes(1));
 
         Assert.Equal(TurnState.Cancelled, repository.GetById(turnId)?.State);
@@ -317,7 +319,7 @@ public sealed class SqlitePersistenceTests
         var barberRepository = new LocalBarberRepository(database.Connection);
         var turnRepository = new LocalTurnRepository(database.Connection);
         barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.Called, 0, 0, now, stationNumber: 1), now);
-        turnRepository.Upsert(new Turn(turnId, "B-010", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
+        turnRepository.Upsert(CreateTurn(turnId, "B-010", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
 
         var turnByTicket = turnRepository.GetByTicketNumber("B-010");
         turnRepository.MarkInService(turnId, barberId, now.AddMinutes(1));
@@ -326,6 +328,78 @@ public sealed class SqlitePersistenceTests
         Assert.Equal(turnId, turnByTicket?.Id);
         Assert.Equal(TurnState.InService, turnRepository.GetById(turnId)?.State);
         Assert.Equal(BarberState.InService, barberRepository.GetById(barberId)?.State);
+    }
+
+    [Fact]
+    public void TurnRepository_EnforcesDisplayTicketNumberPerDay()
+    {
+        using var database = TestDatabase.Create();
+        var repository = new LocalTurnRepository(database.Connection);
+        var firstDay = DateTimeOffset.Parse("2026-06-03T14:30:00Z");
+        var secondDay = firstDay.AddDays(1);
+
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "W20260603143000000", TurnState.Waiting, TurnSource.WalkIn, firstDay, displayTicketNumber: 1), firstDay);
+
+        Assert.Throws<SqliteException>(() =>
+            repository.Upsert(CreateTurn(Guid.NewGuid(), "W20260603143100000", TurnState.Waiting, TurnSource.WalkIn, firstDay.AddMinutes(1), displayTicketNumber: 1), firstDay));
+
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "W20260604143000000", TurnState.Waiting, TurnSource.WalkIn, secondDay, displayTicketNumber: 1), secondDay);
+
+        Assert.Equal(2, repository.ListWaiting().Count);
+    }
+
+    [Fact]
+    public void TurnRepository_ResolvesInternalQrOrVisibleTicketForToday()
+    {
+        using var database = TestDatabase.Create();
+        var repository = new LocalTurnRepository(database.Connection);
+        var today = DateTimeOffset.Parse("2026-06-03T14:30:00Z");
+        var yesterday = today.AddDays(-1);
+        var todayTurnId = Guid.NewGuid();
+
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "W20260602143000000", TurnState.Waiting, TurnSource.WalkIn, yesterday, displayTicketNumber: 1), yesterday);
+        repository.Upsert(CreateTurn(todayTurnId, "W20260603143000000", TurnState.Waiting, TurnSource.WalkIn, today, displayTicketNumber: 1), today);
+
+        Assert.Equal(todayTurnId, repository.GetByTicketInputForToday("1", today)?.Id);
+        Assert.Equal(todayTurnId, repository.GetByTicketInputForToday("W20260603143000000", today)?.Id);
+        Assert.Null(repository.GetByTicketInputForToday("999", today));
+    }
+
+    [Fact]
+    public void LocalDatabaseInitializer_BackfillsDisplayTicketNumbersForExistingTurns()
+    {
+        using var database = TestDatabase.CreateUninitialized();
+        using (var command = database.Connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE turns (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    ticket_number TEXT NOT NULL UNIQUE,
+                    state INTEGER NOT NULL,
+                    source INTEGER NOT NULL,
+                    customer_name TEXT NULL,
+                    checked_in_at TEXT NOT NULL,
+                    assigned_barber_id TEXT NULL,
+                    appointment_id TEXT NULL,
+                    requested_barber_ids TEXT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                INSERT INTO turns (id, ticket_number, state, source, customer_name, checked_in_at, assigned_barber_id, appointment_id, requested_barber_ids, updated_at)
+                VALUES
+                    ('11111111-1111-1111-1111-111111111111', 'W20260603100000000', 1, 0, 'Ana', '2026-06-03T10:00:00.0000000+00:00', NULL, NULL, NULL, '2026-06-03T10:00:00.0000000+00:00'),
+                    ('22222222-2222-2222-2222-222222222222', 'W20260603100500000', 1, 0, 'Luis', '2026-06-03T10:05:00.0000000+00:00', NULL, NULL, NULL, '2026-06-03T10:05:00.0000000+00:00'),
+                    ('33333333-3333-3333-3333-333333333333', 'W20260604100000000', 1, 0, 'Mia', '2026-06-04T10:00:00.0000000+00:00', NULL, NULL, NULL, '2026-06-04T10:00:00.0000000+00:00');
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        LocalDatabaseInitializer.Initialize(database.Connection);
+
+        var repository = new LocalTurnRepository(database.Connection);
+        Assert.Equal(1, repository.GetByTicketNumber("W20260603100000000")?.DisplayTicketNumber);
+        Assert.Equal(2, repository.GetByTicketNumber("W20260603100500000")?.DisplayTicketNumber);
+        Assert.Equal(1, repository.GetByTicketNumber("W20260604100000000")?.DisplayTicketNumber);
     }
 
     [Fact]
@@ -340,7 +414,7 @@ public sealed class SqlitePersistenceTests
             new Barber(barberId, "Luis", BarberState.InService, 2, 0, now.AddHours(-8), stationNumber: 1),
             now);
         new LocalTurnRepository(database.Connection).Upsert(
-            new Turn(turnId, "A-010", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(-30), barberId),
+            CreateTurn(turnId, "A-010", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(-30), barberId),
             now);
 
         var transaction = new LocalDataTransaction(database.ConnectionFactory);
@@ -422,7 +496,7 @@ public sealed class SqlitePersistenceTests
             new Barber(barberId, "Luis", BarberState.InService, 2, 0, now.AddHours(-8), stationNumber: 1),
             now);
         new LocalTurnRepository(database.Connection).Upsert(
-            new Turn(turnId, "A-010", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(-30), barberId),
+            CreateTurn(turnId, "A-010", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(-30), barberId),
             now);
         new AuditEventRepository(database.Connection).Add(
             new AuditEvent(duplicatedEventId, now, "seed", "turn", turnId, "{}", "autocaja-1"));
@@ -469,11 +543,11 @@ public sealed class SqlitePersistenceTests
         barberRepository.Upsert(new Barber(anaId, "Ana", BarberState.Available, 1, 1, from, stationNumber: 2), from);
         barberRepository.Upsert(new Barber(miaId, "Mia", BarberState.Offline, 0, 2, from, isActive: false), from);
 
-        turnRepository.Upsert(new Turn(luisTurnId, "A-001", TurnState.Completed, TurnSource.WalkIn, from.AddHours(9), luisId), from.AddHours(10));
-        turnRepository.Upsert(new Turn(anaTurnId, "A-002", TurnState.Completed, TurnSource.Appointment, from.AddHours(9).AddMinutes(10), anaId), from.AddHours(10).AddMinutes(20));
-        turnRepository.Upsert(new Turn(waitingTurnId, "A-003", TurnState.Waiting, TurnSource.WalkIn, from.AddHours(11)), from.AddHours(11));
-        turnRepository.Upsert(new Turn(noShowTurnId, "A-004", TurnState.NoShow, TurnSource.WalkIn, from.AddHours(12)), from.AddHours(12));
-        turnRepository.Upsert(new Turn(oldTurnId, "OLD-001", TurnState.Completed, TurnSource.WalkIn, from.AddDays(-1), luisId), from.AddDays(-1));
+        turnRepository.Upsert(CreateTurn(luisTurnId, "A-001", TurnState.Completed, TurnSource.WalkIn, from.AddHours(9), luisId), from.AddHours(10));
+        turnRepository.Upsert(CreateTurn(anaTurnId, "A-002", TurnState.Completed, TurnSource.Appointment, from.AddHours(9).AddMinutes(10), anaId), from.AddHours(10).AddMinutes(20));
+        turnRepository.Upsert(CreateTurn(waitingTurnId, "A-003", TurnState.Waiting, TurnSource.WalkIn, from.AddHours(11)), from.AddHours(11));
+        turnRepository.Upsert(CreateTurn(noShowTurnId, "A-004", TurnState.NoShow, TurnSource.WalkIn, from.AddHours(12)), from.AddHours(12));
+        turnRepository.Upsert(CreateTurn(oldTurnId, "OLD-001", TurnState.Completed, TurnSource.WalkIn, from.AddDays(-1), luisId), from.AddDays(-1));
 
         paymentRepository.Add(new CashPayment(
             Guid.NewGuid(),
@@ -553,14 +627,16 @@ public sealed class SqlitePersistenceTests
             snapshot.RecentPayments,
             payment =>
             {
-                Assert.Equal("A-002", payment.TicketNumber);
+                Assert.Equal(2, payment.DisplayTicketNumber);
+                Assert.Equal("A-002", payment.InternalTicketNumber);
                 Assert.Equal("Ana", payment.BarberName);
                 Assert.Equal(2, payment.BarberStationNumber);
                 Assert.Null(payment.CommissionCents);
             },
             payment =>
             {
-                Assert.Equal("A-001", payment.TicketNumber);
+                Assert.Equal(1, payment.DisplayTicketNumber);
+                Assert.Equal("A-001", payment.InternalTicketNumber);
                 Assert.Equal("Luis", payment.BarberName);
                 Assert.Equal(1, payment.BarberStationNumber);
                 Assert.Equal(500, payment.CommissionCents);
@@ -575,5 +651,35 @@ public sealed class SqlitePersistenceTests
 
         Assert.Throws<ArgumentException>(() =>
             new LocalAdminReportRepository(database.Connection).Load(from, from, from));
+    }
+
+    private static Turn CreateTurn(
+        Guid id,
+        string ticketNumber,
+        TurnState state,
+        TurnSource source,
+        DateTimeOffset checkedInAt,
+        Guid? assignedBarberId = null,
+        IReadOnlyCollection<Guid>? requestedBarberIds = null,
+        string? customerName = null,
+        int? displayTicketNumber = null)
+    {
+        return new Turn(
+            id,
+            ticketNumber,
+            displayTicketNumber ?? ParseDisplayTicketNumber(ticketNumber),
+            DateOnly.FromDateTime(checkedInAt.LocalDateTime),
+            state,
+            source,
+            checkedInAt,
+            assignedBarberId,
+            requestedBarberIds: requestedBarberIds,
+            customerName: customerName);
+    }
+
+    private static int ParseDisplayTicketNumber(string ticketNumber)
+    {
+        var suffix = ticketNumber.Split('-').LastOrDefault();
+        return int.TryParse(suffix, out var number) && number > 0 ? number : 1;
     }
 }

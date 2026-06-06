@@ -1,7 +1,8 @@
 namespace Barberia.Desktop.Services;
 
 public sealed record CashBoxDepositResult(
-    string TicketNumber,
+    int DisplayTicketNumber,
+    string InternalTicketNumber,
     string BarberName,
     string BarberStationCode,
     decimal Amount,

@@ -100,7 +100,7 @@
                                 HorizontalAlignment="Center"
                                 FontSize="18"
                                 Foreground="{StaticResource KioskMutedTextBrush}"
-                                Text="Enter your name and select your preferred barber to join the queue."
+                                Text="Enter an optional name and select your preferred barber to join the queue."
                                 TextAlignment="Center"
                                 TextWrapping="Wrap" />
                         </StackPanel>
@@ -114,7 +114,7 @@
                                 FontSize="22"
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource KioskTextBrush}"
-                                Text="Your Name" />
+                                Text="Your Name (optional)" />
                             <TextBox
                                 x:Name="_customerNameInput"
                                 MinHeight="56"

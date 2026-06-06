@@ -1,7 +1,7 @@
 namespace Barberia.Hardware.Pos;
 
 public sealed record KioskTicketPrintJob(
-    string TicketNumber,
+    int DisplayTicketNumber,
     string QrPayload,
     string CustomerName,
     IReadOnlyList<string> RequestedBarberNames,

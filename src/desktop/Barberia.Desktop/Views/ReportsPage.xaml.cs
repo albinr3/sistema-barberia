@@ -141,14 +141,14 @@ public sealed partial class ReportsPage : Page
                         {
                             new TextBlock
                             {
-                                Text = $"{row.TicketNumber} - {row.BarberNameWithStation}",
+                                Text = $"{row.DisplayTicketNumber} - {row.BarberNameWithStation}",
                                 FontSize = 17,
                                 FontWeight = FontWeights.SemiBold,
                                 Foreground = Brush(30, 31, 34)
                             },
                             new TextBlock
                             {
-                                Text = $"{row.CollectedAt:hh:mm tt} - {commissionText}",
+                                Text = $"{row.CollectedAt:hh:mm tt} - {commissionText} - Interno {row.InternalTicketNumber}",
                                 FontSize = 13,
                                 Foreground = Brush(101, 108, 116)
                             }

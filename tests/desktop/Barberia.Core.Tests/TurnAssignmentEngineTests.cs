@@ -198,7 +198,21 @@ public sealed class TurnAssignmentEngineTests
 
     private static Turn WaitingTurn(string ticketNumber, DateTimeOffset checkedInAt, IReadOnlyCollection<Guid>? requestedBarberIds = null)
     {
-        return new Turn(Guid.NewGuid(), ticketNumber, TurnState.Waiting, TurnSource.WalkIn, checkedInAt, requestedBarberIds: requestedBarberIds);
+        return new Turn(
+            Guid.NewGuid(),
+            ticketNumber,
+            ParseDisplayTicketNumber(ticketNumber),
+            DateOnly.FromDateTime(checkedInAt.LocalDateTime),
+            TurnState.Waiting,
+            TurnSource.WalkIn,
+            checkedInAt,
+            requestedBarberIds: requestedBarberIds);
+    }
+
+    private static int ParseDisplayTicketNumber(string ticketNumber)
+    {
+        var suffix = ticketNumber.Split('-').LastOrDefault();
+        return int.TryParse(suffix, out var number) && number > 0 ? number : 1;
     }
 
     private static Barber AvailableBarber(Guid id, int clientsServedToday, int rotationOrder)

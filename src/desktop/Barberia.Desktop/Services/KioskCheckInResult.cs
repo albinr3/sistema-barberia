@@ -7,7 +7,8 @@ public sealed record KioskCheckInSnapshot(
     IReadOnlyList<Barber> Barbers);
 
 public sealed record KioskCheckInResult(
-    string TicketNumber,
+    int DisplayTicketNumber,
+    string InternalTicketNumber,
     string CustomerName,
     DateTimeOffset CheckedInAt,
     string? AssignedBarberName,

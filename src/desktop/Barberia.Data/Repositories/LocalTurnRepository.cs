@@ -20,14 +20,16 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             INSERT INTO turns (
-                id, ticket_number, state, source, customer_name, checked_in_at, assigned_barber_id,
+                id, ticket_number, display_ticket_number, ticket_date, state, source, customer_name, checked_in_at, assigned_barber_id,
                 appointment_id, requested_barber_ids, updated_at
             ) VALUES (
-                $id, $ticket_number, $state, $source, $customer_name, $checked_in_at, $assigned_barber_id,
+                $id, $ticket_number, $display_ticket_number, $ticket_date, $state, $source, $customer_name, $checked_in_at, $assigned_barber_id,
                 $appointment_id, $requested_barber_ids, $updated_at
             )
             ON CONFLICT(id) DO UPDATE SET
                 ticket_number = excluded.ticket_number,
+                display_ticket_number = excluded.display_ticket_number,
+                ticket_date = excluded.ticket_date,
                 state = excluded.state,
                 source = excluded.source,
                 customer_name = excluded.customer_name,
@@ -39,6 +41,8 @@ public sealed class LocalTurnRepository
             """;
         command.AddText("$id", turn.Id.ToString());
         command.AddText("$ticket_number", turn.TicketNumber);
+        command.AddInteger("$display_ticket_number", turn.DisplayTicketNumber);
+        command.AddText("$ticket_date", FormatDate(turn.TicketDate));
         command.AddInteger("$state", (int)turn.State);
         command.AddInteger("$source", (int)turn.Source);
         command.AddText("$customer_name", turn.CustomerName);
@@ -55,7 +59,7 @@ public sealed class LocalTurnRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE id = $id;
@@ -71,7 +75,7 @@ public sealed class LocalTurnRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE ticket_number = $ticket_number;
@@ -82,12 +86,64 @@ public sealed class LocalTurnRepository
         return reader.Read() ? ReadTurn(reader) : null;
     }
 
+    public Turn? GetByTicketInputForToday(string ticketInput, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(ticketInput))
+        {
+            return null;
+        }
+
+        var normalized = ticketInput.Trim();
+        if (normalized.StartsWith("W", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetByTicketNumber(normalized);
+        }
+
+        if (!int.TryParse(normalized, out var displayTicketNumber) || displayTicketNumber <= 0)
+        {
+            return null;
+        }
+
+        return GetByDisplayTicketNumber(DateOnly.FromDateTime(now.LocalDateTime), displayTicketNumber);
+    }
+
+    public Turn? GetByDisplayTicketNumber(DateOnly ticketDate, int displayTicketNumber)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids, customer_name
+            FROM turns
+            WHERE ticket_date = $ticket_date
+              AND display_ticket_number = $display_ticket_number;
+            """;
+        command.AddText("$ticket_date", FormatDate(ticketDate));
+        command.AddInteger("$display_ticket_number", displayTicketNumber);
+
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadTurn(reader) : null;
+    }
+
+    public int GetNextDisplayTicketNumber(DateOnly ticketDate)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT COALESCE(MAX(display_ticket_number), 0) + 1
+            FROM turns
+            WHERE ticket_date = $ticket_date;
+            """;
+        command.AddText("$ticket_date", FormatDate(ticketDate));
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
     public IReadOnlyList<Turn> ListWaiting()
     {
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE state = $state
@@ -110,7 +166,7 @@ public sealed class LocalTurnRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE state IN ($waiting, $assigned, $called, $in_service)
@@ -144,7 +200,7 @@ public sealed class LocalTurnRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, ticket_number, state, source, checked_in_at, assigned_barber_id,
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE assigned_barber_id = $barber_id
@@ -262,13 +318,20 @@ public sealed class LocalTurnRepository
         return new Turn(
             Guid.Parse(reader.GetString(0)),
             reader.GetString(1),
-            (TurnState)reader.GetInt32(2),
-            (TurnSource)reader.GetInt32(3),
-            DateTimeOffset.Parse(reader.GetString(4)),
-            reader.IsDBNull(5) ? null : Guid.Parse(reader.GetString(5)),
-            reader.IsDBNull(6) ? null : Guid.Parse(reader.GetString(6)),
-            ParseIds(reader.IsDBNull(7) ? null : reader.GetString(7)),
-            reader.IsDBNull(8) ? null : reader.GetString(8));
+            reader.GetInt32(2),
+            DateOnly.Parse(reader.GetString(3)),
+            (TurnState)reader.GetInt32(4),
+            (TurnSource)reader.GetInt32(5),
+            DateTimeOffset.Parse(reader.GetString(6)),
+            reader.IsDBNull(7) ? null : Guid.Parse(reader.GetString(7)),
+            reader.IsDBNull(8) ? null : Guid.Parse(reader.GetString(8)),
+            ParseIds(reader.IsDBNull(9) ? null : reader.GetString(9)),
+            reader.IsDBNull(10) ? null : reader.GetString(10));
+    }
+
+    private static string FormatDate(DateOnly value)
+    {
+        return value.ToString("yyyy-MM-dd");
     }
 
     private static string? FormatIds(IReadOnlyCollection<Guid>? ids)

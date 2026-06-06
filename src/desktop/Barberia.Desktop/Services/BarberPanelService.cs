@@ -67,7 +67,7 @@ public sealed class BarberPanelService
                 throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
             }
 
-            var turn = turnRepository.GetByTicketNumber(scannedTicketNumber)
+            var turn = turnRepository.GetByTicketInputForToday(scannedTicketNumber, now)
                 ?? throw new InvalidOperationException("Ticket no encontrado en la base local.");
 
             if (turn.AssignedBarberId != barberId)
@@ -89,6 +89,7 @@ public sealed class BarberPanelService
             barberRepository.SetState(barberId, BarberState.InService, now);
 
             result = new BarberPanelStartResult(
+                turn.DisplayTicketNumber,
                 turn.TicketNumber,
                 barber.DisplayName,
                 barber.StationCode ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada."),

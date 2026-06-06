@@ -45,6 +45,7 @@ public sealed class TurnAssignmentEngine
         return new TurnAssignmentDecision(
             turn.Id,
             turn.TicketNumber,
+            turn.DisplayTicketNumber,
             selectedBarber.Id,
             TurnState.Assigned,
             BarberState.Called);

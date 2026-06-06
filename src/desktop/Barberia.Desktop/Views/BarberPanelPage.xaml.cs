@@ -70,7 +70,7 @@ public sealed partial class BarberPanelPage : Page
         {
             var result = _service.StartService(barberId, _ticketInput.Text);
             _ticketInput.Text = string.Empty;
-            _messageText.Text = $"{result.TicketNumber} - {result.BarberStationCode} - {result.Message}";
+            _messageText.Text = $"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}";
             SetStatus("En servicio", success: true);
             LoadPanel(barberId);
         }
@@ -199,7 +199,7 @@ public sealed partial class BarberPanelPage : Page
                         {
                             new TextBlock
                             {
-                                Text = turn.TicketNumber,
+                                Text = turn.DisplayTicketNumber.ToString(),
                                 FontSize = 26,
                                 FontWeight = FontWeights.SemiBold,
                                 Foreground = Brush(30, 31, 34)

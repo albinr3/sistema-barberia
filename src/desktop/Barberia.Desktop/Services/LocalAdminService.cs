@@ -259,13 +259,15 @@ public sealed class LocalAdminService
                 JsonSerializer.Serialize(new
                 {
                     turnId,
-                    ticketNumber = turn.TicketNumber,
+                    displayTicketNumber = turn.DisplayTicketNumber,
+                    internalTicketNumber = turn.TicketNumber,
                     customerName = turn.CustomerName,
                     previousState = turn.State.ToString(),
                     assignedBarberId = assignedBarber?.Id,
                     assignedBarberName = assignedBarber?.DisplayName,
                     barberReleased = assignedBarber?.IsActive == true,
-                    reassignedTicketNumber = reassignment?.TicketNumber,
+                    reassignedDisplayTicketNumber = reassignment?.DisplayTicketNumber,
+                    reassignedInternalTicketNumber = reassignment?.TicketNumber,
                     reassignedBarberId = reassignment?.BarberId
                 }),
                 deviceId));
@@ -281,7 +283,8 @@ public sealed class LocalAdminService
                     JsonSerializer.Serialize(new
                     {
                         turnId = reassignment.TurnId,
-                        ticketNumber = reassignment.TicketNumber,
+                        displayTicketNumber = reassignment.DisplayTicketNumber,
+                        internalTicketNumber = reassignment.TicketNumber,
                         barberId = reassignment.BarberId,
                         turnState = reassignment.TurnState.ToString(),
                         barberState = reassignment.BarberState.ToString(),

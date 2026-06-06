@@ -11,7 +11,7 @@ public sealed class PosHardwareTests
         var printer = new SimulatedKioskTicketPrinter();
 
         var result = printer.Print(new KioskTicketPrintJob(
-            "W20260604120000000",
+            1,
             "W20260604120000000",
             "Mia",
             ["Luis"],
@@ -32,7 +32,7 @@ public sealed class PosHardwareTests
         var printer = new SimulatedKioskTicketPrinter();
 
         var result = printer.Print(new KioskTicketPrintJob(
-            "W20260604120000000",
+            1,
             "W20260604120000000",
             "Mia",
             [],
@@ -53,7 +53,7 @@ public sealed class PosHardwareTests
         var printer = new SimulatedKioskTicketPrinter();
 
         var result = printer.Print(new KioskTicketPrintJob(
-            "W20260604120000000",
+            1,
             "",
             "Mia",
             [],
@@ -75,7 +75,7 @@ public sealed class PosHardwareTests
             HardwareOperationResult.Failure("Ticket printer offline."));
 
         var result = printer.Print(new KioskTicketPrintJob(
-            "W20260604120000000",
+            1,
             "W20260604120000000",
             "Mia",
             [],
@@ -97,7 +97,7 @@ public sealed class PosHardwareTests
 
         var result = printer.Print(new CashReceiptPrintJob(
             "CB-001",
-            "A-001",
+            1,
             "Luis",
             "B-1",
             25m,
@@ -117,7 +117,7 @@ public sealed class PosHardwareTests
 
         var result = printer.Print(new CashReceiptPrintJob(
             "",
-            "A-001",
+            1,
             "Luis",
             "B-1",
             25m,
@@ -138,7 +138,7 @@ public sealed class PosHardwareTests
 
         var result = printer.Print(new CashReceiptPrintJob(
             "CB-001",
-            "A-001",
+            1,
             "Luis",
             "B-1",
             25m,

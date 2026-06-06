@@ -131,7 +131,7 @@ public sealed partial class PublicDisplayPage : Page
                         {
                             new TextBlock
                             {
-                                Text = turn.TicketNumber,
+                                Text = turn.DisplayTicketNumber.ToString(),
                                 FontSize = large ? 46 : 25,
                                 FontWeight = FontWeights.SemiBold,
                                 Foreground = Brush(30, 31, 34)

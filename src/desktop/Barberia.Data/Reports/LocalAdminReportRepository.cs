@@ -168,7 +168,8 @@ public sealed class LocalAdminReportRepository
             SELECT
                 p.id,
                 p.turn_id,
-                COALESCE(t.ticket_number, 'Sin ticket') AS ticket_number,
+                COALESCE(t.display_ticket_number, 0) AS display_ticket_number,
+                COALESCE(t.ticket_number, 'Sin ticket') AS internal_ticket_number,
                 p.barber_id,
                 COALESCE(b.display_name, 'Barbero local') AS barber_name,
                 b.station_number,
@@ -196,17 +197,18 @@ public sealed class LocalAdminReportRepository
             rows.Add(new CashPaymentReportRow(
                 Guid.Parse(reader.GetString(0)),
                 Guid.Parse(reader.GetString(1)),
-                reader.GetString(2),
-                Guid.Parse(reader.GetString(3)),
-                reader.GetString(4),
-                reader.IsDBNull(5) ? null : reader.GetInt32(5),
-                reader.GetInt64(6),
-                reader.GetString(7),
-                DateTimeOffset.Parse(reader.GetString(8)),
-                reader.GetString(9),
-                reader.IsDBNull(10) ? null : reader.GetString(10),
-                reader.GetInt32(11) == 1,
-                reader.IsDBNull(12) ? null : reader.GetInt64(12)));
+                reader.GetInt32(2),
+                reader.GetString(3),
+                Guid.Parse(reader.GetString(4)),
+                reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                reader.GetInt64(7),
+                reader.GetString(8),
+                DateTimeOffset.Parse(reader.GetString(9)),
+                reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetString(11),
+                reader.GetInt32(12) == 1,
+                reader.IsDBNull(13) ? null : reader.GetInt64(13)));
         }
 
         return rows;

@@ -46,6 +46,8 @@ public sealed class DomainModelTests
         var turn = new Turn(
             Guid.NewGuid(),
             " A-001 ",
+            1,
+            DateOnly.Parse("2026-06-03"),
             TurnState.Waiting,
             TurnSource.WalkIn,
             DateTimeOffset.UtcNow,
@@ -53,8 +55,24 @@ public sealed class DomainModelTests
             customerName: " Mia ");
 
         Assert.Equal("A-001", turn.TicketNumber);
+        Assert.Equal(1, turn.DisplayTicketNumber);
+        Assert.Equal(DateOnly.Parse("2026-06-03"), turn.TicketDate);
         Assert.Equal("Mia", turn.CustomerName);
         Assert.Equal([barberId], turn.RequestedBarberIds);
+    }
+
+    [Fact]
+    public void Turn_RejectsInvalidDisplayTicketNumber()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new Turn(
+                Guid.NewGuid(),
+                "A-001",
+                0,
+                DateOnly.Parse("2026-06-03"),
+                TurnState.Waiting,
+                TurnSource.WalkIn,
+                DateTimeOffset.Parse("2026-06-03T12:00:00Z")));
     }
 
     [Fact]

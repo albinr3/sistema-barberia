@@ -11,7 +11,7 @@
 - Walk-in: usuario que llega sin cita y entra a la cola local.
 - Turno: registro generado cuando un usuario hace check-in o cuando una cita se integra a la operacion local.
 - Cita: reserva programada desde web o app movil; pertenece a Fase 2/Fase 3 y se sincroniza con Fase 1.
-- Ticket: comprobante impreso con numero de turno y codigo QR; el payload QR operativo es el numero de ticket.
+- Ticket: comprobante impreso con numero visible diario (`1`, `2`, `3`...) y codigo QR; el payload QR operativo usa el ticket interno unico `W{yyyyMMddHHmmssfff}` para escaneo y auditoria.
 - Kiosco: pantalla touch de entrada para check-in.
 - Pantalla publica: pantalla de espera que muestra turnos, barberos, walk-ins y citas programadas.
 - Panel de barbero: modulo para check-in del barbero, cambios de estado e inicio de atencion por escaneo de ticket.

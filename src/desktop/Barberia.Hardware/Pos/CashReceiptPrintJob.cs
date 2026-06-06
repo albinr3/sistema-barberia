@@ -2,7 +2,7 @@ namespace Barberia.Hardware.Pos;
 
 public sealed record CashReceiptPrintJob(
     string ReceiptNumber,
-    string TicketNumber,
+    int DisplayTicketNumber,
     string BarberName,
     string BarberStationCode,
     decimal Amount,

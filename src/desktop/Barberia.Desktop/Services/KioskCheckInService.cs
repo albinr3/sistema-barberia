@@ -5,6 +5,7 @@ using Barberia.Data;
 using Barberia.Data.Models;
 using Barberia.Data.Repositories;
 using Barberia.Hardware.Pos;
+using Microsoft.Data.Sqlite;
 
 namespace Barberia.Desktop.Services;
 
@@ -44,16 +45,28 @@ public sealed class KioskCheckInService
     {
         var normalizedCustomerName = NormalizeCustomerName(customerName);
         var requestedIds = NormalizeRequestedBarbers(acceptsAnyBarber, requestedBarberIds);
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            try
+            {
+                return RegisterWalkInOnce(normalizedCustomerName, acceptsAnyBarber, requestedIds);
+            }
+            catch (SqliteException exception) when (attempt == 0 && exception.SqliteErrorCode == 19)
+            {
+            }
+        }
+
+        return RegisterWalkInOnce(normalizedCustomerName, acceptsAnyBarber, requestedIds);
+    }
+
+    private KioskCheckInResult RegisterWalkInOnce(
+        string? normalizedCustomerName,
+        bool acceptsAnyBarber,
+        IReadOnlyList<Guid> requestedIds)
+    {
         var now = DateTimeOffset.Now;
         var deviceId = Environment.MachineName;
-        var turn = new Turn(
-            Guid.NewGuid(),
-            CreateTicketNumber(now),
-            TurnState.Waiting,
-            TurnSource.WalkIn,
-            now,
-            requestedBarberIds: acceptsAnyBarber ? null : requestedIds,
-            customerName: normalizedCustomerName);
 
         KioskCheckInResult? result = null;
         var transaction = new LocalDataTransaction(_connectionFactory);
@@ -69,6 +82,17 @@ public sealed class KioskCheckInService
                 .Where(barber => barber.IsActive)
                 .ToArray();
             var requestedBarbers = ResolveRequestedBarbers(acceptsAnyBarber, requestedIds, barbers);
+            var ticketDate = DateOnly.FromDateTime(now.LocalDateTime);
+            var turn = new Turn(
+                Guid.NewGuid(),
+                CreateTicketNumber(now),
+                turnRepository.GetNextDisplayTicketNumber(ticketDate),
+                ticketDate,
+                TurnState.Waiting,
+                TurnSource.WalkIn,
+                now,
+                requestedBarberIds: acceptsAnyBarber ? null : requestedIds,
+                customerName: normalizedCustomerName);
             turnRepository.Upsert(turn, now);
 
             var waitingTurns = turnRepository.ListWaiting();
@@ -157,9 +181,9 @@ public sealed class KioskCheckInService
             .Select(barber => barber.StationCode)
             .ToArray();
         var printResult = _ticketPrinter.Print(new KioskTicketPrintJob(
-            turn.TicketNumber,
+            turn.DisplayTicketNumber,
             CreateTicketQrPayload(turn),
-            turn.CustomerName ?? throw new InvalidOperationException("Customer name is required for kiosk ticket printing."),
+            GetPrintedCustomerName(turn.CustomerName),
             requestedBarberNames,
             requestedBarberStationCodes,
             acceptsAnyBarber,
@@ -181,7 +205,8 @@ public sealed class KioskCheckInService
             turn.Id,
             JsonSerializer.Serialize(new
             {
-                ticket = turn.TicketNumber,
+                displayTicketNumber = turn.DisplayTicketNumber,
+                internalTicketNumber = turn.TicketNumber,
                 qrPayload = CreateTicketQrPayload(turn),
                 customerName = turn.CustomerName,
                 acceptsAnyBarber,
@@ -196,8 +221,9 @@ public sealed class KioskCheckInService
             deviceId));
 
         return new KioskCheckInResult(
+            turn.DisplayTicketNumber,
             turn.TicketNumber,
-            turn.CustomerName,
+            GetPrintedCustomerName(turn.CustomerName),
             checkedInAt,
             assignedBarberName,
             assignedBarberStationCode,
@@ -208,14 +234,19 @@ public sealed class KioskCheckInService
             message);
     }
 
-    private static string NormalizeCustomerName(string customerName)
+    private static string? NormalizeCustomerName(string customerName)
     {
         if (string.IsNullOrWhiteSpace(customerName))
         {
-            throw new InvalidOperationException("Enter your name to continue.");
+            return null;
         }
 
         return customerName.Trim();
+    }
+
+    private static string GetPrintedCustomerName(string? customerName)
+    {
+        return string.IsNullOrWhiteSpace(customerName) ? "Walk-in customer" : customerName;
     }
 
     private static IReadOnlyList<Guid> NormalizeRequestedBarbers(

@@ -92,7 +92,7 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
             }
 
-            var turn = turnRepository.GetByTicketNumber(ticketNumber)
+            var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
                 ?? throw new InvalidOperationException("Ticket no encontrado en la base local.");
 
             if (turn.AssignedBarberId != barberId)
@@ -109,7 +109,7 @@ public sealed class CashBoxCloseService
                 ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada.");
             var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
                 receiptNumber,
-                turn.TicketNumber,
+                turn.DisplayTicketNumber,
                 barber.DisplayName,
                 barberStationCode,
                 amount,
@@ -170,7 +170,8 @@ public sealed class CashBoxCloseService
                 turn.Id,
                 JsonSerializer.Serialize(new
                 {
-                    ticket = turn.TicketNumber,
+                    displayTicketNumber = turn.DisplayTicketNumber,
+                    internalTicketNumber = turn.TicketNumber,
                     barberId,
                     barberStationCode,
                     amount,
@@ -184,6 +185,7 @@ public sealed class CashBoxCloseService
                 deviceId));
 
             result = new CashBoxDepositResult(
+                turn.DisplayTicketNumber,
                 turn.TicketNumber,
                 barber.DisplayName,
                 barberStationCode,

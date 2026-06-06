@@ -3,7 +3,8 @@ namespace Barberia.Data.Reports;
 public sealed record CashPaymentReportRow(
     Guid PaymentId,
     Guid TurnId,
-    string TicketNumber,
+    int DisplayTicketNumber,
+    string InternalTicketNumber,
     Guid BarberId,
     string BarberName,
     int? BarberStationNumber,

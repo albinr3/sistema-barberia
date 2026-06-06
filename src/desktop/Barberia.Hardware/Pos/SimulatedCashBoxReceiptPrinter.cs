@@ -23,7 +23,7 @@ public sealed class SimulatedCashBoxReceiptPrinter : ICashBoxReceiptPrinter
             return HardwareOperationResult.Failure("Receipt number is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(job.TicketNumber))
+        if (job.DisplayTicketNumber <= 0)
         {
             return HardwareOperationResult.Failure("Ticket number is required.");
         }

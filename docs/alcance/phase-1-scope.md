@@ -7,7 +7,7 @@ Aplicacion Windows local para operacion inicial de la barberia.
 ## Incluye
 
 - Turnos automaticos locales para walk-ins.
-- Kiosco local touch para check-in, nombre del cliente, seleccion de barberos activos y ticket impreso con payload QR basado en el numero de ticket.
+- Kiosco local touch para check-in, nombre opcional del cliente, seleccion de barberos activos y ticket impreso con numero visible diario (`1`, `2`, `3`...) y payload QR basado en el ticket interno unico.
 - Pantalla publica local para sala de espera.
 - Panel local de barbero para disponibilidad, tickets asignados e inicio de atencion.
 - Autocaja local para cierre en efectivo operada por el barbero.

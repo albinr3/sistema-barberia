@@ -1,7 +1,8 @@
 namespace Barberia.Desktop.Services;
 
 public sealed record BarberPanelStartResult(
-    string TicketNumber,
+    int DisplayTicketNumber,
+    string InternalTicketNumber,
     string BarberName,
     string BarberStationCode,
     DateTimeOffset StartedAt,
