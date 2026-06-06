@@ -17,6 +17,10 @@
 - El panel del barbero no debe tener un boton obligatorio de terminar servicio; el cierre operativo ocurre en autocaja.
 - Solo barberos en estado `available` pueden recibir nuevos walk-ins.
 - Un barbero tambien debe tener `is_active=true` para aparecer en kiosco, pantalla publica y flujos operativos locales.
+- Todo barbero activo debe tener una estacion fisica fija con codigo visible `B-#`, por ejemplo `B-1`.
+- La estacion fisica debe ser unica entre barberos activos.
+- Al desactivar un barbero, su estacion se libera y puede asignarse a otro barbero.
+- La estacion fisica no reemplaza ni modifica el `rotation_order`; el `rotation_order` sigue siendo la cola de asignacion.
 - Desactivar un barbero (`is_active=false`) lo oculta de nuevos turnos y reservas futuras sin borrar su historial.
 - Al desactivar un barbero desde administracion local, si no esta `called` ni `in_service`, su estado operativo local pasa a `offline`.
 - No se debe eliminar fisicamente un barbero con historial operativo; se debe desactivar para mantener reportes, auditoria y sincronizacion futura.
@@ -33,7 +37,6 @@
 
 - POR CONFIRMAR: politica de barbero que llega tarde.
 - POR CONFIRMAR: porcentaje de comision.
-- POR CONFIRMAR: cantidad de estaciones fisicas.
 - POR CONFIRMAR: una autocaja o varias autocajas.
 - POR CONFIRMAR: manejo de propinas.
 - POR CONFIRMAR: idioma de interfaz: ingles, espanol o ambos.

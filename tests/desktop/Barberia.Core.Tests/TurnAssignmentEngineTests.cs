@@ -203,12 +203,26 @@ public sealed class TurnAssignmentEngineTests
 
     private static Barber AvailableBarber(Guid id, int clientsServedToday, int rotationOrder)
     {
-        return new Barber(id, $"Barber {id:N}", BarberState.Available, clientsServedToday, rotationOrder, BaseTime.AddMinutes(rotationOrder));
+        return new Barber(
+            id,
+            $"Barber {id:N}",
+            BarberState.Available,
+            clientsServedToday,
+            rotationOrder,
+            BaseTime.AddMinutes(rotationOrder),
+            stationNumber: rotationOrder + 1);
     }
 
     private static Barber BarberWithState(Guid id, BarberState state, int rotationOrder)
     {
-        return new Barber(id, $"Barber {id:N}", state, clientsServedToday: 0, rotationOrder, BaseTime.AddMinutes(rotationOrder));
+        return new Barber(
+            id,
+            $"Barber {id:N}",
+            state,
+            clientsServedToday: 0,
+            rotationOrder,
+            BaseTime.AddMinutes(rotationOrder),
+            stationNumber: rotationOrder + 1);
     }
 
     private static AppointmentReservation Appointment(Guid barberId, AppointmentState state, DateTimeOffset scheduledFor)

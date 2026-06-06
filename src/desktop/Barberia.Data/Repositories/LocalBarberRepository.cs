@@ -20,15 +20,16 @@ public sealed class LocalBarberRepository
         command.Transaction = _transaction;
         command.CommandText = """
             INSERT INTO barbers (
-                id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active, updated_at
+                id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, updated_at
             ) VALUES (
-                $id, $display_name, $state, $clients_served_today, $rotation_order, $checked_in_at, $profile_image_path, $is_active, $updated_at
+                $id, $display_name, $state, $clients_served_today, $rotation_order, $station_number, $checked_in_at, $profile_image_path, $is_active, $updated_at
             )
             ON CONFLICT(id) DO UPDATE SET
                 display_name = excluded.display_name,
                 state = excluded.state,
                 clients_served_today = excluded.clients_served_today,
                 rotation_order = excluded.rotation_order,
+                station_number = excluded.station_number,
                 checked_in_at = excluded.checked_in_at,
                 profile_image_path = excluded.profile_image_path,
                 is_active = excluded.is_active,
@@ -39,6 +40,7 @@ public sealed class LocalBarberRepository
         command.AddInteger("$state", (int)barber.State);
         command.AddInteger("$clients_served_today", barber.ClientsServedToday);
         command.AddInteger("$rotation_order", barber.RotationOrder);
+        command.AddNullableInteger("$station_number", barber.StationNumber);
         command.AddText("$checked_in_at", Format(barber.CheckedInAt));
         command.AddText("$profile_image_path", barber.ProfileImagePath);
         command.AddInteger("$is_active", barber.IsActive ? 1 : 0);
@@ -51,7 +53,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active
             FROM barbers
             WHERE id = $id;
             """;
@@ -66,7 +68,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active
             FROM barbers
             ORDER BY rotation_order, display_name;
             """;
@@ -117,18 +119,30 @@ public sealed class LocalBarberRepository
         }
     }
 
-    public void SetActive(Guid barberId, bool isActive, DateTimeOffset updatedAt)
+    public void SetActive(Guid barberId, bool isActive, DateTimeOffset updatedAt, int? stationNumber = null)
     {
+        if (stationNumber is <= 0)
+        {
+            throw new InvalidOperationException("Station number must be positive.");
+        }
+
+        if (isActive && stationNumber is null)
+        {
+            throw new InvalidOperationException("Active barbers require a fixed station number.");
+        }
+
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
             UPDATE barbers
             SET is_active = $is_active,
+                station_number = $station_number,
                 updated_at = $updated_at
             WHERE id = $id;
             """;
         command.AddText("$id", barberId.ToString());
         command.AddInteger("$is_active", isActive ? 1 : 0);
+        command.AddNullableInteger("$station_number", isActive ? stationNumber : null);
         command.AddText("$updated_at", Format(updatedAt));
 
         if (command.ExecuteNonQuery() != 1)
@@ -208,9 +222,10 @@ public sealed class LocalBarberRepository
             (BarberState)reader.GetInt32(2),
             reader.GetInt32(3),
             reader.GetInt32(4),
-            reader.IsDBNull(5) ? null : DateTimeOffset.Parse(reader.GetString(5)),
-            reader.IsDBNull(6) ? null : reader.GetString(6),
-            reader.GetInt32(7) == 1);
+            reader.IsDBNull(6) ? null : DateTimeOffset.Parse(reader.GetString(6)),
+            reader.IsDBNull(5) ? null : reader.GetInt32(5),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.GetInt32(8) == 1);
     }
 
     private static string? Format(DateTimeOffset? value)

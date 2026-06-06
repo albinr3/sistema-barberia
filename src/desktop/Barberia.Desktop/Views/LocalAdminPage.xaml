@@ -234,7 +234,7 @@
                                 Text="Barber Editor" />
                             <TextBlock
                                 Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Create barbers, edit their display order and choose an optional profile image." />
+                                Text="Create barbers, assign fixed stations, edit their display order and choose an optional profile image." />
                         </StackPanel>
 
                         <StackPanel Spacing="12">
@@ -248,6 +248,20 @@
                                     x:Name="_barberNameInput"
                                     MinHeight="46"
                                     PlaceholderText="e.g., Marcus"
+                                    TextWrapping="NoWrap" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="Station Code" />
+                                <TextBox
+                                    x:Name="_stationCodeInput"
+                                    MinHeight="46"
+                                    MaxLength="8"
+                                    PlaceholderText="B-1"
                                     TextWrapping="NoWrap" />
                             </StackPanel>
 

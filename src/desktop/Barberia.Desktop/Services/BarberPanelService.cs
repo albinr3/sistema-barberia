@@ -91,6 +91,7 @@ public sealed class BarberPanelService
             result = new BarberPanelStartResult(
                 turn.TicketNumber,
                 barber.DisplayName,
+                barber.StationCode ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada."),
                 now,
                 "Atencion iniciada localmente. El cierre operativo queda en autocaja.");
         });

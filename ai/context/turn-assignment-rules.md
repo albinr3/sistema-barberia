@@ -7,6 +7,7 @@
 - Si el usuario selecciona varios barberos, solo esos barberos pueden recibir el turno.
 - Si el usuario selecciona "cualquiera", cualquier barbero activo, compatible y disponible puede recibir el turno.
 - `activo` significa `is_active=true`; un barbero inactivo queda fuera de kiosco, booking y nuevos turnos aunque conserve historial.
+- Un barbero activo debe tener `station_number` positivo y visible como `B-#`; esta estacion es fisica y no participa en la prioridad de asignacion.
 - Solo barberos en estado `available` pueden recibir nuevos walk-ins.
 - Los barberos en `not_checked_in`, `called`, `in_service` u `offline` quedan fuera de la asignacion automatica.
 - El motor debe excluir temporalmente a barberos protegidos por una cita confirmada proxima.
@@ -22,6 +23,7 @@
 - Cuando todos los barberos compatibles ya atendieron al menos 1 cliente ese dia, se usa cola rotativa.
 - Despues de cerrar servicio en autocaja, el barbero pasa al final de la cola rotativa.
 - Un barbero con menos clientes totales no recibe prioridad automatica si ya atendio al menos 1 cliente ese dia.
+- La cola rotativa usa `rotation_order`; no debe ordenarse por `station_number`.
 
 ## Estados Permitidos
 

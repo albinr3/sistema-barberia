@@ -29,6 +29,7 @@ public sealed class LocalDatabaseInitializer
                 state INTEGER NOT NULL,
                 clients_served_today INTEGER NOT NULL,
                 rotation_order INTEGER NOT NULL,
+                station_number INTEGER NULL,
                 checked_in_at TEXT NULL,
                 profile_image_path TEXT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1,
@@ -119,6 +120,93 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "turns", "customer_name", "TEXT NULL");
         EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
         EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
+        EnsureColumn(connection, "barbers", "station_number", "INTEGER NULL");
+        NormalizeBarberStations(connection);
+        EnsureActiveStationIndex(connection);
+    }
+
+    private static void NormalizeBarberStations(SqliteConnection connection)
+    {
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE barbers
+                SET station_number = NULL
+                WHERE is_active = 0
+                  AND station_number IS NOT NULL;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        var activeBarbers = new List<(string Id, int? StationNumber)>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT id, station_number
+                FROM barbers
+                WHERE is_active = 1
+                ORDER BY rotation_order, display_name, id;
+                """;
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                activeBarbers.Add((
+                    reader.GetString(0),
+                    reader.IsDBNull(1) ? null : reader.GetInt32(1)));
+            }
+        }
+
+        var usedStations = new HashSet<int>();
+        var updates = new List<(string Id, int StationNumber)>();
+        var nextStation = 1;
+
+        foreach (var barber in activeBarbers)
+        {
+            if (barber.StationNumber is int stationNumber
+                && stationNumber > 0
+                && usedStations.Add(stationNumber))
+            {
+                while (usedStations.Contains(nextStation))
+                {
+                    nextStation++;
+                }
+
+                continue;
+            }
+
+            while (usedStations.Contains(nextStation))
+            {
+                nextStation++;
+            }
+
+            usedStations.Add(nextStation);
+            updates.Add((barber.Id, nextStation));
+        }
+
+        foreach (var update in updates)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                UPDATE barbers
+                SET station_number = $station_number
+                WHERE id = $id;
+                """;
+            command.AddInteger("$station_number", update.StationNumber);
+            command.AddText("$id", update.Id);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static void EnsureActiveStationIndex(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_barbers_active_station_number
+                ON barbers(station_number)
+                WHERE is_active = 1 AND station_number IS NOT NULL;
+            """;
+        command.ExecuteNonQuery();
     }
 
     private static void EnsureColumn(SqliteConnection connection, string tableName, string columnName, string columnDefinition)

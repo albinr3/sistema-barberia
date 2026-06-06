@@ -19,6 +19,7 @@ public sealed partial class LocalAdminPage : Page
     private IReadOnlyList<ProfileImageOption> _profileImageOptions = [];
     private Guid? _editingBarberId;
     private int _nextRotationOrder;
+    private int _nextStationNumber = 1;
 
     public LocalAdminPage()
     {
@@ -65,6 +66,7 @@ public sealed partial class LocalAdminPage : Page
         _nextRotationOrder = snapshot.Barbers.Count == 0
             ? 0
             : snapshot.Barbers.Max(barber => barber.RotationOrder) + 1;
+        _nextStationNumber = GetNextStationNumber(snapshot.Barbers);
 
         SyncProfileImageOptions(snapshot.ProfileImages);
         SyncEditor(snapshot);
@@ -103,7 +105,7 @@ public sealed partial class LocalAdminPage : Page
             {
                 new TextBlock
                 {
-                    Text = barber.DisplayName,
+                    Text = barber.DisplayNameWithStation,
                     FontSize = 18,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = Brush(30, 31, 34),
@@ -156,17 +158,20 @@ public sealed partial class LocalAdminPage : Page
 
         var activeButton = CreateSmallActionButton(barber.IsActive ? "Deactivate" : "Activate");
         activeButton.IsEnabled = canChangeAvailability;
-        activeButton.Click += (_, _) => ExecuteAdminAction(
-            () =>
+        activeButton.Click += (_, _) =>
+        {
+            if (barber.IsActive)
             {
-                if (barber.IsActive)
-                {
-                    _service.DeactivateBarber(barber.Id);
-                    return;
-                }
+                ExecuteAdminAction(() => _service.DeactivateBarber(barber.Id));
+                return;
+            }
 
-                _service.ActivateBarber(barber.Id);
-            });
+            EditBarber(barber);
+            _showInKioskCheckBox.IsChecked = true;
+            _stationCodeInput.Text = string.Empty;
+            _messageText.Text = "Assign an available station code like B-1, then save.";
+            SetStatus("Assign station", success: true);
+        };
         actions.Children.Add(activeButton);
 
         Grid.SetColumn(actions, 2);
@@ -191,6 +196,7 @@ public sealed partial class LocalAdminPage : Page
                     _editingBarberId,
                     _barberNameInput.Text,
                     ParseRotationOrder(),
+                    ParseStationNumber(_showInKioskCheckBox.IsChecked == true),
                     GetSelectedProfileImagePath(),
                     _showInKioskCheckBox.IsChecked == true);
                 _editingBarberId = null;
@@ -257,7 +263,7 @@ public sealed partial class LocalAdminPage : Page
     {
         var barberName = turn.AssignedBarberId is null
             ? "Unassigned"
-            : barbers.FirstOrDefault(barber => barber.Id == turn.AssignedBarberId)?.DisplayName ?? "Local barber";
+            : barbers.FirstOrDefault(barber => barber.Id == turn.AssignedBarberId)?.DisplayNameWithStation ?? "Local barber";
         var customerName = string.IsNullOrWhiteSpace(turn.CustomerName) ? "Walk-in customer" : turn.CustomerName;
 
         var row = new Grid
@@ -430,6 +436,11 @@ public sealed partial class LocalAdminPage : Page
             _rotationOrderInput.Text = _nextRotationOrder.ToString();
         }
 
+        if (_showInKioskCheckBox.IsChecked == true && string.IsNullOrWhiteSpace(_stationCodeInput.Text))
+        {
+            _stationCodeInput.Text = FormatStationCode(_nextStationNumber);
+        }
+
         _deleteBarberButton.IsEnabled = false;
     }
 
@@ -443,6 +454,7 @@ public sealed partial class LocalAdminPage : Page
     private void LoadBarberIntoEditor(Barber barber)
     {
         _barberNameInput.Text = barber.DisplayName;
+        _stationCodeInput.Text = barber.StationCode ?? string.Empty;
         _rotationOrderInput.Text = barber.RotationOrder.ToString();
         SelectProfileImage(barber.ProfileImagePath);
         _showInKioskCheckBox.IsChecked = barber.IsActive;
@@ -452,6 +464,7 @@ public sealed partial class LocalAdminPage : Page
     private void ClearBarberEditor()
     {
         _barberNameInput.Text = string.Empty;
+        _stationCodeInput.Text = FormatStationCode(_nextStationNumber);
         _rotationOrderInput.Text = _nextRotationOrder.ToString();
         SelectProfileImage(null);
         _showInKioskCheckBox.IsChecked = true;
@@ -467,6 +480,29 @@ public sealed partial class LocalAdminPage : Page
         }
 
         return rotationOrder;
+    }
+
+    private int? ParseStationNumber(bool isActive)
+    {
+        if (!isActive)
+        {
+            return null;
+        }
+
+        var text = _stationCodeInput.Text.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new InvalidOperationException("Station code is required for active barbers.");
+        }
+
+        if (!text.StartsWith("B-", StringComparison.OrdinalIgnoreCase)
+            || !int.TryParse(text[2..], out var stationNumber)
+            || stationNumber <= 0)
+        {
+            throw new InvalidOperationException("Station code must use the B-1 format.");
+        }
+
+        return stationNumber;
     }
 
     private string? GetSelectedProfileImagePath()
@@ -486,6 +522,28 @@ public sealed partial class LocalAdminPage : Page
         var option = _profileImageOptions.FirstOrDefault(candidate =>
             string.Equals(candidate.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase));
         _profileImageSelector.SelectedItem = option ?? _profileImageOptions[0];
+    }
+
+    private static int GetNextStationNumber(IEnumerable<Barber> barbers)
+    {
+        var usedStations = barbers
+            .Where(barber => barber.IsActive)
+            .Select(barber => barber.StationNumber)
+            .OfType<int>()
+            .ToHashSet();
+        var nextStation = 1;
+
+        while (usedStations.Contains(nextStation))
+        {
+            nextStation++;
+        }
+
+        return nextStation;
+    }
+
+    private static string FormatStationCode(int stationNumber)
+    {
+        return $"B-{stationNumber}";
     }
 
     private static void ReplaceChildren(StackPanel panel, IEnumerable<UIElement> children, string emptyText)

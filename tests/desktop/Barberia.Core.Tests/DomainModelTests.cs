@@ -75,6 +75,65 @@ public sealed class DomainModelTests
     }
 
     [Fact]
+    public void Barber_StoresStationForActiveBarber()
+    {
+        var barber = new Barber(
+            Guid.NewGuid(),
+            "Marcus",
+            BarberState.Available,
+            0,
+            1,
+            stationNumber: 3);
+
+        Assert.Equal(3, barber.StationNumber);
+        Assert.Equal("B-3", barber.StationCode);
+        Assert.Equal("B-3 - Marcus", barber.DisplayNameWithStation);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Barber_RejectsInvalidStationNumbers(int stationNumber)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new Barber(
+                Guid.NewGuid(),
+                "Marcus",
+                BarberState.Available,
+                0,
+                1,
+                stationNumber: stationNumber));
+    }
+
+    [Fact]
+    public void Barber_RejectsActiveBarberWithoutStation()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new Barber(
+                Guid.NewGuid(),
+                "Marcus",
+                BarberState.Available,
+                0,
+                1));
+    }
+
+    [Fact]
+    public void Barber_AllowsInactiveBarberWithoutStation()
+    {
+        var barber = new Barber(
+            Guid.NewGuid(),
+            "Marcus",
+            BarberState.Offline,
+            0,
+            1,
+            isActive: false);
+
+        Assert.Null(barber.StationNumber);
+        Assert.Null(barber.StationCode);
+        Assert.Equal("Marcus", barber.DisplayNameWithStation);
+    }
+
+    [Fact]
     public void AppointmentReservation_UsesConfirmedProtectionWindow()
     {
         var appointment = new AppointmentReservation(

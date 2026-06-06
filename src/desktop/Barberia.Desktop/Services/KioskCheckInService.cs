@@ -78,6 +78,7 @@ public sealed class KioskCheckInService
                 .ToArray();
             var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
             string? assignedBarberName = null;
+            string? assignedBarberStationCode = null;
             var status = KioskCheckInStatus.Waiting;
             var message = acceptsAnyBarber
                 ? "Ticket printed. We will call you when a barber is ready."
@@ -101,6 +102,7 @@ public sealed class KioskCheckInService
                     acceptsAnyBarber,
                     now,
                     assignedBarberName,
+                    assignedBarberStationCode,
                     status,
                     message,
                     deviceId,
@@ -115,6 +117,7 @@ public sealed class KioskCheckInService
             {
                 var assignedBarber = barbers.First(barber => barber.Id == decision.BarberId);
                 assignedBarberName = assignedBarber.DisplayName;
+                assignedBarberStationCode = assignedBarber.StationCode;
                 status = KioskCheckInStatus.Assigned;
                 message = "Ticket printed. Your barber has been notified.";
             }
@@ -125,6 +128,7 @@ public sealed class KioskCheckInService
                 acceptsAnyBarber,
                 now,
                 assignedBarberName,
+                assignedBarberStationCode,
                 status,
                 message,
                 deviceId,
@@ -140,6 +144,7 @@ public sealed class KioskCheckInService
         bool acceptsAnyBarber,
         DateTimeOffset checkedInAt,
         string? assignedBarberName,
+        string? assignedBarberStationCode,
         KioskCheckInStatus status,
         string message,
         string deviceId,
@@ -148,13 +153,18 @@ public sealed class KioskCheckInService
         var requestedBarberNames = requestedBarbers
             .Select(barber => barber.DisplayName)
             .ToArray();
+        var requestedBarberStationCodes = requestedBarbers
+            .Select(barber => barber.StationCode)
+            .ToArray();
         var printResult = _ticketPrinter.Print(new KioskTicketPrintJob(
             turn.TicketNumber,
             CreateTicketQrPayload(turn),
             turn.CustomerName ?? throw new InvalidOperationException("Customer name is required for kiosk ticket printing."),
             requestedBarberNames,
+            requestedBarberStationCodes,
             acceptsAnyBarber,
             assignedBarberName,
+            assignedBarberStationCode,
             checkedInAt,
             deviceId));
 
@@ -177,7 +187,9 @@ public sealed class KioskCheckInService
                 acceptsAnyBarber,
                 requestedBarberIds = turn.RequestedBarberIds,
                 requestedBarberNames,
+                requestedBarberStationCodes,
                 assignedBarberName,
+                assignedBarberStationCode,
                 status = status.ToString(),
                 ticketPrinted = true
             }),
@@ -188,7 +200,9 @@ public sealed class KioskCheckInService
             turn.CustomerName,
             checkedInAt,
             assignedBarberName,
+            assignedBarberStationCode,
             requestedBarberNames,
+            requestedBarberStationCodes,
             acceptsAnyBarber,
             status,
             message);

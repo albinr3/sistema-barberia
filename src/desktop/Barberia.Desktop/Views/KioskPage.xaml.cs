@@ -276,7 +276,7 @@ public sealed partial class KioskPage : Page
                     CreateAvatar(barber),
                     new TextBlock
                     {
-                        Text = barber.DisplayName,
+                        Text = barber.DisplayNameWithStation,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         FontSize = 20,
                         FontWeight = FontWeights.SemiBold,
@@ -464,7 +464,7 @@ public sealed partial class KioskPage : Page
             ", ",
             _barbers
                 .Where(barber => _selectedBarberIds.Contains(barber.Id))
-                .Select(barber => barber.DisplayName));
+                .Select(barber => barber.DisplayNameWithStation));
     }
 
     private void ResetToAnyBarber()
@@ -479,7 +479,11 @@ public sealed partial class KioskPage : Page
         _ticketNumberText.Text = result.TicketNumber;
         _ticketCustomerText.Text = result.CustomerName;
         _ticketBarberText.Text = result.AssignedBarberName
-            ?? (result.AcceptsAnyBarber ? "Any Barber" : string.Join(", ", result.RequestedBarberNames));
+            is not null
+                ? FormatBarberLabel(result.AssignedBarberStationCode, result.AssignedBarberName)
+                : result.AcceptsAnyBarber
+                    ? "Any Barber"
+                    : string.Join(", ", FormatRequestedBarberLabels(result));
         _ticketMessageText.Text = result.Message;
         _ticketTimeText.Text = result.CheckedInAt.ToString("hh:mm tt");
         _checkInPanel.Visibility = Visibility.Collapsed;
@@ -525,6 +529,24 @@ public sealed partial class KioskPage : Page
 
         var initials = string.Concat(parts);
         return string.IsNullOrWhiteSpace(initials) ? "?" : initials;
+    }
+
+    private static IEnumerable<string> FormatRequestedBarberLabels(KioskCheckInResult result)
+    {
+        return result.RequestedBarberNames.Select((name, index) =>
+        {
+            var stationCode = index < result.RequestedBarberStationCodes.Count
+                ? result.RequestedBarberStationCodes[index]
+                : null;
+            return FormatBarberLabel(stationCode, name);
+        });
+    }
+
+    private static string FormatBarberLabel(string? stationCode, string barberName)
+    {
+        return string.IsNullOrWhiteSpace(stationCode)
+            ? barberName
+            : $"{stationCode} - {barberName}";
     }
 
     private static SolidColorBrush Brush(byte red, byte green, byte blue)

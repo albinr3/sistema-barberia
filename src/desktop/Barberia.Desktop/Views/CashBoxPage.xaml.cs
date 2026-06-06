@@ -67,7 +67,7 @@ public sealed partial class CashBoxPage : Page
             _receiptText.Text = result.ReceiptNumber;
             _amountText.Text = $"{result.Amount:0.00}";
             _commissionText.Text = $"{result.Commission:0.00}";
-            _messageText.Text = $"{result.TicketNumber} - {result.Message}";
+            _messageText.Text = $"{result.TicketNumber} - {result.BarberStationCode} - {result.Message}";
             _ticketInput.Text = string.Empty;
             _amountInput.Text = string.Empty;
             SetStatus("Cerrado", success: true);

@@ -93,7 +93,7 @@ public sealed partial class ReportsPage : Page
                         {
                             new TextBlock
                             {
-                                Text = row.DisplayName,
+                                Text = row.DisplayNameWithStation,
                                 FontSize = 18,
                                 FontWeight = FontWeights.SemiBold,
                                 Foreground = Brush(30, 31, 34)
@@ -141,7 +141,7 @@ public sealed partial class ReportsPage : Page
                         {
                             new TextBlock
                             {
-                                Text = $"{row.TicketNumber} - {row.BarberName}",
+                                Text = $"{row.TicketNumber} - {row.BarberNameWithStation}",
                                 FontSize = 17,
                                 FontWeight = FontWeights.SemiBold,
                                 Foreground = Brush(30, 31, 34)

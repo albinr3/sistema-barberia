@@ -12,8 +12,9 @@ Aplicacion movil iOS/Android.
 - POR CONFIRMAR: cuenta de barbero.
 - POR CONFIRMAR: panel admin movil.
 - POR CONFIRMAR: CRUD de barberos desde movil.
-- Si se implementa CRUD movil, debe usar el mismo modelo maestro de Fase 2: nombre visible, orden de rotacion, imagen de perfil opcional y `is_active`.
+- Si se implementa CRUD movil, debe usar el mismo modelo maestro de Fase 2: nombre visible, `station_number`/`station_code`, orden de rotacion, imagen de perfil opcional y `is_active`.
 - Un barbero con `is_active=false` no debe aparecer para nuevas reservas ni nuevos turnos, pero su historial debe seguir visible para reportes y auditoria.
+- La app movil no debe reasignar una estacion `B-#` ocupada por otro barbero activo.
 
 ## Pendiente
 

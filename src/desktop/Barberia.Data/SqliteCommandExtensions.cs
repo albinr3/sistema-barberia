@@ -18,4 +18,9 @@ internal static class SqliteCommandExtensions
     {
         command.Parameters.AddWithValue(name, value);
     }
+
+    internal static void AddNullableInteger(this SqliteCommand command, string name, int? value)
+    {
+        command.Parameters.AddWithValue(name, value is null ? DBNull.Value : value);
+    }
 }

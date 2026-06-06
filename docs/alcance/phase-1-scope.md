@@ -13,8 +13,8 @@ Aplicacion Windows local para operacion inicial de la barberia.
 - Autocaja local para cierre en efectivo operada por el barbero.
 - Reportes administrativos locales, comisiones persistidas, hardware POS con simuladores y foundation de sincronizacion.
 - Panel de administracion local para estado operativo, cola activa, cancelacion de tickets activos, auditoria y base SQLite.
-- CRUD local de barberos con nombre, orden de rotacion, imagen de perfil opcional importada desde Explorador de Windows y bandera `is_active`.
-- Desactivacion local de barberos: un barbero inactivo no aparece en kiosco ni en flujos operativos locales; queda visible en administracion para reactivacion e historial.
+- CRUD local de barberos con nombre, estacion fija `station_number` visible como `B-#`, orden de rotacion, imagen de perfil opcional importada desde Explorador de Windows y bandera `is_active`.
+- Desactivacion local de barberos: un barbero inactivo no aparece en kiosco ni en flujos operativos locales; queda visible en administracion para reactivacion e historial, y su estacion queda disponible para otro barbero.
 
 ## Fuera De Alcance Por Ahora
 

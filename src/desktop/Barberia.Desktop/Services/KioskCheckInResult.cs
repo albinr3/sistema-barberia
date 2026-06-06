@@ -11,7 +11,9 @@ public sealed record KioskCheckInResult(
     string CustomerName,
     DateTimeOffset CheckedInAt,
     string? AssignedBarberName,
+    string? AssignedBarberStationCode,
     IReadOnlyList<string> RequestedBarberNames,
+    IReadOnlyList<string?> RequestedBarberStationCodes,
     bool AcceptsAnyBarber,
     KioskCheckInStatus Status,
     string Message);

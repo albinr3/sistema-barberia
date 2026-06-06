@@ -19,11 +19,24 @@ internal sealed class TestDatabase : IDisposable
 
     public static TestDatabase Create()
     {
+        return Create(initialize: true);
+    }
+
+    public static TestDatabase CreateUninitialized()
+    {
+        return Create(initialize: false);
+    }
+
+    private static TestDatabase Create(bool initialize)
+    {
         var name = Guid.NewGuid().ToString("N");
         var connectionString = $"Data Source={name};Mode=Memory;Cache=Shared";
         var connectionFactory = new SqliteConnectionFactory(connectionString);
         var keepAliveConnection = connectionFactory.OpenConnection();
-        LocalDatabaseInitializer.Initialize(keepAliveConnection);
+        if (initialize)
+        {
+            LocalDatabaseInitializer.Initialize(keepAliveConnection);
+        }
 
         return new TestDatabase(connectionFactory, keepAliveConnection);
     }

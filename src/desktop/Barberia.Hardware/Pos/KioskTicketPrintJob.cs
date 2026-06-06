@@ -5,7 +5,9 @@ public sealed record KioskTicketPrintJob(
     string QrPayload,
     string CustomerName,
     IReadOnlyList<string> RequestedBarberNames,
+    IReadOnlyList<string?> RequestedBarberStationCodes,
     bool AcceptsAnyBarber,
     string? AssignedBarberName,
+    string? AssignedBarberStationCode,
     DateTimeOffset CheckedInAt,
     string DeviceId);

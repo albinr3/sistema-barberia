@@ -38,6 +38,11 @@ public sealed class SimulatedKioskTicketPrinter : IKioskTicketPrinter
             return HardwareOperationResult.Failure("At least one requested barber is required.");
         }
 
+        if (job.RequestedBarberStationCodes.Count != job.RequestedBarberNames.Count)
+        {
+            return HardwareOperationResult.Failure("Requested barber station codes must match requested barber names.");
+        }
+
         if (string.IsNullOrWhiteSpace(job.DeviceId))
         {
             return HardwareOperationResult.Failure("Device id is required to print the kiosk ticket.");

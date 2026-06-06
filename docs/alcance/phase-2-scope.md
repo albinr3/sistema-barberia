@@ -11,8 +11,9 @@ Componentes web para booking, usuarios y administracion.
 - POR CONFIRMAR: depositos online.
 - POR CONFIRMAR: panel admin web.
 - CRUD web de barberos sincronizado con el CRUD local de Fase 1.
-- Los barberos cloud deben incluir al menos `id`, nombre visible, orden de rotacion, imagen de perfil opcional, estado operativo sincronizable cuando aplique y bandera `is_active`.
+- Los barberos cloud deben incluir al menos `id`, nombre visible, `station_number`/`station_code`, orden de rotacion, imagen de perfil opcional, estado operativo sincronizable cuando aplique y bandera `is_active`.
 - La bandera `is_active=false` debe ocultar al barbero de booking web, kiosco local y flujos operativos para nuevos turnos, sin borrar historial.
+- La estacion `B-#` debe ser unica entre barberos activos y liberarse cuando `is_active=false`.
 - POR CONFIRMAR: disponibilidad diaria.
 - POR CONFIRMAR: cuenta web de barbero.
 

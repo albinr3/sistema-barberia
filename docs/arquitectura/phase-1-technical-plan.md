@@ -25,7 +25,7 @@ Cuando se apruebe implementar Fase 1, el alcance tecnico sera:
 - Autocaja operada por el barbero para cierre en efectivo.
 - Abstracciones de impresora, escaner QR y cash drawer.
 - Reportes locales basicos para operacion, pagos y comisiones.
-- Administracion local con CRUD de barberos, imagen opcional, orden de rotacion y bandera `is_active`.
+- Administracion local con CRUD de barberos, estacion fija `station_number` visible como `B-#`, imagen opcional, orden de rotacion y bandera `is_active`.
 - Cola de eventos local para sincronizacion futura no bloqueante.
 - Cliente API futuro aislado de la operacion local.
 
@@ -48,7 +48,7 @@ Fase 1 no debe implementar:
 
 Las citas pertenecen a Fase 2, pero Fase 1 debe reservar espacio tecnico para recibirlas por sincronizacion y proteger barberos por cita proxima.
 
-El CRUD local de barberos de Fase 1 no reemplaza el CRUD web futuro: crea el contrato operativo minimo que Fase 2/3 deben sincronizar con la nube. `BarberState` representa disponibilidad operativa; `is_active` representa habilitacion administrativa para kiosco, booking y nuevos turnos.
+El CRUD local de barberos de Fase 1 no reemplaza el CRUD web futuro: crea el contrato operativo minimo que Fase 2/3 deben sincronizar con la nube. `BarberState` representa disponibilidad operativa; `is_active` representa habilitacion administrativa para kiosco, booking y nuevos turnos; `station_number` representa la estacion fisica fija del barbero activo y se muestra como `B-#`.
 
 ## Arquitectura Offline-First
 

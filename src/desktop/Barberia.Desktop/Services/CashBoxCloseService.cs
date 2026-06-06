@@ -105,10 +105,13 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException("El ticket y el barbero deben estar en servicio para cerrar en autocaja.");
             }
 
+            var barberStationCode = barber.StationCode
+                ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada.");
             var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
                 receiptNumber,
                 turn.TicketNumber,
                 barber.DisplayName,
+                barberStationCode,
                 amount,
                 commission,
                 Currency,
@@ -169,6 +172,7 @@ public sealed class CashBoxCloseService
                 {
                     ticket = turn.TicketNumber,
                     barberId,
+                    barberStationCode,
                     amount,
                     currency = Currency,
                     commission,
@@ -182,6 +186,7 @@ public sealed class CashBoxCloseService
             result = new CashBoxDepositResult(
                 turn.TicketNumber,
                 barber.DisplayName,
+                barberStationCode,
                 amount,
                 commission,
                 receiptNumber,

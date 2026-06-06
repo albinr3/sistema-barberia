@@ -9,6 +9,7 @@ public sealed record Barber
         int clientsServedToday,
         int rotationOrder,
         DateTimeOffset? checkedInAt = null,
+        int? stationNumber = null,
         string? profileImagePath = null,
         bool isActive = true)
     {
@@ -32,12 +33,23 @@ public sealed record Barber
             throw new ArgumentOutOfRangeException(nameof(rotationOrder), "Rotation order cannot be negative.");
         }
 
+        if (stationNumber is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(stationNumber), "Station number must be positive.");
+        }
+
+        if (isActive && stationNumber is null)
+        {
+            throw new ArgumentException("Active barbers require a fixed station number.", nameof(stationNumber));
+        }
+
         Id = id;
         DisplayName = displayName.Trim();
         State = state;
         ClientsServedToday = clientsServedToday;
         RotationOrder = rotationOrder;
         CheckedInAt = checkedInAt;
+        StationNumber = isActive ? stationNumber : null;
         ProfileImagePath = string.IsNullOrWhiteSpace(profileImagePath) ? null : profileImagePath.Trim();
         IsActive = isActive;
     }
@@ -53,6 +65,12 @@ public sealed record Barber
     public int RotationOrder { get; }
 
     public DateTimeOffset? CheckedInAt { get; }
+
+    public int? StationNumber { get; }
+
+    public string? StationCode => StationNumber is null ? null : $"B-{StationNumber.Value}";
+
+    public string DisplayNameWithStation => StationCode is null ? DisplayName : $"{StationCode} - {DisplayName}";
 
     public string? ProfileImagePath { get; }
 
