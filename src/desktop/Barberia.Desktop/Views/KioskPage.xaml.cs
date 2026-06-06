@@ -262,8 +262,7 @@ public sealed partial class KioskPage : Page
                         Foreground = Brush(26, 28, 30),
                         TextAlignment = TextAlignment.Center,
                         TextWrapping = TextWrapping.WrapWholeWords
-                    },
-                    CreateStatusBadge(barber)
+                    }
                 }
             }
         };
@@ -290,7 +289,6 @@ public sealed partial class KioskPage : Page
 
     private static Grid CreateAvatar(Barber barber)
     {
-        var accent = GetStateColor(barber.State);
         var avatar = new Grid
         {
             Width = 96,
@@ -330,39 +328,7 @@ public sealed partial class KioskPage : Page
             });
         }
 
-        var statusDot = new Ellipse
-        {
-            Width = 16,
-            Height = 16,
-            Fill = accent,
-            Stroke = Brush(255, 255, 255),
-            StrokeThickness = 2,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Bottom
-        };
-        avatar.Children.Add(statusDot);
-
         return avatar;
-    }
-
-    private static Border CreateStatusBadge(Barber barber)
-    {
-        var (text, background, foreground) = GetStatusBadge(barber);
-
-        return new Border
-        {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Background = background,
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(8, 4, 8, 4),
-            Child = new TextBlock
-            {
-                Text = text,
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = foreground
-            }
-        };
     }
 
     private Border CreateEmptyState()
@@ -471,29 +437,6 @@ public sealed partial class KioskPage : Page
     private static bool IsSelectable(Barber barber)
     {
         return barber.State is BarberState.Available or BarberState.Called or BarberState.InService;
-    }
-
-    private static (string Text, SolidColorBrush Background, SolidColorBrush Foreground) GetStatusBadge(Barber barber)
-    {
-        return barber.State switch
-        {
-            BarberState.Available => ("AVAILABLE", Brush(230, 244, 234), Brush(19, 115, 51)),
-            BarberState.Called => ("OCCUPIED", Brush(254, 247, 224), Brush(176, 96, 0)),
-            BarberState.InService => ("BUSY", Brush(255, 218, 214), Brush(147, 0, 10)),
-            BarberState.Offline => ("OFFLINE", Brush(255, 218, 214), Brush(147, 0, 10)),
-            _ => ("LOCKED", Brush(243, 243, 246), Brush(68, 70, 85))
-        };
-    }
-
-    private static SolidColorBrush GetStateColor(BarberState state)
-    {
-        return state switch
-        {
-            BarberState.Available => Brush(34, 197, 94),
-            BarberState.Called => Brush(245, 158, 11),
-            BarberState.InService or BarberState.Offline => Brush(239, 68, 68),
-            _ => Brush(117, 118, 135)
-        };
     }
 
     private static string GetInitials(string displayName)
