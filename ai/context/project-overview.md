@@ -25,6 +25,7 @@ Alcance confirmado:
 - Pantalla publica de espera.
 - Panel de barbero.
 - Autocaja operada por el barbero.
+- Administracion local con CRUD de barberos, estacion fija `B-#`, imagen opcional y desactivacion por `is_active`.
 - Reportes, comisiones, hardware POS y sincronizacion cloud.
 - Operacion local aunque no haya internet.
 
@@ -46,7 +47,9 @@ Alcance confirmado:
 - Cuenta de usuario cliente.
 - Depositos online.
 - Panel admin web.
-- CRUD de barberos.
+- CRUD cloud/web de barberos sincronizado con el CRUD local.
+- Soporte de `is_active` para ocultar barberos de booking, kiosco y nuevos turnos sin borrar historial.
+- Soporte de `station_number`/`station_code` para conservar la estacion fija del barbero activo.
 - Disponibilidad diaria.
 - Cuenta web de barbero.
 - Sincronizacion de citas y disponibilidad con Windows.
@@ -62,7 +65,8 @@ Alcance confirmado:
 - Historial de citas.
 - Cuenta de barbero.
 - Panel admin movil.
-- CRUD de barberos.
+- CRUD movil de barberos si se aprueba, reutilizando el modelo cloud con `is_active`.
+- CRUD movil de barberos debe reutilizar `station_number`/`station_code` si administra barberos.
 - Control rapido de disponibilidad.
 
 ## Arquitectura General Confirmada
@@ -71,4 +75,3 @@ Alcance confirmado:
 - La nube no debe bloquear la operacion local.
 - Supabase/PostgreSQL sera base cloud compartida para booking web, app movil, autenticacion, disponibilidad, citas, reportes y sincronizacion.
 - Las fases se gestionan con milestones, labels e issues, no con carpetas separadas.
-

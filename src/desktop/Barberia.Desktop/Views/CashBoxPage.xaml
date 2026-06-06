@@ -78,7 +78,7 @@
                         <StackPanel Spacing="14">
                             <ComboBox
                                 x:Name="_barberSelector"
-                                DisplayMemberPath="DisplayName"
+                                DisplayMemberPath="DisplayNameWithStation"
                                 PlaceholderText="Seleccionar barbero"
                                 Style="{StaticResource OperationalComboBoxStyle}" />
                             <TextBox

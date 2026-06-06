@@ -70,7 +70,7 @@ public sealed partial class BarberPanelPage : Page
         {
             var result = _service.StartService(barberId, _ticketInput.Text);
             _ticketInput.Text = string.Empty;
-            _messageText.Text = $"{result.TicketNumber} - {result.Message}";
+            _messageText.Text = $"{result.TicketNumber} - {result.BarberStationCode} - {result.Message}";
             SetStatus("En servicio", success: true);
             LoadPanel(barberId);
         }
@@ -151,7 +151,7 @@ public sealed partial class BarberPanelPage : Page
         }
         else
         {
-            _barberStateText.Text = $"Estado: {FormatBarberState(selectedBarber.State)}";
+            _barberStateText.Text = $"{selectedBarber.DisplayNameWithStation} - Estado: {FormatBarberState(selectedBarber.State)}";
             _clientsTodayText.Text = $"Clientes hoy: {selectedBarber.ClientsServedToday}";
         }
 

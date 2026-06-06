@@ -127,6 +127,7 @@ public sealed class LocalAdminReportRepository
             SELECT
                 b.id,
                 b.display_name,
+                b.station_number,
                 COUNT(p.id) AS services_closed,
                 COALESCE(SUM(p.amount_cents), 0) AS cash_collected_cents,
                 COALESCE(SUM(CASE WHEN p.commission_cents IS NULL THEN 0 ELSE p.commission_cents END), 0) AS commission_cents,
@@ -137,7 +138,7 @@ public sealed class LocalAdminReportRepository
                 ON p.barber_id = b.id
                AND p.collected_at >= $from
                AND p.collected_at < $to
-            GROUP BY b.id, b.display_name
+            GROUP BY b.id, b.display_name, b.station_number
             ORDER BY cash_collected_cents DESC, services_closed DESC, b.display_name;
             """;
         AddRange(command, fromInclusive, toExclusive);
@@ -149,11 +150,12 @@ public sealed class LocalAdminReportRepository
             rows.Add(new BarberReportRow(
                 Guid.Parse(reader.GetString(0)),
                 reader.GetString(1),
-                reader.GetInt32(2),
-                reader.GetInt64(3),
+                reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                reader.GetInt32(3),
                 reader.GetInt64(4),
-                reader.GetInt32(5),
-                reader.GetInt32(6)));
+                reader.GetInt64(5),
+                reader.GetInt32(6),
+                reader.GetInt32(7)));
         }
 
         return rows;
@@ -169,6 +171,7 @@ public sealed class LocalAdminReportRepository
                 COALESCE(t.ticket_number, 'Sin ticket') AS ticket_number,
                 p.barber_id,
                 COALESCE(b.display_name, 'Barbero local') AS barber_name,
+                b.station_number,
                 p.amount_cents,
                 p.currency,
                 p.collected_at,
@@ -196,13 +199,14 @@ public sealed class LocalAdminReportRepository
                 reader.GetString(2),
                 Guid.Parse(reader.GetString(3)),
                 reader.GetString(4),
-                reader.GetInt64(5),
-                reader.GetString(6),
-                DateTimeOffset.Parse(reader.GetString(7)),
-                reader.GetString(8),
-                reader.IsDBNull(9) ? null : reader.GetString(9),
-                reader.GetInt32(10) == 1,
-                reader.IsDBNull(11) ? null : reader.GetInt64(11)));
+                reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                reader.GetInt64(6),
+                reader.GetString(7),
+                DateTimeOffset.Parse(reader.GetString(8)),
+                reader.GetString(9),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.GetInt32(11) == 1,
+                reader.IsDBNull(12) ? null : reader.GetInt64(12)));
         }
 
         return rows;

@@ -4,6 +4,7 @@ public sealed record CashReceiptPrintJob(
     string ReceiptNumber,
     string TicketNumber,
     string BarberName,
+    string BarberStationCode,
     decimal Amount,
     decimal Commission,
     string Currency,

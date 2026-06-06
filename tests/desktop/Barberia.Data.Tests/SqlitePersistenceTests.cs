@@ -18,8 +18,8 @@ public sealed class SqlitePersistenceTests
         var requestedBarberId = Guid.NewGuid();
 
         var barberRepository = new LocalBarberRepository(database.Connection);
-        barberRepository.Upsert(new Barber(barberId, " Luis ", BarberState.Available, 0, 1, now), now);
-        barberRepository.Upsert(new Barber(requestedBarberId, "Ana", BarberState.Available, 1, 2, now), now);
+        barberRepository.Upsert(new Barber(barberId, " Luis ", BarberState.Available, 0, 1, now, profileImagePath: " Assets/barber1.png ", isActive: false), now);
+        barberRepository.Upsert(new Barber(requestedBarberId, "Ana", BarberState.Available, 1, 2, now, stationNumber: 1), now);
 
         var turnRepository = new LocalTurnRepository(database.Connection);
         var laterTurn = new Turn(
@@ -34,7 +34,8 @@ public sealed class SqlitePersistenceTests
             TurnState.Waiting,
             TurnSource.WalkIn,
             now,
-            requestedBarberIds: [requestedBarberId]);
+            requestedBarberIds: [requestedBarberId],
+            customerName: " Mia ");
 
         turnRepository.Upsert(laterTurn, now);
         turnRepository.Upsert(firstTurn, now);
@@ -45,14 +46,167 @@ public sealed class SqlitePersistenceTests
         Assert.NotNull(savedBarber);
         Assert.Equal("Luis", savedBarber.DisplayName);
         Assert.Equal(BarberState.Available, savedBarber.State);
+        Assert.Equal("Assets/barber1.png", savedBarber.ProfileImagePath);
+        Assert.False(savedBarber.IsActive);
+        Assert.Equal(1, barberRepository.GetById(requestedBarberId)?.StationNumber);
         Assert.Collection(
             waitingTurns,
             turn =>
             {
                 Assert.Equal(firstTurn.Id, turn.Id);
                 Assert.Equal([requestedBarberId], turn.RequestedBarberIds);
+                Assert.Equal("Mia", turn.CustomerName);
             },
             turn => Assert.Equal(laterTurn.Id, turn.Id));
+    }
+
+    [Fact]
+    public void BarberRepository_DeletesBarbersWithoutLocalHistory()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T10:00:00Z");
+        var barberId = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(barberId, "Mia", BarberState.Offline, 0, 0, now, isActive: false), now);
+        repository.Delete(barberId);
+
+        Assert.Null(repository.GetById(barberId));
+    }
+
+    [Fact]
+    public void BarberRepository_UpdatesActiveFlag()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T10:30:00Z");
+        var barberId = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 1), now);
+        repository.SetActive(barberId, isActive: false, now.AddMinutes(1));
+
+        var savedBarber = repository.GetById(barberId);
+
+        Assert.False(savedBarber?.IsActive);
+        Assert.Null(savedBarber?.StationNumber);
+    }
+
+    [Fact]
+    public void BarberRepository_PersistsStationNumber()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T10:45:00Z");
+        var barberId = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 7), now);
+
+        var savedBarber = repository.GetById(barberId);
+
+        Assert.Equal(7, savedBarber?.StationNumber);
+        Assert.Equal("B-7", savedBarber?.StationCode);
+    }
+
+    [Fact]
+    public void BarberRepository_RejectsDuplicateActiveStations()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T10:50:00Z");
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(Guid.NewGuid(), "Ana", BarberState.Available, 0, 0, now, stationNumber: 1), now);
+
+        Assert.Throws<SqliteException>(() =>
+            repository.Upsert(new Barber(Guid.NewGuid(), "Luis", BarberState.Available, 0, 1, now, stationNumber: 1), now));
+    }
+
+    [Fact]
+    public void BarberRepository_ReleasesStationWhenDeactivated()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T10:55:00Z");
+        var barberId = Guid.NewGuid();
+        var replacementId = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 1), now);
+        repository.SetActive(barberId, isActive: false, now.AddMinutes(1));
+        repository.Upsert(new Barber(replacementId, "Luis", BarberState.Available, 0, 1, now, stationNumber: 1), now.AddMinutes(2));
+
+        Assert.Null(repository.GetById(barberId)?.StationNumber);
+        Assert.Equal(1, repository.GetById(replacementId)?.StationNumber);
+    }
+
+    [Fact]
+    public void LocalDatabaseInitializer_AssignsStationsToExistingActiveBarbers()
+    {
+        using var database = TestDatabase.CreateUninitialized();
+        using (var command = database.Connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE barbers (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    display_name TEXT NOT NULL,
+                    state INTEGER NOT NULL,
+                    clients_served_today INTEGER NOT NULL,
+                    rotation_order INTEGER NOT NULL,
+                    checked_in_at TEXT NULL,
+                    profile_image_path TEXT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                );
+
+                INSERT INTO barbers (id, display_name, state, clients_served_today, rotation_order, checked_in_at, profile_image_path, is_active, updated_at)
+                VALUES
+                    ('11111111-1111-1111-1111-111111111111', 'Ana', 1, 0, 0, NULL, NULL, 1, '2026-06-04T11:00:00.0000000+00:00'),
+                    ('22222222-2222-2222-2222-222222222222', 'Luis', 1, 0, 1, NULL, NULL, 1, '2026-06-04T11:00:00.0000000+00:00'),
+                    ('33333333-3333-3333-3333-333333333333', 'Mia', 4, 0, 2, NULL, NULL, 0, '2026-06-04T11:00:00.0000000+00:00');
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        LocalDatabaseInitializer.Initialize(database.Connection);
+
+        var barbers = new LocalBarberRepository(database.Connection).ListAll();
+
+        Assert.Collection(
+            barbers,
+            barber =>
+            {
+                Assert.Equal("Ana", barber.DisplayName);
+                Assert.Equal(1, barber.StationNumber);
+            },
+            barber =>
+            {
+                Assert.Equal("Luis", barber.DisplayName);
+                Assert.Equal(2, barber.StationNumber);
+            },
+            barber =>
+            {
+                Assert.Equal("Mia", barber.DisplayName);
+                Assert.False(barber.IsActive);
+                Assert.Null(barber.StationNumber);
+            });
+    }
+
+    [Fact]
+    public void BarberRepository_ListAllUsesRotationOrderNotStationNumber()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T11:10:00Z");
+        var firstBarber = Guid.NewGuid();
+        var secondBarber = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(firstBarber, "Ana", BarberState.Available, 0, 0, now, stationNumber: 9), now);
+        repository.Upsert(new Barber(secondBarber, "Luis", BarberState.Available, 0, 1, now, stationNumber: 1), now);
+
+        var barbers = repository.ListAll();
+
+        Assert.Collection(
+            barbers,
+            barber => Assert.Equal(firstBarber, barber.Id),
+            barber => Assert.Equal(secondBarber, barber.Id));
     }
 
     [Fact]
@@ -69,7 +223,7 @@ public sealed class SqlitePersistenceTests
             AppointmentReservation.DefaultProtectionWindow);
 
         new LocalBarberRepository(database.Connection).Upsert(
-            new Barber(barberId, "Ana", BarberState.Available, 0, 0, now),
+            new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 1),
             now);
         new AppointmentReservationRepository(database.Connection).Upsert(appointment, now);
 
@@ -121,8 +275,8 @@ public sealed class SqlitePersistenceTests
         var barberRepository = new LocalBarberRepository(database.Connection);
         var repository = new LocalTurnRepository(database.Connection);
 
-        barberRepository.Upsert(new Barber(barberId, "Luis", BarberState.Called, 0, 0, now), now);
-        barberRepository.Upsert(new Barber(otherBarberId, "Ana", BarberState.Called, 0, 1, now), now);
+        barberRepository.Upsert(new Barber(barberId, "Luis", BarberState.Called, 0, 0, now, stationNumber: 1), now);
+        barberRepository.Upsert(new Barber(otherBarberId, "Ana", BarberState.Called, 0, 1, now, stationNumber: 2), now);
 
         repository.Upsert(new Turn(Guid.NewGuid(), "B-001", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
         repository.Upsert(new Turn(Guid.NewGuid(), "B-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(1), barberId), now);
@@ -138,6 +292,21 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void TurnRepository_CancelsActiveTurns()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T13:00:00Z");
+        var turnId = Guid.NewGuid();
+        var repository = new LocalTurnRepository(database.Connection);
+
+        repository.Upsert(new Turn(turnId, "C-001", TurnState.Called, TurnSource.WalkIn, now), now);
+        repository.MarkCancelled(turnId, now.AddMinutes(1));
+
+        Assert.Equal(TurnState.Cancelled, repository.GetById(turnId)?.State);
+        Assert.Empty(repository.ListActiveForPublicDisplay());
+    }
+
+    [Fact]
     public void Repositories_StartServiceForAssignedTicket()
     {
         using var database = TestDatabase.Create();
@@ -147,7 +316,7 @@ public sealed class SqlitePersistenceTests
 
         var barberRepository = new LocalBarberRepository(database.Connection);
         var turnRepository = new LocalTurnRepository(database.Connection);
-        barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.Called, 0, 0, now), now);
+        barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.Called, 0, 0, now, stationNumber: 1), now);
         turnRepository.Upsert(new Turn(turnId, "B-010", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
 
         var turnByTicket = turnRepository.GetByTicketNumber("B-010");
@@ -168,7 +337,7 @@ public sealed class SqlitePersistenceTests
         var turnId = Guid.NewGuid();
 
         new LocalBarberRepository(database.Connection).Upsert(
-            new Barber(barberId, "Luis", BarberState.InService, 2, 0, now.AddHours(-8)),
+            new Barber(barberId, "Luis", BarberState.InService, 2, 0, now.AddHours(-8), stationNumber: 1),
             now);
         new LocalTurnRepository(database.Connection).Upsert(
             new Turn(turnId, "A-010", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(-30), barberId),
@@ -218,9 +387,9 @@ public sealed class SqlitePersistenceTests
         var thirdBarber = Guid.NewGuid();
         var repository = new LocalBarberRepository(database.Connection);
 
-        repository.Upsert(new Barber(firstBarber, "Ana", BarberState.Available, 1, 0, now), now);
-        repository.Upsert(new Barber(closingBarber, "Luis", BarberState.InService, 2, 1, now), now);
-        repository.Upsert(new Barber(thirdBarber, "Mia", BarberState.Available, 1, 2, now), now);
+        repository.Upsert(new Barber(firstBarber, "Ana", BarberState.Available, 1, 0, now, stationNumber: 1), now);
+        repository.Upsert(new Barber(closingBarber, "Luis", BarberState.InService, 2, 1, now, stationNumber: 2), now);
+        repository.Upsert(new Barber(thirdBarber, "Mia", BarberState.Available, 1, 2, now, stationNumber: 3), now);
 
         repository.SetRotationOrder(firstBarber, 0, now.AddMinutes(1));
         repository.SetRotationOrder(thirdBarber, 1, now.AddMinutes(1));
@@ -250,7 +419,7 @@ public sealed class SqlitePersistenceTests
         var duplicatedEventId = Guid.NewGuid();
 
         new LocalBarberRepository(database.Connection).Upsert(
-            new Barber(barberId, "Luis", BarberState.InService, 2, 0, now.AddHours(-8)),
+            new Barber(barberId, "Luis", BarberState.InService, 2, 0, now.AddHours(-8), stationNumber: 1),
             now);
         new LocalTurnRepository(database.Connection).Upsert(
             new Turn(turnId, "A-010", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(-30), barberId),
@@ -296,9 +465,9 @@ public sealed class SqlitePersistenceTests
         var turnRepository = new LocalTurnRepository(database.Connection);
         var paymentRepository = new CashPaymentRepository(database.Connection);
 
-        barberRepository.Upsert(new Barber(luisId, "Luis", BarberState.Available, 3, 0, from), from);
-        barberRepository.Upsert(new Barber(anaId, "Ana", BarberState.Available, 1, 1, from), from);
-        barberRepository.Upsert(new Barber(miaId, "Mia", BarberState.Offline, 0, 2, from), from);
+        barberRepository.Upsert(new Barber(luisId, "Luis", BarberState.Available, 3, 0, from, stationNumber: 1), from);
+        barberRepository.Upsert(new Barber(anaId, "Ana", BarberState.Available, 1, 1, from, stationNumber: 2), from);
+        barberRepository.Upsert(new Barber(miaId, "Mia", BarberState.Offline, 0, 2, from, isActive: false), from);
 
         turnRepository.Upsert(new Turn(luisTurnId, "A-001", TurnState.Completed, TurnSource.WalkIn, from.AddHours(9), luisId), from.AddHours(10));
         turnRepository.Upsert(new Turn(anaTurnId, "A-002", TurnState.Completed, TurnSource.Appointment, from.AddHours(9).AddMinutes(10), anaId), from.AddHours(10).AddMinutes(20));
@@ -360,6 +529,7 @@ public sealed class SqlitePersistenceTests
             row =>
             {
                 Assert.Equal(anaId, row.BarberId);
+                Assert.Equal(2, row.StationNumber);
                 Assert.Equal(1, row.ServicesClosed);
                 Assert.Equal(4000, row.CashCollectedCents);
                 Assert.Equal(1, row.PaymentsMissingCommission);
@@ -367,6 +537,7 @@ public sealed class SqlitePersistenceTests
             row =>
             {
                 Assert.Equal(luisId, row.BarberId);
+                Assert.Equal(1, row.StationNumber);
                 Assert.Equal(1, row.ServicesClosed);
                 Assert.Equal(2500, row.CashCollectedCents);
                 Assert.Equal(500, row.CommissionCents);
@@ -374,6 +545,7 @@ public sealed class SqlitePersistenceTests
             row =>
             {
                 Assert.Equal(miaId, row.BarberId);
+                Assert.Null(row.StationNumber);
                 Assert.Equal(0, row.ServicesClosed);
                 Assert.Equal(0, row.CashCollectedCents);
             });
@@ -383,12 +555,14 @@ public sealed class SqlitePersistenceTests
             {
                 Assert.Equal("A-002", payment.TicketNumber);
                 Assert.Equal("Ana", payment.BarberName);
+                Assert.Equal(2, payment.BarberStationNumber);
                 Assert.Null(payment.CommissionCents);
             },
             payment =>
             {
                 Assert.Equal("A-001", payment.TicketNumber);
                 Assert.Equal("Luis", payment.BarberName);
+                Assert.Equal(1, payment.BarberStationNumber);
                 Assert.Equal(500, payment.CommissionCents);
             });
     }

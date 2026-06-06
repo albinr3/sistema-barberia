@@ -30,7 +30,9 @@ src/desktop/Barberia.Shared
 
 Responsable de la aplicacion WinUI 3, navegacion, composicion de modulos visuales y wiring de dependencias.
 
-Contiene pantallas futuras para kiosco, pantalla publica, panel de barbero, autocaja, administracion local y reportes. No contiene reglas de negocio de asignacion de turnos ni logica de persistencia.
+Contiene pantallas para kiosco, pantalla publica, panel de barbero, autocaja, administracion local y reportes. No contiene reglas de negocio de asignacion de turnos ni logica de persistencia.
+
+La administracion local puede crear, editar, desactivar y eliminar barberos sin historial. Debe tratar `is_active` como atributo administrativo distinto de `BarberState`, porque Fase 2/3 sincronizaran ese atributo con la base cloud. Tambien debe mantener `station_number` como estacion fisica fija `B-#`, unica entre barberos activos y liberada al desactivar.
 
 ### Barberia.Core
 
@@ -40,6 +42,7 @@ Debe contener:
 
 - Motor de asignacion de turnos.
 - Estados centrales de barbero y turno.
+- Atributos centrales del barbero necesarios para sincronizacion futura, como estacion `station_number`, imagen opcional e `is_active`.
 - Reglas de disponibilidad local.
 - Reglas de cola rotativa.
 - Reglas de cierre operativo que afecten dominio.

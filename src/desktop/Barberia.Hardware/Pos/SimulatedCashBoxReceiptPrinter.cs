@@ -28,6 +28,16 @@ public sealed class SimulatedCashBoxReceiptPrinter : ICashBoxReceiptPrinter
             return HardwareOperationResult.Failure("Ticket number is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(job.BarberName))
+        {
+            return HardwareOperationResult.Failure("Barber name is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(job.BarberStationCode))
+        {
+            return HardwareOperationResult.Failure("Barber station code is required.");
+        }
+
         if (string.IsNullOrWhiteSpace(job.DeviceId))
         {
             return HardwareOperationResult.Failure("Device id is required to print the cash receipt.");

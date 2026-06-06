@@ -6,7 +6,7 @@ Responsabilidades futuras:
 
 - Motor de asignacion de turnos.
 - Estados centrales de barbero y turno.
-- Reglas de disponibilidad local y cola rotativa.
+- Reglas de disponibilidad local, estacion fija `B-#` y cola rotativa.
 - Modelos de dominio sin dependencias de infraestructura.
 
 Restricciones actuales:

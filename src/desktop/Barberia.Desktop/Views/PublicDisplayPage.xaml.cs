@@ -106,7 +106,7 @@ public sealed partial class PublicDisplayPage : Page
     {
         var barberName = turn.AssignedBarberId is null
             ? "Sin asignar"
-            : barbers.FirstOrDefault(barber => barber.Id == turn.AssignedBarberId)?.DisplayName ?? "Barbero local";
+            : barbers.FirstOrDefault(barber => barber.Id == turn.AssignedBarberId)?.DisplayNameWithStation ?? "Barbero local";
 
         return new Border
         {
@@ -180,7 +180,7 @@ public sealed partial class PublicDisplayPage : Page
                         {
                             new TextBlock
                             {
-                                Text = barber.DisplayName,
+                                Text = barber.DisplayNameWithStation,
                                 FontSize = 18,
                                 FontWeight = FontWeights.SemiBold,
                                 Foreground = Brush(30, 31, 34)
@@ -204,7 +204,7 @@ public sealed partial class PublicDisplayPage : Page
         IReadOnlyList<Barber> barbers,
         bool isProtected)
     {
-        var barberName = barbers.FirstOrDefault(barber => barber.Id == appointment.BarberId)?.DisplayName
+        var barberName = barbers.FirstOrDefault(barber => barber.Id == appointment.BarberId)?.DisplayNameWithStation
             ?? "Barbero local";
 
         return new Border

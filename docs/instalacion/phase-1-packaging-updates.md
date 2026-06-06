@@ -18,12 +18,14 @@ Rutas locales estables:
 
 - Base SQLite: `%LocalAppData%\BarberiaSystem\barberia-local.db`.
 - Configuracion futura: `%LocalAppData%\BarberiaSystem\config`.
+- Imagenes importadas de barberos: `%LocalAppData%\BarberiaSystem\profile-images`.
 - Logs: `%LocalAppData%\BarberiaSystem\logs`.
 
 Reglas:
 
 - Un update nunca debe borrar `%LocalAppData%\BarberiaSystem`.
 - La base SQLite existente debe mantenerse en la misma ruta para no romper instalaciones previas.
+- Las imagenes importadas de barberos deben conservarse entre updates y no empaquetarse como datos reemplazables.
 - Cambios futuros de esquema deben ser migraciones locales aditivas y probadas antes de publicar.
 - Antes de un update con cambio de esquema, preparar backup de `barberia-local.db`.
 - Logs y configuracion local no deben empaquetarse dentro del instalador.

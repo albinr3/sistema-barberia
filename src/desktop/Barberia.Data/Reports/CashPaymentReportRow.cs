@@ -6,10 +6,16 @@ public sealed record CashPaymentReportRow(
     string TicketNumber,
     Guid BarberId,
     string BarberName,
+    int? BarberStationNumber,
     long AmountCents,
     string Currency,
     DateTimeOffset CollectedAt,
     string DeviceId,
     string? ReceiptNumber,
     bool CashDrawerOpened,
-    long? CommissionCents);
+    long? CommissionCents)
+{
+    public string? BarberStationCode => BarberStationNumber is null ? null : $"B-{BarberStationNumber.Value}";
+
+    public string BarberNameWithStation => BarberStationCode is null ? BarberName : $"{BarberStationCode} - {BarberName}";
+}

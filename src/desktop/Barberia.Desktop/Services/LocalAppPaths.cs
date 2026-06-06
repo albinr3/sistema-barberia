@@ -14,6 +14,8 @@ internal static class LocalAppPaths
 
     public static string LogsDirectory => EnsureDirectory(Path.Combine(RootDirectory, "logs"));
 
+    public static string ProfileImagesDirectory => EnsureDirectory(Path.Combine(RootDirectory, "profile-images"));
+
     public static string DatabasePath => Path.Combine(RootDirectory, DatabaseFileName);
 
     public static string ErrorLogPath => Path.Combine(LogsDirectory, ErrorLogFileName);

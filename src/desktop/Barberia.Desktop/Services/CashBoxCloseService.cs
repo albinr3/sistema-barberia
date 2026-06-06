@@ -41,7 +41,10 @@ public sealed class CashBoxCloseService
     public CashBoxSnapshot Load()
     {
         using var connection = _connectionFactory.OpenConnection();
-        var barbers = new LocalBarberRepository(connection).ListAll();
+        var barbers = new LocalBarberRepository(connection)
+            .ListAll()
+            .Where(barber => barber.IsActive)
+            .ToArray();
         return new CashBoxSnapshot(DateTimeOffset.Now, barbers);
     }
 
@@ -84,6 +87,11 @@ public sealed class CashBoxCloseService
 
             var barber = barberRepository.GetById(barberId)
                 ?? throw new InvalidOperationException("Barbero no encontrado en la base local.");
+            if (!barber.IsActive)
+            {
+                throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
+            }
+
             var turn = turnRepository.GetByTicketNumber(ticketNumber)
                 ?? throw new InvalidOperationException("Ticket no encontrado en la base local.");
 
@@ -97,10 +105,13 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException("El ticket y el barbero deben estar en servicio para cerrar en autocaja.");
             }
 
+            var barberStationCode = barber.StationCode
+                ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada.");
             var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
                 receiptNumber,
                 turn.TicketNumber,
                 barber.DisplayName,
+                barberStationCode,
                 amount,
                 commission,
                 Currency,
@@ -117,7 +128,10 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException($"No se pudo abrir el cash drawer: {drawerResult.ErrorMessage}");
             }
 
-            var barbers = barberRepository.ListAll();
+            var barbers = barberRepository
+                .ListAll()
+                .Where(candidate => candidate.IsActive)
+                .ToArray();
             var rotationQueue = barbers
                 .OrderBy(candidate => candidate.RotationOrder)
                 .Select(candidate => candidate.Id)
@@ -158,6 +172,7 @@ public sealed class CashBoxCloseService
                 {
                     ticket = turn.TicketNumber,
                     barberId,
+                    barberStationCode,
                     amount,
                     currency = Currency,
                     commission,
@@ -171,6 +186,7 @@ public sealed class CashBoxCloseService
             result = new CashBoxDepositResult(
                 turn.TicketNumber,
                 barber.DisplayName,
+                barberStationCode,
                 amount,
                 commission,
                 receiptNumber,
