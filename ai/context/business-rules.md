@@ -24,7 +24,7 @@
 - Desactivar un barbero (`is_active=false`) lo oculta de nuevos turnos y reservas futuras sin borrar su historial.
 - Al desactivar un barbero desde administracion local, si no esta `called` ni `in_service`, su estado operativo local pasa a `offline`.
 - No se debe eliminar fisicamente un barbero con historial operativo; se debe desactivar para mantener reportes, auditoria y sincronizacion futura.
-- La administracion local puede cancelar tickets activos (`waiting`, `assigned`, `called`, `in_service`); si el ticket tenia barbero asignado, el barbero activo vuelve a `available` en la misma transaccion y se intenta asignar automaticamente el siguiente ticket `waiting` compatible.
+- La administracion local puede cancelar tickets activos (`waiting`, `called`, `in_service`); si el ticket tenia barbero asignado, el barbero activo vuelve a `available` en la misma transaccion y se intenta asignar automaticamente el siguiente ticket `waiting` compatible.
 - Las citas pertenecen a Fase 2, pero deben integrarse con Fase 1 mediante sincronizacion.
 - La pantalla publica debe diferenciar visualmente citas programadas y turnos walk-in.
 - La pantalla publica debe mostrar un estado como "Reservado para cita" cuando un barbero este protegido por cita proxima.

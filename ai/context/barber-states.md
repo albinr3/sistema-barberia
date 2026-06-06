@@ -18,8 +18,7 @@
 ## Estados Del Turno
 
 - `waiting`: usuario hizo check-in y espera asignacion.
-- `assigned`: el sistema asigno el turno a un barbero.
-- `called`: el turno fue mostrado en pantalla para que el usuario pase con el barbero.
+- `called`: el sistema asigno el turno a un barbero y lo muestra en pantalla para que el usuario pase.
 - `in_service`: el barbero escaneo el ticket y esta atendiendo al usuario.
 - `completed`: turno cobrado, comprobante impreso, cash drawer abierto y servicio cerrado.
 - `cancelled`: turno cancelado por personal autorizado.

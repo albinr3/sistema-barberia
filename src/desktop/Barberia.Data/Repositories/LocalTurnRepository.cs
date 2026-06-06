@@ -169,11 +169,10 @@ public sealed class LocalTurnRepository
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
-            WHERE state IN ($waiting, $assigned, $called, $in_service)
+            WHERE state IN ($waiting, $called, $in_service)
             ORDER BY
                 CASE state
                     WHEN $called THEN 0
-                    WHEN $assigned THEN 1
                     WHEN $in_service THEN 2
                     ELSE 3
                 END,
@@ -181,7 +180,6 @@ public sealed class LocalTurnRepository
                 ticket_number;
             """;
         command.AddInteger("$waiting", (int)TurnState.Waiting);
-        command.AddInteger("$assigned", (int)TurnState.Assigned);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddInteger("$in_service", (int)TurnState.InService);
 
@@ -204,11 +202,10 @@ public sealed class LocalTurnRepository
                    appointment_id, requested_barber_ids, customer_name
             FROM turns
             WHERE assigned_barber_id = $barber_id
-              AND state IN ($assigned, $called)
+              AND state = $called
             ORDER BY checked_in_at, ticket_number;
             """;
         command.AddText("$barber_id", barberId.ToString());
-        command.AddInteger("$assigned", (int)TurnState.Assigned);
         command.AddInteger("$called", (int)TurnState.Called);
 
         using var reader = command.ExecuteReader();
@@ -272,12 +269,11 @@ public sealed class LocalTurnRepository
             SET state = $state,
                 updated_at = $updated_at
             WHERE id = $turn_id
-              AND state IN ($waiting, $assigned, $called, $in_service);
+              AND state IN ($waiting, $called, $in_service);
             """;
         command.AddText("$turn_id", turnId.ToString());
         command.AddInteger("$state", (int)TurnState.Cancelled);
         command.AddInteger("$waiting", (int)TurnState.Waiting);
-        command.AddInteger("$assigned", (int)TurnState.Assigned);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddInteger("$in_service", (int)TurnState.InService);
         command.AddText("$updated_at", updatedAt.ToString("O"));
@@ -298,18 +294,17 @@ public sealed class LocalTurnRepository
                 updated_at = $updated_at
             WHERE id = $turn_id
               AND assigned_barber_id = $barber_id
-              AND state IN ($assigned, $called);
+              AND state = $called;
             """;
         command.AddText("$turn_id", turnId.ToString());
         command.AddText("$barber_id", barberId.ToString());
         command.AddInteger("$state", (int)TurnState.InService);
-        command.AddInteger("$assigned", (int)TurnState.Assigned);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddText("$updated_at", updatedAt.ToString("O"));
 
         if (command.ExecuteNonQuery() != 1)
         {
-            throw new InvalidOperationException("Assigned turn was not found for service start.");
+            throw new InvalidOperationException("Called turn was not found for service start.");
         }
     }
 

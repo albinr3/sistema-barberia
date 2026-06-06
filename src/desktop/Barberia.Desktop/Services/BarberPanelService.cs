@@ -75,7 +75,7 @@ public sealed class BarberPanelService
                 throw new InvalidOperationException("El ticket no esta asignado al barbero seleccionado.");
             }
 
-            if (turn.State is not (TurnState.Assigned or TurnState.Called))
+            if (turn.State is not TurnState.Called)
             {
                 throw new InvalidOperationException("El ticket no esta listo para iniciar atencion.");
             }

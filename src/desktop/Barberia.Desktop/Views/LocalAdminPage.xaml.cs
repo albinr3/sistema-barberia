@@ -312,7 +312,7 @@ public sealed partial class LocalAdminPage : Page
             GetTurnForeground(turn.State)));
 
         var cancelButton = CreateSmallActionButton("Cancel");
-        cancelButton.IsEnabled = turn.State is TurnState.Waiting or TurnState.Assigned or TurnState.Called or TurnState.InService;
+        cancelButton.IsEnabled = turn.State is TurnState.Waiting or TurnState.Called or TurnState.InService;
         cancelButton.Click += (_, _) => ExecuteAdminAction(() => _service.CancelTurn(turn.Id), "Cancelled");
         actions.Children.Add(cancelButton);
 
@@ -670,7 +670,6 @@ public sealed partial class LocalAdminPage : Page
         return state switch
         {
             TurnState.Waiting => "Waiting",
-            TurnState.Assigned => "Assigned",
             TurnState.Called => "Called",
             TurnState.InService => "In service",
             TurnState.Completed => "Completed",
@@ -726,7 +725,7 @@ public sealed partial class LocalAdminPage : Page
         return state switch
         {
             TurnState.Waiting => Brush(255, 247, 232),
-            TurnState.Assigned or TurnState.Called => Brush(235, 248, 244),
+            TurnState.Called => Brush(235, 248, 244),
             TurnState.InService => Brush(240, 244, 250),
             _ => Brush(248, 249, 251)
         };
@@ -737,7 +736,7 @@ public sealed partial class LocalAdminPage : Page
         return state switch
         {
             TurnState.Waiting => Brush(122, 82, 21),
-            TurnState.Assigned or TurnState.Called => Brush(17, 105, 88),
+            TurnState.Called => Brush(17, 105, 88),
             TurnState.InService => Brush(63, 78, 97),
             _ => Brush(101, 108, 116)
         };

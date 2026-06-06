@@ -117,7 +117,7 @@ public sealed partial class PublicDisplayPage : Page
     private void ShowSnapshot(PublicDisplaySnapshot snapshot)
     {
         var called = snapshot.ActiveTurns
-            .Where(turn => turn.State is TurnState.Assigned or TurnState.Called)
+            .Where(turn => turn.State is TurnState.Called)
             .OrderBy(turn => turn.CheckedInAt)
             .Take(4)
             .ToArray();
@@ -542,7 +542,7 @@ public sealed partial class PublicDisplayPage : Page
                 Brush(242, 181, 88));
         }
 
-        if (activeTurn?.State is TurnState.Assigned or TurnState.Called)
+        if (activeTurn?.State is TurnState.Called)
         {
             return new BarberDisplay(
                 "Calling",
@@ -804,7 +804,7 @@ public sealed partial class PublicDisplayPage : Page
 
         if (activeTurnsByBarber.TryGetValue(barber.Id, out var activeTurn))
         {
-            return activeTurn.State is TurnState.Assigned or TurnState.Called ? 2 : 3;
+            return activeTurn.State is TurnState.Called ? 2 : 3;
         }
 
         return 4;
@@ -815,7 +815,6 @@ public sealed partial class PublicDisplayPage : Page
         return state switch
         {
             TurnState.Called => 0,
-            TurnState.Assigned => 1,
             TurnState.InService => 2,
             _ => 3
         };

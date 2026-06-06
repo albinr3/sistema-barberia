@@ -249,21 +249,21 @@ public sealed class SqlitePersistenceTests
         var now = DateTimeOffset.Parse("2026-06-03T12:00:00Z");
         var repository = new LocalTurnRepository(database.Connection);
         var called = CreateTurn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
-        var assigned = CreateTurn(Guid.NewGuid(), "A-001", TurnState.Assigned, TurnSource.Appointment, now);
+        var inService = CreateTurn(Guid.NewGuid(), "A-001", TurnState.InService, TurnSource.Appointment, now);
         var waiting = CreateTurn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
         var completed = CreateTurn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
 
         repository.Upsert(waiting, now);
         repository.Upsert(completed, now);
         repository.Upsert(called, now);
-        repository.Upsert(assigned, now);
+        repository.Upsert(inService, now);
 
         var activeTurns = repository.ListActiveForPublicDisplay();
 
         Assert.Collection(
             activeTurns,
             turn => Assert.Equal(called.Id, turn.Id),
-            turn => Assert.Equal(assigned.Id, turn.Id),
+            turn => Assert.Equal(inService.Id, turn.Id),
             turn => Assert.Equal(waiting.Id, turn.Id));
     }
 
@@ -280,10 +280,10 @@ public sealed class SqlitePersistenceTests
         barberRepository.Upsert(new Barber(barberId, "Luis", BarberState.Called, 0, 0, now, stationNumber: 1), now);
         barberRepository.Upsert(new Barber(otherBarberId, "Ana", BarberState.Called, 0, 1, now, stationNumber: 2), now);
 
-        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-001", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-001", TurnState.Called, TurnSource.WalkIn, now, barberId), now);
         repository.Upsert(CreateTurn(Guid.NewGuid(), "B-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(1), barberId), now);
         repository.Upsert(CreateTurn(Guid.NewGuid(), "B-003", TurnState.InService, TurnSource.WalkIn, now.AddMinutes(2), barberId), now);
-        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-004", TurnState.Assigned, TurnSource.WalkIn, now.AddMinutes(3), otherBarberId), now);
+        repository.Upsert(CreateTurn(Guid.NewGuid(), "B-004", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(3), otherBarberId), now);
 
         var turns = repository.ListAssignedToBarber(barberId);
 
@@ -309,7 +309,7 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
-    public void Repositories_StartServiceForAssignedTicket()
+    public void Repositories_StartServiceForCalledTicket()
     {
         using var database = TestDatabase.Create();
         var now = DateTimeOffset.Parse("2026-06-03T14:30:00Z");
@@ -319,7 +319,7 @@ public sealed class SqlitePersistenceTests
         var barberRepository = new LocalBarberRepository(database.Connection);
         var turnRepository = new LocalTurnRepository(database.Connection);
         barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.Called, 0, 0, now, stationNumber: 1), now);
-        turnRepository.Upsert(CreateTurn(turnId, "B-010", TurnState.Assigned, TurnSource.WalkIn, now, barberId), now);
+        turnRepository.Upsert(CreateTurn(turnId, "B-010", TurnState.Called, TurnSource.WalkIn, now, barberId), now);
 
         var turnByTicket = turnRepository.GetByTicketNumber("B-010");
         turnRepository.MarkInService(turnId, barberId, now.AddMinutes(1));
@@ -387,9 +387,9 @@ public sealed class SqlitePersistenceTests
 
                 INSERT INTO turns (id, ticket_number, state, source, customer_name, checked_in_at, assigned_barber_id, appointment_id, requested_barber_ids, updated_at)
                 VALUES
-                    ('11111111-1111-1111-1111-111111111111', 'W20260603100000000', 1, 0, 'Ana', '2026-06-03T10:00:00.0000000+00:00', NULL, NULL, NULL, '2026-06-03T10:00:00.0000000+00:00'),
-                    ('22222222-2222-2222-2222-222222222222', 'W20260603100500000', 1, 0, 'Luis', '2026-06-03T10:05:00.0000000+00:00', NULL, NULL, NULL, '2026-06-03T10:05:00.0000000+00:00'),
-                    ('33333333-3333-3333-3333-333333333333', 'W20260604100000000', 1, 0, 'Mia', '2026-06-04T10:00:00.0000000+00:00', NULL, NULL, NULL, '2026-06-04T10:00:00.0000000+00:00');
+                    ('11111111-1111-1111-1111-111111111111', 'W20260603100000000', 0, 0, 'Ana', '2026-06-03T10:00:00.0000000+00:00', NULL, NULL, NULL, '2026-06-03T10:00:00.0000000+00:00'),
+                    ('22222222-2222-2222-2222-222222222222', 'W20260603100500000', 0, 0, 'Luis', '2026-06-03T10:05:00.0000000+00:00', NULL, NULL, NULL, '2026-06-03T10:05:00.0000000+00:00'),
+                    ('33333333-3333-3333-3333-333333333333', 'W20260604100000000', 0, 0, 'Mia', '2026-06-04T10:00:00.0000000+00:00', NULL, NULL, NULL, '2026-06-04T10:00:00.0000000+00:00');
                 """;
             command.ExecuteNonQuery();
         }

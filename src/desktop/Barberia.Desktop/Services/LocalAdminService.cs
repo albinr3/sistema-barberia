@@ -225,7 +225,7 @@ public sealed class LocalAdminService
             var turn = turnRepository.GetById(turnId)
                 ?? throw new InvalidOperationException("Ticket was not found in the local database.");
 
-            if (turn.State is not (TurnState.Waiting or TurnState.Assigned or TurnState.Called or TurnState.InService))
+            if (turn.State is not (TurnState.Waiting or TurnState.Called or TurnState.InService))
             {
                 throw new InvalidOperationException("Only active tickets can be cancelled from Local Admin.");
             }

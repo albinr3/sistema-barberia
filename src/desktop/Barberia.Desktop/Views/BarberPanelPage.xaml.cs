@@ -291,7 +291,6 @@ public sealed partial class BarberPanelPage : Page
     {
         return state switch
         {
-            TurnState.Assigned => "Asignado",
             TurnState.Called => "Llamado",
             _ => state.ToString()
         };

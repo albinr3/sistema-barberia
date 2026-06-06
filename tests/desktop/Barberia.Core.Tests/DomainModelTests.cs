@@ -26,7 +26,6 @@ public sealed class DomainModelTests
         TurnState[] states =
         [
             TurnState.Waiting,
-            TurnState.Assigned,
             TurnState.Called,
             TurnState.InService,
             TurnState.Completed,
@@ -35,7 +34,10 @@ public sealed class DomainModelTests
             TurnState.Voided,
         ];
 
-        Assert.Equal(8, states.Distinct().Count());
+        Assert.Equal(7, states.Distinct().Count());
+        Assert.Equal(0, (int)TurnState.Waiting);
+        Assert.False(Enum.IsDefined(typeof(TurnState), 1));
+        Assert.Equal(2, (int)TurnState.Called);
     }
 
     [Fact]

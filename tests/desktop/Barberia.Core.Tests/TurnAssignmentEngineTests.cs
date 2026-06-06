@@ -21,7 +21,7 @@ public sealed class TurnAssignmentEngineTests
         var decision = new TurnAssignmentEngine().AssignNextTurn(request);
 
         Assert.Equal(requestedBarber, decision.BarberId);
-        Assert.Equal(TurnState.Assigned, decision.TurnState);
+        Assert.Equal(TurnState.Called, decision.TurnState);
         Assert.Equal(BarberState.Called, decision.BarberState);
     }
 

@@ -382,7 +382,7 @@
                                 Text="Active Queue" />
                             <TextBlock
                                 Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Waiting, assigned, called and in-service turns." />
+                                Text="Waiting, called and in-service turns." />
                         </StackPanel>
                         <StackPanel
                             x:Name="_turnRows"

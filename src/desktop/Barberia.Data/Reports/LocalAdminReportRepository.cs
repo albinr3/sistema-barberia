@@ -40,7 +40,7 @@ public sealed class LocalAdminReportRepository
                 COUNT(*) AS check_ins,
                 COALESCE(SUM(CASE WHEN source = $walk_in THEN 1 ELSE 0 END), 0) AS walk_ins,
                 COALESCE(SUM(CASE WHEN source = $appointment THEN 1 ELSE 0 END), 0) AS appointments,
-                COALESCE(SUM(CASE WHEN state IN ($waiting, $assigned, $called, $in_service) THEN 1 ELSE 0 END), 0) AS active_turns,
+                COALESCE(SUM(CASE WHEN state IN ($waiting, $called, $in_service) THEN 1 ELSE 0 END), 0) AS active_turns,
                 COALESCE(SUM(CASE WHEN state = $no_show THEN 1 ELSE 0 END), 0) AS no_shows,
                 COALESCE(SUM(CASE WHEN state = $cancelled THEN 1 ELSE 0 END), 0) AS cancelled
             FROM turns
@@ -51,7 +51,6 @@ public sealed class LocalAdminReportRepository
         command.AddInteger("$walk_in", (int)TurnSource.WalkIn);
         command.AddInteger("$appointment", (int)TurnSource.Appointment);
         command.AddInteger("$waiting", (int)TurnState.Waiting);
-        command.AddInteger("$assigned", (int)TurnState.Assigned);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddInteger("$in_service", (int)TurnState.InService);
         command.AddInteger("$no_show", (int)TurnState.NoShow);

@@ -47,7 +47,7 @@ public sealed class TurnAssignmentEngine
             turn.TicketNumber,
             turn.DisplayTicketNumber,
             selectedBarber.Id,
-            TurnState.Assigned,
+            TurnState.Called,
             BarberState.Called);
     }
 

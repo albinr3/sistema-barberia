@@ -38,7 +38,6 @@ Estados iniciales del barbero:
 Estados del turno:
 
 - `waiting`
-- `assigned`
 - `called`
 - `in_service`
 - `completed`
@@ -55,7 +54,7 @@ Estados del turno:
 5. Excluir barberos protegidos por cita confirmada dentro de los proximos 15 minutos.
 6. Si hay compatibles con 0 clientes atendidos ese dia, asignar por orden de llegada o cola inicial.
 7. Si todos los compatibles ya atendieron al menos 1 cliente, asignar por cola rotativa.
-8. Cambiar el turno a `assigned`/`called`.
+8. Cambiar el turno a `called`.
 9. Cuando el barbero escanee el ticket asignado, cambiar turno y barbero a `in_service`.
 10. Cuando cierre en autocaja, cambiar turno a `completed`, barbero a `available` y mover al barbero al final de la cola rotativa.
 11. Si administracion local cancela un ticket activo asignado, cambiar turno a `cancelled`, devolver el barbero activo a `available` e intentar asignar automaticamente el siguiente ticket `waiting` compatible.
