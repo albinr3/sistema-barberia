@@ -374,6 +374,39 @@ public sealed class LocalAdminService
                     state = state.ToString()
                 }),
                 deviceId));
+
+            // When barber becomes available, try to assign the next waiting turn
+            if (state == BarberState.Available)
+            {
+                var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
+                var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
+                var reassignment = TryAssignNextWaitingTurn(
+                    turnRepository,
+                    barberRepository,
+                    appointmentRepository,
+                    now);
+
+                if (reassignment is not null)
+                {
+                    auditRepository.Add(new AuditEvent(
+                        Guid.NewGuid(),
+                        now,
+                        "admin_waiting_turn_assigned",
+                        "turn",
+                        reassignment.TurnId,
+                        JsonSerializer.Serialize(new
+                        {
+                            turnId = reassignment.TurnId,
+                            displayTicketNumber = reassignment.DisplayTicketNumber,
+                            internalTicketNumber = reassignment.TicketNumber,
+                            barberId = reassignment.BarberId,
+                            turnState = reassignment.TurnState.ToString(),
+                            barberState = reassignment.BarberState.ToString(),
+                            reason = "barber_marked_available"
+                        }),
+                        deviceId));
+                }
+            }
         });
     }
 

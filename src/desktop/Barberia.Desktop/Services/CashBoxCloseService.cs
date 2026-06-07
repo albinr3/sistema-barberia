@@ -184,6 +184,34 @@ public sealed class CashBoxCloseService
                 }),
                 deviceId));
 
+            // After barber becomes available, try to assign the next waiting turn
+            var reassignment = TryAssignNextWaitingTurn(
+                turnRepository,
+                barberRepository,
+                new AppointmentReservationRepository(connection, sqliteTransaction),
+                now);
+
+            if (reassignment is not null)
+            {
+                auditRepository.Add(new AuditEvent(
+                    Guid.NewGuid(),
+                    now,
+                    "cash_box_waiting_turn_assigned",
+                    "turn",
+                    reassignment.TurnId,
+                    JsonSerializer.Serialize(new
+                    {
+                        turnId = reassignment.TurnId,
+                        displayTicketNumber = reassignment.DisplayTicketNumber,
+                        internalTicketNumber = reassignment.TicketNumber,
+                        barberId = reassignment.BarberId,
+                        turnState = reassignment.TurnState.ToString(),
+                        barberState = reassignment.BarberState.ToString(),
+                        reason = "cash_box_closed"
+                    }),
+                    deviceId));
+            }
+
             result = new CashBoxDepositResult(
                 turn.DisplayTicketNumber,
                 turn.TicketNumber,
@@ -197,6 +225,43 @@ public sealed class CashBoxCloseService
         });
 
         return result ?? throw new InvalidOperationException("No se pudo cerrar el servicio en autocaja.");
+    }
+
+    private TurnAssignmentDecision? TryAssignNextWaitingTurn(
+        LocalTurnRepository turnRepository,
+        LocalBarberRepository barberRepository,
+        AppointmentReservationRepository appointmentRepository,
+        DateTimeOffset now)
+    {
+        var barbers = barberRepository
+            .ListAll()
+            .Where(barber => barber.IsActive)
+            .ToArray();
+        var waitingTurns = turnRepository.ListWaiting();
+        var rotationQueue = barbers
+            .OrderBy(barber => barber.RotationOrder)
+            .Select(barber => barber.Id)
+            .ToArray();
+        var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
+
+        try
+        {
+            var decision = _assignmentEngine.AssignNextTurn(new TurnAssignmentRequest(
+                waitingTurns,
+                barbers,
+                rotationQueue,
+                now,
+                appointments));
+
+            turnRepository.ApplyAssignment(decision.TurnId, decision.BarberId, decision.TurnState, now);
+            barberRepository.ApplyAssignment(decision.BarberId, decision.BarberState, now);
+
+            return decision;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static string CreateReceiptNumber(DateTimeOffset timestamp)
