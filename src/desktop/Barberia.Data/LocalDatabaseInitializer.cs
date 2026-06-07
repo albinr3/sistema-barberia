@@ -70,6 +70,7 @@ public sealed class LocalDatabaseInitializer
                 id TEXT NOT NULL PRIMARY KEY,
                 turn_id TEXT NOT NULL,
                 barber_id TEXT NOT NULL,
+                service_id TEXT NULL,
                 amount_cents INTEGER NOT NULL,
                 currency TEXT NOT NULL,
                 collected_at TEXT NOT NULL,
@@ -77,8 +78,22 @@ public sealed class LocalDatabaseInitializer
                 receipt_number TEXT NULL,
                 cash_drawer_opened INTEGER NOT NULL,
                 commission_cents INTEGER NULL,
+                service_price_cents INTEGER NULL,
+                additional_cents INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (turn_id) REFERENCES turns(id),
-                FOREIGN KEY (barber_id) REFERENCES barbers(id)
+                FOREIGN KEY (barber_id) REFERENCES barbers(id),
+                FOREIGN KEY (service_id) REFERENCES services(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS services (
+                id TEXT NOT NULL PRIMARY KEY,
+                name TEXT NOT NULL,
+                price_cents INTEGER NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                display_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                CHECK (price_cents > 0)
             );
 
             CREATE TABLE IF NOT EXISTS audit_events (
@@ -127,6 +142,9 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
         EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
         EnsureColumn(connection, "barbers", "station_number", "INTEGER NULL");
+        EnsureColumn(connection, "cash_payments", "service_id", "TEXT NULL");
+        EnsureColumn(connection, "cash_payments", "service_price_cents", "INTEGER NULL");
+        EnsureColumn(connection, "cash_payments", "additional_cents", "INTEGER NOT NULL DEFAULT 0");
         NormalizeBarberStations(connection);
         EnsureActiveStationIndex(connection);
     }

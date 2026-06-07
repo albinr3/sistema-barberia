@@ -11,6 +11,7 @@ public sealed record LocalAdminSnapshot(
     OperationReportSummary Operations,
     CashReportSummary Cash,
     IReadOnlyList<Barber> Barbers,
+    IReadOnlyList<Service> Services,
     IReadOnlyList<ProfileImageOption> ProfileImages,
     IReadOnlyList<Turn> ActiveTurns,
     IReadOnlyList<AuditEvent> RecentAuditEvents);

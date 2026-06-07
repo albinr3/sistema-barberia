@@ -7,6 +7,7 @@ Responsabilidades:
 - Navegacion y composicion visual.
 - Wiring de dependencias entre modulos.
 - Pantallas de kiosco, pantalla publica, panel de barbero, autocaja, administracion local y reportes.
+- Administracion local de barberos y servicios; autocaja usa el catalogo de servicios para calcular el monto sin campo libre.
 
 Shell y UI actual:
 

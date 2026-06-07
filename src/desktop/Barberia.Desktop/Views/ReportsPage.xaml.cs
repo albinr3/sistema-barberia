@@ -148,7 +148,7 @@ public sealed partial class ReportsPage : Page
                             },
                             new TextBlock
                             {
-                                Text = $"{row.CollectedAt:hh:mm tt} - {commissionText} - Interno {row.InternalTicketNumber}",
+                                Text = $"{row.CollectedAt:hh:mm tt} - {row.ServiceSummary} - {commissionText} - Interno {row.InternalTicketNumber}",
                                 FontSize = 13,
                                 Foreground = Brush(101, 108, 116)
                             }

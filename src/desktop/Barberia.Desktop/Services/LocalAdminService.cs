@@ -34,6 +34,7 @@ public sealed class LocalAdminService
         using var connection = _connectionFactory.OpenConnection();
         var report = new LocalAdminReportRepository(connection).Load(from, to, now);
         var barbers = new LocalBarberRepository(connection).ListAll();
+        var services = new ServiceRepository(connection).ListAll();
         var activeTurns = new LocalTurnRepository(connection).ListActiveForPublicDisplay();
         var auditEvents = new AuditEventRepository(connection)
             .ListAll()
@@ -51,6 +52,7 @@ public sealed class LocalAdminService
             report.Operations,
             report.Cash,
             barbers,
+            services,
             ProfileImageCatalog.ListProfileImages(),
             activeTurns,
             auditEvents);
@@ -134,6 +136,113 @@ public sealed class LocalAdminService
         return ProfileImageCatalog.ListProfileImages();
     }
 
+    public void SaveService(Guid? serviceId, string name, decimal price, bool isActive, int displayOrder)
+    {
+        var normalizedName = NormalizeServiceName(name);
+        if (price <= 0)
+        {
+            throw new InvalidOperationException("Service price must be greater than zero.");
+        }
+
+        if (displayOrder < 0)
+        {
+            throw new InvalidOperationException("Service display order must be zero or greater.");
+        }
+
+        var now = DateTimeOffset.Now;
+        var deviceId = Environment.MachineName;
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
+            var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var existing = serviceId is null ? null : serviceRepository.GetById(serviceId.Value);
+
+            if (serviceId is not null && existing is null)
+            {
+                throw new InvalidOperationException("Service was not found in the local database.");
+            }
+
+            var service = new Service(
+                serviceId ?? Guid.NewGuid(),
+                normalizedName,
+                price,
+                isActive,
+                displayOrder,
+                existing?.CreatedAt ?? now,
+                now);
+
+            if (existing is null)
+            {
+                serviceRepository.Add(service);
+            }
+            else
+            {
+                serviceRepository.Update(service);
+            }
+
+            auditRepository.Add(new AuditEvent(
+                Guid.NewGuid(),
+                now,
+                serviceId is null ? "admin_service_created" : "admin_service_updated",
+                "service",
+                service.Id,
+                JsonSerializer.Serialize(new
+                {
+                    serviceId = service.Id,
+                    serviceName = service.Name,
+                    price = service.Price,
+                    service.PriceCents,
+                    service.IsActive,
+                    service.DisplayOrder
+                }),
+                deviceId));
+        });
+    }
+
+    public void DeleteService(Guid serviceId)
+    {
+        if (serviceId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Select a service before deleting.");
+        }
+
+        var now = DateTimeOffset.Now;
+        var deviceId = Environment.MachineName;
+        var transaction = new LocalDataTransaction(_connectionFactory);
+
+        try
+        {
+            transaction.Execute((connection, sqliteTransaction) =>
+            {
+                var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
+                var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+                var service = serviceRepository.GetById(serviceId)
+                    ?? throw new InvalidOperationException("Service was not found in the local database.");
+
+                serviceRepository.Delete(serviceId);
+                auditRepository.Add(new AuditEvent(
+                    Guid.NewGuid(),
+                    now,
+                    "admin_service_deleted",
+                    "service",
+                    serviceId,
+                    JsonSerializer.Serialize(new
+                    {
+                        serviceId,
+                        serviceName = service.Name
+                    }),
+                    deviceId));
+            });
+        }
+        catch (SqliteException exception) when (exception.SqliteErrorCode == 19)
+        {
+            throw new InvalidOperationException(
+                "This service already has local payment history and cannot be deleted. Deactivate it instead.",
+                exception);
+        }
+    }
+
     public string ImportProfileImage(string sourcePath)
     {
         return ProfileImageCatalog.ImportProfileImage(sourcePath);
@@ -185,6 +294,41 @@ public sealed class LocalAdminService
                 "This barber already has local history and cannot be deleted. Set them Offline instead.",
                 exception);
         }
+    }
+
+    public void SetServiceActive(Guid serviceId, bool isActive)
+    {
+        if (serviceId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Select a service before changing active status.");
+        }
+
+        var now = DateTimeOffset.Now;
+        var deviceId = Environment.MachineName;
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
+            var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var service = serviceRepository.GetById(serviceId)
+                ?? throw new InvalidOperationException("Service was not found in the local database.");
+
+            serviceRepository.SetActive(serviceId, isActive, now);
+            auditRepository.Add(new AuditEvent(
+                Guid.NewGuid(),
+                now,
+                "admin_service_active_changed",
+                "service",
+                serviceId,
+                JsonSerializer.Serialize(new
+                {
+                    serviceId,
+                    serviceName = service.Name,
+                    previousIsActive = service.IsActive,
+                    isActive
+                }),
+                deviceId));
+        });
     }
 
     public void MarkBarberAvailable(Guid barberId)
@@ -471,6 +615,16 @@ public sealed class LocalAdminService
         }
 
         return displayName.Trim();
+    }
+
+    private static string NormalizeServiceName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidOperationException("Service name is required.");
+        }
+
+        return name.Trim();
     }
 
     private static string? NormalizeProfileImagePath(string? profileImagePath)

@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Barberia.Core.Assignment;
 using Barberia.Core.Domain;
@@ -45,10 +44,11 @@ public sealed class CashBoxCloseService
             .ListAll()
             .Where(barber => barber.IsActive)
             .ToArray();
-        return new CashBoxSnapshot(DateTimeOffset.Now, barbers);
+        var services = new ServiceRepository(connection).ListActive();
+        return new CashBoxSnapshot(DateTimeOffset.Now, barbers, services);
     }
 
-    public CashBoxDepositResult CloseService(Guid barberId, string ticketNumber, string amountText)
+    public CashBoxDepositResult CloseService(Guid barberId, string ticketNumber, Guid serviceId, decimal additionalAmount)
     {
         if (barberId == Guid.Empty)
         {
@@ -60,21 +60,19 @@ public sealed class CashBoxCloseService
             throw new InvalidOperationException("Escanea o introduce el ticket del servicio.");
         }
 
-        if (!decimal.TryParse(amountText, NumberStyles.Number, CultureInfo.CurrentCulture, out var amount)
-            && !decimal.TryParse(amountText, NumberStyles.Number, CultureInfo.InvariantCulture, out amount))
+        if (serviceId == Guid.Empty)
         {
-            throw new InvalidOperationException("Introduce un monto en efectivo valido.");
+            throw new InvalidOperationException("Selecciona el servicio prestado.");
         }
 
-        if (amount <= 0)
+        if (additionalAmount is not (0m or 2m or 3m or 5m))
         {
-            throw new InvalidOperationException("El monto cobrado debe ser mayor que cero.");
+            throw new InvalidOperationException("El adicional debe ser 0, 2, 3 o 5 dolares.");
         }
 
         var now = DateTimeOffset.Now;
         var deviceId = Environment.MachineName;
         var receiptNumber = CreateReceiptNumber(now);
-        var commission = decimal.Round(amount * CommissionRate, 2, MidpointRounding.AwayFromZero);
         CashBoxDepositResult? result = null;
 
         var transaction = new LocalDataTransaction(_connectionFactory);
@@ -83,6 +81,7 @@ public sealed class CashBoxCloseService
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var paymentRepository = new CashPaymentRepository(connection, sqliteTransaction);
+            var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
 
             var barber = barberRepository.GetById(barberId)
@@ -105,6 +104,21 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException("El ticket y el barbero deben estar en servicio para cerrar en autocaja.");
             }
 
+            var service = serviceRepository.GetById(serviceId)
+                ?? throw new InvalidOperationException("Servicio no encontrado en la base local.");
+            if (!service.IsActive)
+            {
+                throw new InvalidOperationException("Este servicio esta desactivado por administracion.");
+            }
+
+            var servicePrice = service.Price;
+            if (servicePrice <= 0)
+            {
+                throw new InvalidOperationException("El precio base del servicio debe ser mayor que cero.");
+            }
+
+            var amount = servicePrice + additionalAmount;
+            var commission = decimal.Round(amount * CommissionRate, 2, MidpointRounding.AwayFromZero);
             var barberStationCode = barber.StationCode
                 ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada.");
             var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
@@ -112,6 +126,9 @@ public sealed class CashBoxCloseService
                 turn.DisplayTicketNumber,
                 barber.DisplayName,
                 barberStationCode,
+                service.Name,
+                servicePrice,
+                additionalAmount,
                 amount,
                 commission,
                 Currency,
@@ -143,13 +160,16 @@ public sealed class CashBoxCloseService
                 Guid.NewGuid(),
                 turn.Id,
                 barberId,
+                service.Id,
                 amount,
                 Currency,
                 now,
                 deviceId,
                 receiptNumber,
                 cashDrawerOpened: true,
-                commission));
+                commission,
+                servicePrice,
+                additionalAmount));
             turnRepository.MarkCompleted(turn.Id, now);
             barberRepository.ApplyCashBoxClose(
                 closeResult.BarberId,
@@ -174,6 +194,10 @@ public sealed class CashBoxCloseService
                     internalTicketNumber = turn.TicketNumber,
                     barberId,
                     barberStationCode,
+                    serviceId = service.Id,
+                    serviceName = service.Name,
+                    servicePrice,
+                    additionalAmount,
                     amount,
                     currency = Currency,
                     commission,
@@ -217,6 +241,9 @@ public sealed class CashBoxCloseService
                 turn.TicketNumber,
                 barber.DisplayName,
                 barberStationCode,
+                service.Name,
+                servicePrice,
+                additionalAmount,
                 amount,
                 commission,
                 receiptNumber,

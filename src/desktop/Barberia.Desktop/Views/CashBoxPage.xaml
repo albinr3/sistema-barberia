@@ -72,7 +72,7 @@
                                 Text="Deposito de efectivo" />
                             <TextBlock
                                 Style="{StaticResource SmallMutedTextStyle}"
-                                Text="El barbero escanea su ticket y registra el monto cobrado" />
+                                Text="El barbero escanea su ticket, selecciona el servicio y deposita el efectivo" />
                         </StackPanel>
 
                         <StackPanel Spacing="14">
@@ -87,20 +87,53 @@
                                 KeyDown="OnInputKeyDown"
                                 PlaceholderText="Escanear o escribir numero de ticket"
                                 Style="{StaticResource OperationalTextBoxStyle}" />
-                            <TextBox
-                                x:Name="_amountInput"
-                                Header="Monto cobrado en efectivo"
-                                KeyDown="OnInputKeyDown"
-                                PlaceholderText="0.00"
-                                Style="{StaticResource OperationalTextBoxStyle}">
-                                <TextBox.InputScope>
-                                    <input:InputScope>
-                                        <input:InputScope.Names>
-                                            <input:InputScopeName NameValue="Number" />
-                                        </input:InputScope.Names>
-                                    </input:InputScope>
-                                </TextBox.InputScope>
-                            </TextBox>
+                            <ComboBox
+                                x:Name="_serviceSelector"
+                                DisplayMemberPath="DisplayNameWithPrice"
+                                Header="Servicio prestado"
+                                PlaceholderText="Seleccionar servicio"
+                                SelectionChanged="OnServiceSelectionChanged"
+                                Style="{StaticResource OperationalComboBoxStyle}" />
+                            <StackPanel Spacing="8">
+                                <TextBlock
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="Adicional opcional" />
+                                <StackPanel
+                                    Orientation="Horizontal"
+                                    Spacing="8">
+                                    <ToggleButton
+                                        x:Name="_additional2Button"
+                                        MinHeight="42"
+                                        MinWidth="92"
+                                        Click="OnAdditionalClick"
+                                        Content="+$2"
+                                        Tag="2" />
+                                    <ToggleButton
+                                        x:Name="_additional3Button"
+                                        MinHeight="42"
+                                        MinWidth="92"
+                                        Click="OnAdditionalClick"
+                                        Content="+$3"
+                                        Tag="3" />
+                                    <ToggleButton
+                                        x:Name="_additional5Button"
+                                        MinHeight="42"
+                                        MinWidth="92"
+                                        Click="OnAdditionalClick"
+                                        Content="+$5"
+                                        Tag="5" />
+                                </StackPanel>
+                                <TextBlock
+                                    x:Name="_servicePriceText"
+                                    Style="{StaticResource SmallMutedTextStyle}" />
+                                <TextBlock
+                                    x:Name="_cashTotalText"
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}" />
+                            </StackPanel>
                             <Button
                                 Click="OnCloseClick"
                                 Style="{StaticResource PrimaryActionButtonStyle}"
@@ -164,6 +197,21 @@
                                         Text="Monto" />
                                     <TextBlock
                                         x:Name="_amountText"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InsetPanelBorderStyle}">
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="Servicio" />
+                                    <TextBlock
+                                        x:Name="_serviceReceiptText"
                                         FontSize="20"
                                         FontWeight="SemiBold"
                                         Foreground="{StaticResource TextPrimaryBrush}"

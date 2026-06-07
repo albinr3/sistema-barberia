@@ -36,13 +36,14 @@ Implementar el modulo local de autocaja operada por el barbero para cerrar servi
 
 ## Resultado Esperado
 
-Autocaja local que valida ticket/barbero, registra monto en efectivo, calcula comision, imprime constancia, abre cash drawer y completa el turno.
+Autocaja local que valida ticket/barbero, cobra desde catalogo de servicios, registra el monto en efectivo, calcula comision, imprime constancia, abre cash drawer y completa el turno.
 
 ## Criterios De Aceptacion
 
 - Respeta `docs/diseno/desktop-visual-theme.md` y reutiliza patrones visuales de la shell WinUI existente.
 - Solo efectivo en Fase 1.
-- No hay precio sugerido.
+- El barbero selecciona un servicio activo con precio base mayor que cero.
+- Solo se permite un adicional opcional de $2, $3 o $5.
 - El turno pasa a `completed`.
 - El barbero vuelve a `available`.
 - El barbero pasa al final de la cola rotativa.

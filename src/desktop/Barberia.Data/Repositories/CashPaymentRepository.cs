@@ -25,16 +25,19 @@ public sealed class CashPaymentRepository
         command.Transaction = _transaction;
         command.CommandText = """
             INSERT INTO cash_payments (
-                id, turn_id, barber_id, amount_cents, currency, collected_at,
-                device_id, receipt_number, cash_drawer_opened, commission_cents
+                id, turn_id, barber_id, service_id, amount_cents, currency, collected_at,
+                device_id, receipt_number, cash_drawer_opened, commission_cents,
+                service_price_cents, additional_cents
             ) VALUES (
-                $id, $turn_id, $barber_id, $amount_cents, $currency, $collected_at,
-                $device_id, $receipt_number, $cash_drawer_opened, $commission_cents
+                $id, $turn_id, $barber_id, $service_id, $amount_cents, $currency, $collected_at,
+                $device_id, $receipt_number, $cash_drawer_opened, $commission_cents,
+                $service_price_cents, $additional_cents
             );
             """;
         command.AddText("$id", payment.Id.ToString());
         command.AddText("$turn_id", payment.TurnId.ToString());
         command.AddText("$barber_id", payment.BarberId.ToString());
+        command.AddText("$service_id", payment.ServiceId?.ToString());
         command.AddInteger("$amount_cents", payment.AmountCents);
         command.AddText("$currency", payment.Currency);
         command.AddText("$collected_at", payment.CollectedAt.ToString("O"));
@@ -42,6 +45,8 @@ public sealed class CashPaymentRepository
         command.AddText("$receipt_number", payment.ReceiptNumber);
         command.Parameters.AddWithValue("$cash_drawer_opened", payment.CashDrawerOpened ? 1 : 0);
         command.Parameters.AddWithValue("$commission_cents", payment.CommissionCents is null ? DBNull.Value : payment.CommissionCents);
+        command.Parameters.AddWithValue("$service_price_cents", payment.ServicePriceCents is null ? DBNull.Value : payment.ServicePriceCents);
+        command.AddInteger("$additional_cents", payment.AdditionalCents);
         command.ExecuteNonQuery();
     }
 
@@ -50,8 +55,9 @@ public sealed class CashPaymentRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, turn_id, barber_id, amount_cents, currency, collected_at,
-                   device_id, receipt_number, cash_drawer_opened, commission_cents
+            SELECT id, turn_id, barber_id, service_id, amount_cents, currency, collected_at,
+                   device_id, receipt_number, cash_drawer_opened, commission_cents,
+                   service_price_cents, additional_cents
             FROM cash_payments
             WHERE turn_id = $turn_id
             ORDER BY collected_at;
@@ -66,13 +72,16 @@ public sealed class CashPaymentRepository
                 Guid.Parse(reader.GetString(0)),
                 Guid.Parse(reader.GetString(1)),
                 Guid.Parse(reader.GetString(2)),
-                reader.GetInt64(3),
-                reader.GetString(4),
-                DateTimeOffset.Parse(reader.GetString(5)),
-                reader.GetString(6),
-                reader.IsDBNull(7) ? null : reader.GetString(7),
-                reader.GetInt32(8) == 1,
-                reader.IsDBNull(9) ? null : reader.GetInt64(9)));
+                reader.IsDBNull(3) ? null : Guid.Parse(reader.GetString(3)),
+                reader.GetInt64(4),
+                reader.GetString(5),
+                DateTimeOffset.Parse(reader.GetString(6)),
+                reader.GetString(7),
+                reader.IsDBNull(8) ? null : reader.GetString(8),
+                reader.GetInt32(9) == 1,
+                reader.IsDBNull(10) ? null : reader.GetInt64(10),
+                reader.IsDBNull(11) ? null : reader.GetInt64(11),
+                reader.GetInt64(12)));
         }
 
         return payments;

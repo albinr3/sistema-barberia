@@ -48,7 +48,7 @@ Modulo de check-in local que registra walk-ins para entrar a la cola local segun
 - No implementar booking web.
 - No implementar app movil.
 - No pedir deposito ni pago online.
-- No crear precio sugerido.
+- No crear seleccion de servicio ni precio en kiosco; el catalogo de servicios se usa al cerrar en autocaja.
 - No duplicar reglas de turnos en la pantalla.
 
 ## Cierre Obligatorio

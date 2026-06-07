@@ -18,8 +18,10 @@ public sealed partial class LocalAdminPage : Page
     private readonly LocalAdminService _service = new();
     private IReadOnlyList<ProfileImageOption> _profileImageOptions = [];
     private Guid? _editingBarberId;
+    private Guid? _editingServiceId;
     private int _nextRotationOrder;
     private int _nextStationNumber = 1;
+    private int _nextServiceDisplayOrder;
 
     public LocalAdminPage()
     {
@@ -67,14 +69,22 @@ public sealed partial class LocalAdminPage : Page
             ? 0
             : snapshot.Barbers.Max(barber => barber.RotationOrder) + 1;
         _nextStationNumber = GetNextStationNumber(snapshot.Barbers);
+        _nextServiceDisplayOrder = snapshot.Services.Count == 0
+            ? 0
+            : snapshot.Services.Max(service => service.DisplayOrder) + 1;
 
         SyncProfileImageOptions(snapshot.ProfileImages);
         SyncEditor(snapshot);
+        SyncServiceEditor(snapshot);
 
         ReplaceChildren(
             _barberRows,
             snapshot.Barbers.Select(CreateBarberRow),
             "No barbers registered in the local database.");
+        ReplaceChildren(
+            _serviceRows,
+            snapshot.Services.Select(CreateServiceRow),
+            "No services registered in the local database.");
         ReplaceChildren(
             _turnRows,
             snapshot.ActiveTurns.Select(turn => CreateTurnRow(turn, snapshot.Barbers)),
@@ -259,6 +269,99 @@ public sealed partial class LocalAdminPage : Page
             "Deleted");
     }
 
+    private UIElement CreateServiceRow(Service service)
+    {
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var details = new StackPanel
+        {
+            Spacing = 3,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = service.Name,
+                    FontSize = 18,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(30, 31, 34),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                },
+                new TextBlock
+                {
+                    Text = $"Base ${service.Price:0.00} - Order {service.DisplayOrder}",
+                    FontSize = 13,
+                    Foreground = Brush(101, 108, 116),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                }
+            }
+        };
+        row.Children.Add(details);
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        actions.Children.Add(CreateTextBadge(
+            service.IsActive ? "Active" : "Inactive",
+            service.IsActive ? Brush(235, 248, 244) : Brush(248, 249, 251),
+            service.IsActive ? Brush(17, 105, 88) : Brush(101, 108, 116)));
+
+        var editButton = CreateSmallActionButton("Edit");
+        editButton.Click += (_, _) => EditService(service);
+        actions.Children.Add(editButton);
+
+        Grid.SetColumn(actions, 1);
+        row.Children.Add(actions);
+
+        return WrapRow(row, service.IsActive ? Brush(255, 255, 255) : Brush(248, 249, 251));
+    }
+
+    private void OnNewServiceClick(object sender, RoutedEventArgs args)
+    {
+        _editingServiceId = null;
+        ClearServiceEditor();
+        SetStatus("New service", success: true);
+    }
+
+    private void OnSaveServiceClick(object sender, RoutedEventArgs args)
+    {
+        ExecuteAdminAction(
+            () =>
+            {
+                _service.SaveService(
+                    _editingServiceId,
+                    _serviceNameInput.Text,
+                    ParseServicePrice(),
+                    _serviceActiveCheckBox.IsChecked == true,
+                    ParseServiceDisplayOrder());
+                _editingServiceId = null;
+                ClearServiceEditor();
+            },
+            "Saved");
+    }
+
+    private void OnDeleteServiceClick(object sender, RoutedEventArgs args)
+    {
+        ExecuteAdminAction(
+            () =>
+            {
+                if (_editingServiceId is not Guid serviceId)
+                {
+                    throw new InvalidOperationException("Select a service before deleting.");
+                }
+
+                _service.DeleteService(serviceId);
+                _editingServiceId = null;
+                ClearServiceEditor();
+            },
+            "Deleted");
+    }
+
     private UIElement CreateTurnRow(Turn turn, IReadOnlyList<Barber> barbers)
     {
         var barberName = turn.AssignedBarberId is null
@@ -378,8 +481,11 @@ public sealed partial class LocalAdminPage : Page
         _barberRows.Children.Clear();
         _turnRows.Children.Clear();
         _auditRows.Children.Clear();
+        _serviceRows.Children.Clear();
         _deleteBarberButton.IsEnabled = false;
+        _deleteServiceButton.IsEnabled = false;
         _barberRows.Children.Add(CreateEmptyState("Could not read barbers from the local database."));
+        _serviceRows.Children.Add(CreateEmptyState("Could not read services from the local database."));
         _turnRows.Children.Add(CreateEmptyState("Could not read active turns."));
         _auditRows.Children.Add(CreateEmptyState(message));
         SetStatus("Error", success: false);
@@ -444,6 +550,28 @@ public sealed partial class LocalAdminPage : Page
         _deleteBarberButton.IsEnabled = false;
     }
 
+    private void SyncServiceEditor(LocalAdminSnapshot snapshot)
+    {
+        if (_editingServiceId is Guid serviceId)
+        {
+            var service = snapshot.Services.FirstOrDefault(candidate => candidate.Id == serviceId);
+            if (service is not null)
+            {
+                LoadServiceIntoEditor(service);
+                return;
+            }
+
+            _editingServiceId = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_serviceDisplayOrderInput.Text))
+        {
+            _serviceDisplayOrderInput.Text = _nextServiceDisplayOrder.ToString();
+        }
+
+        _deleteServiceButton.IsEnabled = false;
+    }
+
     private void EditBarber(Barber barber)
     {
         _editingBarberId = barber.Id;
@@ -471,6 +599,31 @@ public sealed partial class LocalAdminPage : Page
         _deleteBarberButton.IsEnabled = false;
     }
 
+    private void EditService(Service service)
+    {
+        _editingServiceId = service.Id;
+        LoadServiceIntoEditor(service);
+        SetStatus("Editing", success: true);
+    }
+
+    private void LoadServiceIntoEditor(Service service)
+    {
+        _serviceNameInput.Text = service.Name;
+        _servicePriceInput.Text = $"{service.Price:0.00}";
+        _serviceDisplayOrderInput.Text = service.DisplayOrder.ToString();
+        _serviceActiveCheckBox.IsChecked = service.IsActive;
+        _deleteServiceButton.IsEnabled = true;
+    }
+
+    private void ClearServiceEditor()
+    {
+        _serviceNameInput.Text = string.Empty;
+        _servicePriceInput.Text = string.Empty;
+        _serviceDisplayOrderInput.Text = _nextServiceDisplayOrder.ToString();
+        _serviceActiveCheckBox.IsChecked = true;
+        _deleteServiceButton.IsEnabled = false;
+    }
+
     private int ParseRotationOrder()
     {
         var text = _rotationOrderInput.Text.Trim();
@@ -480,6 +633,28 @@ public sealed partial class LocalAdminPage : Page
         }
 
         return rotationOrder;
+    }
+
+    private decimal ParseServicePrice()
+    {
+        var text = _servicePriceInput.Text.Trim();
+        if (!decimal.TryParse(text, out var price) || price <= 0)
+        {
+            throw new InvalidOperationException("Service price must be greater than zero.");
+        }
+
+        return price;
+    }
+
+    private int ParseServiceDisplayOrder()
+    {
+        var text = _serviceDisplayOrderInput.Text.Trim();
+        if (!int.TryParse(text, out var displayOrder) || displayOrder < 0)
+        {
+            throw new InvalidOperationException("Service display order must be zero or greater.");
+        }
+
+        return displayOrder;
     }
 
     private int? ParseStationNumber(bool isActive)

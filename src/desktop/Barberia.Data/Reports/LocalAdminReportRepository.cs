@@ -172,6 +172,9 @@ public sealed class LocalAdminReportRepository
                 p.barber_id,
                 COALESCE(b.display_name, 'Barbero local') AS barber_name,
                 b.station_number,
+                s.name AS service_name,
+                p.service_price_cents,
+                p.additional_cents,
                 p.amount_cents,
                 p.currency,
                 p.collected_at,
@@ -182,6 +185,7 @@ public sealed class LocalAdminReportRepository
             FROM cash_payments p
             LEFT JOIN turns t ON t.id = p.turn_id
             LEFT JOIN barbers b ON b.id = p.barber_id
+            LEFT JOIN services s ON s.id = p.service_id
             WHERE p.collected_at >= $from
               AND p.collected_at < $to
             ORDER BY p.collected_at DESC, p.receipt_number DESC
@@ -201,13 +205,16 @@ public sealed class LocalAdminReportRepository
                 Guid.Parse(reader.GetString(4)),
                 reader.GetString(5),
                 reader.IsDBNull(6) ? null : reader.GetInt32(6),
-                reader.GetInt64(7),
-                reader.GetString(8),
-                DateTimeOffset.Parse(reader.GetString(9)),
-                reader.GetString(10),
-                reader.IsDBNull(11) ? null : reader.GetString(11),
-                reader.GetInt32(12) == 1,
-                reader.IsDBNull(13) ? null : reader.GetInt64(13)));
+                reader.IsDBNull(7) ? null : reader.GetString(7),
+                reader.IsDBNull(8) ? null : reader.GetInt64(8),
+                reader.GetInt64(9),
+                reader.GetInt64(10),
+                reader.GetString(11),
+                DateTimeOffset.Parse(reader.GetString(12)),
+                reader.GetString(13),
+                reader.IsDBNull(14) ? null : reader.GetString(14),
+                reader.GetInt32(15) == 1,
+                reader.IsDBNull(16) ? null : reader.GetInt64(16)));
         }
 
         return rows;

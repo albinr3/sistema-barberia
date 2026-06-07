@@ -212,6 +212,41 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void ServiceRepository_PersistsActiveServicesInDisplayOrder()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T11:20:00Z");
+        var activeId = Guid.NewGuid();
+        var inactiveId = Guid.NewGuid();
+        var repository = new ServiceRepository(database.Connection);
+
+        repository.Add(new Service(activeId, "Corte", 20m, isActive: true, 1, now, now));
+        repository.Add(new Service(Guid.NewGuid(), "Barba", 15m, isActive: true, 0, now, now));
+        repository.Add(new Service(inactiveId, "Gratis", 5m, isActive: false, 2, now, now));
+        repository.Update(new Service(activeId, "Corte Clasico", 22m, isActive: true, 1, now, now.AddMinutes(1)));
+
+        var all = repository.ListAll();
+        var active = repository.ListActive();
+
+        Assert.Collection(
+            all,
+            service => Assert.Equal("Barba", service.Name),
+            service =>
+            {
+                Assert.Equal(activeId, service.Id);
+                Assert.Equal("Corte Clasico", service.Name);
+                Assert.Equal(2200, service.PriceCents);
+            },
+            service =>
+            {
+                Assert.Equal(inactiveId, service.Id);
+                Assert.False(service.IsActive);
+            });
+        Assert.Equal(2, active.Count);
+        Assert.DoesNotContain(active, service => service.Id == inactiveId);
+    }
+
+    [Fact]
     public void AppointmentRepository_ReturnsReservationsForLocalCoreQueries()
     {
         using var database = TestDatabase.Create();
@@ -560,10 +595,12 @@ public sealed class SqlitePersistenceTests
         var waitingTurnId = Guid.NewGuid();
         var noShowTurnId = Guid.NewGuid();
         var oldTurnId = Guid.NewGuid();
+        var cutServiceId = Guid.NewGuid();
 
         var barberRepository = new LocalBarberRepository(database.Connection);
         var turnRepository = new LocalTurnRepository(database.Connection);
         var paymentRepository = new CashPaymentRepository(database.Connection);
+        var serviceRepository = new ServiceRepository(database.Connection);
 
         barberRepository.Upsert(new Barber(luisId, "Luis", BarberState.Available, 3, 0, from, stationNumber: 1), from);
         barberRepository.Upsert(new Barber(anaId, "Ana", BarberState.Available, 1, 1, from, stationNumber: 2), from);
@@ -574,17 +611,21 @@ public sealed class SqlitePersistenceTests
         turnRepository.Upsert(CreateTurn(waitingTurnId, "A-003", TurnState.Waiting, TurnSource.WalkIn, from.AddHours(11)), from.AddHours(11));
         turnRepository.Upsert(CreateTurn(noShowTurnId, "A-004", TurnState.NoShow, TurnSource.WalkIn, from.AddHours(12)), from.AddHours(12));
         turnRepository.Upsert(CreateTurn(oldTurnId, "OLD-001", TurnState.Completed, TurnSource.WalkIn, from.AddDays(-1), luisId), from.AddDays(-1));
+        serviceRepository.Add(new Service(cutServiceId, "Corte", 20m, isActive: true, 0, from, from));
 
         paymentRepository.Add(new CashPayment(
             Guid.NewGuid(),
             luisTurnId,
             luisId,
+            cutServiceId,
             2500,
             "USD",
             from.AddHours(10),
             "autocaja-1",
             "R-001",
             true,
+            500,
+            2000,
             500));
         paymentRepository.Add(new CashPayment(
             Guid.NewGuid(),
@@ -665,6 +706,9 @@ public sealed class SqlitePersistenceTests
                 Assert.Equal("A-001", payment.InternalTicketNumber);
                 Assert.Equal("Luis", payment.BarberName);
                 Assert.Equal(1, payment.BarberStationNumber);
+                Assert.Equal("Corte", payment.ServiceName);
+                Assert.Equal(2000, payment.ServicePriceCents);
+                Assert.Equal(500, payment.AdditionalCents);
                 Assert.Equal(500, payment.CommissionCents);
             });
     }

@@ -10,7 +10,12 @@
 - Supabase/PostgreSQL sera la base cloud compartida para booking web, app movil, autenticacion, disponibilidad, citas, reportes y sincronizacion.
 - Booking web y app movil no son funcionalidades implementables de Fase 1.
 - En Fase 1 no hay seleccion de servicio en kiosco.
-- En Fase 1 no hay precio sugerido en autocaja.
+- Los servicios de la barberia tienen nombre y precio base definidos por administracion local.
+- El precio base de un servicio debe ser mayor que cero.
+- En autocaja el barbero selecciona el servicio prestado; el monto base se carga automaticamente desde el catalogo local.
+- En autocaja solo se permite un servicio por ticket.
+- En autocaja se puede seleccionar un adicional unico de $2, $3 o $5 al precio base.
+- El pago local guarda `service_id`, precio base, adicional y monto final en `cash_payments`.
 - En Fase 1 no hay pago presencial con tarjeta.
 - En Fase 1 el pago es solo en efectivo y el cliente paga directamente al barbero.
 - El barbero cierra el servicio en autocaja.
@@ -38,7 +43,7 @@
 - POR CONFIRMAR: politica de barbero que llega tarde.
 - POR CONFIRMAR: porcentaje de comision.
 - POR CONFIRMAR: una autocaja o varias autocajas.
-- POR CONFIRMAR: manejo de propinas.
+- POR CONFIRMAR: manejo de propinas fuera de los adicionales configurados.
 - POR CONFIRMAR: idioma de interfaz: ingles, espanol o ambos.
 - POR CONFIRMAR: exportacion de reportes a Excel/PDF.
 - POR CONFIRMAR: politica de depositos: reembolsable, no reembolsable o reutilizable para reprogramacion.

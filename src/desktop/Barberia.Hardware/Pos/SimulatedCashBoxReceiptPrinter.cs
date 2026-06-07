@@ -38,6 +38,21 @@ public sealed class SimulatedCashBoxReceiptPrinter : ICashBoxReceiptPrinter
             return HardwareOperationResult.Failure("Barber station code is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(job.ServiceName))
+        {
+            return HardwareOperationResult.Failure("Service name is required.");
+        }
+
+        if (job.ServicePrice <= 0)
+        {
+            return HardwareOperationResult.Failure("Service price must be greater than zero.");
+        }
+
+        if (job.AdditionalAmount is not (0m or 2m or 3m or 5m))
+        {
+            return HardwareOperationResult.Failure("Service additional amount is invalid.");
+        }
+
         if (string.IsNullOrWhiteSpace(job.DeviceId))
         {
             return HardwareOperationResult.Failure("Device id is required to print the cash receipt.");
