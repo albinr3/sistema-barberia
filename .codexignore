@@ -1,0 +1,38 @@
+@"
+# Build outputs
+.codex-build/
+**/bin/
+**/obj/
+.vs/
+
+# Compiled/native artifacts
+**/*.dll
+**/*.pdb
+**/*.exe
+**/*.xbf
+**/*.pri
+**/*.deps.json
+**/*.runtimeconfig.json
+
+# Generated NuGet/MSBuild files
+**/project.assets.json
+**/*.nuget.dgspec.json
+**/*.nuget.g.props
+**/*.nuget.g.targets
+**/*.AssemblyReference.cache
+**/*.assets.cache
+**/XamlTypeInfo.g.cs
+**/input.json
+**/output.json
+
+# Heavy binary/context-noise files
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.docx
+**/*.zip
+**/*.pdf
+
+# Orphan UI mockups
+src/desktop/Barberia.Desktop/Views/ggg*.html
+"@ | Set-Content .codexignore

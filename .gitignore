@@ -47,3 +47,6 @@ ios/Pods/
 tmp/
 temp/
 *.tmp
+
+# Codex build output
+.codex-build/
