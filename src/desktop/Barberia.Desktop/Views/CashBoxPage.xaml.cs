@@ -1,4 +1,3 @@
-using Barberia.Core.Domain;
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
 using Microsoft.UI;
@@ -6,30 +5,55 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using System;
+using Windows.Media.Core;
+using Windows.Media.Playback;
 
 namespace Barberia.Desktop.Views;
 
 public sealed partial class CashBoxPage : Page
 {
+    private const double NarrowLayoutThreshold = 900;
+
+    private static readonly SolidColorBrush SuccessTextBrush = Brush(17, 105, 88);
+    private static readonly SolidColorBrush ErrorTextBrush = Brush(154, 58, 47);
+    private static readonly SolidColorBrush NeutralTextBrush = Brush(26, 28, 30);
+
     private readonly CashBoxCloseService _service = new();
-    private IReadOnlyList<Barber> _barbers = [];
+    private readonly MediaPlayer _successPlayer;
     private IReadOnlyList<Service> _services = [];
     private decimal _additionalAmount;
+
+    public event EventHandler? ShellMenuRequested;
 
     public CashBoxPage()
     {
         InitializeComponent();
+        _successPlayer = new MediaPlayer();
+        _successPlayer.Source = MediaSource.CreateFromUri(new Uri(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "cashbox.mp3")));
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
+        ApplyResponsiveLayout(ActualWidth);
         LoadCashBox();
         ShowReadyState();
+        DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs args)
     {
         CloseService();
+    }
+
+    private void OnMenuButtonClick(object sender, RoutedEventArgs args)
+    {
+        ShellMenuRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        ApplyResponsiveLayout(args.NewSize.Width);
     }
 
     private void OnServiceSelectionChanged(object sender, SelectionChangedEventArgs args)
@@ -57,8 +81,16 @@ public sealed partial class CashBoxPage : Page
     {
         if (args.Key == Windows.System.VirtualKey.Enter)
         {
-            CloseService();
+            LookupTicket();
             args.Handled = true;
+        }
+    }
+
+    private void OnTicketInputLostFocus(object sender, RoutedEventArgs args)
+    {
+        if (!string.IsNullOrWhiteSpace(_ticketInput.Text))
+        {
+            LookupTicket();
         }
     }
 
@@ -67,12 +99,10 @@ public sealed partial class CashBoxPage : Page
         try
         {
             var snapshot = _service.Load();
-            _barbers = snapshot.Barbers;
             _services = snapshot.Services;
-            _barberSelector.ItemsSource = _barbers;
             _serviceSelector.ItemsSource = _services;
-            _lastRefreshText.Text = $"Actualizado: {snapshot.LoadedAt:hh:mm tt}";
-            SetStatus("Local", success: true);
+            _lastRefreshText.Text = $"Updated: {snapshot.LoadedAt:hh:mm tt}";
+            SetMessage("Waiting for ticket and service.", SuccessTextBrush);
             UpdateServiceTotal();
         }
         catch (Exception exception)
@@ -83,67 +113,87 @@ public sealed partial class CashBoxPage : Page
 
     private void CloseService()
     {
-        if (_barberSelector.SelectedItem is not Barber barber)
-        {
-            ShowError("Selecciona un barbero.");
-            return;
-        }
-
         if (_serviceSelector.SelectedItem is not Service selectedService)
         {
-            ShowError("Selecciona un servicio.");
+            ShowError("Select a service.");
+            DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
             return;
         }
 
         try
         {
-            var result = _service.CloseService(barber.Id, _ticketInput.Text, selectedService.Id, _additionalAmount);
-            _receiptText.Text = result.ReceiptNumber;
-            _amountText.Text = $"{result.Amount:0.00}";
-            _commissionText.Text = $"{result.Commission:0.00}";
+            var result = _service.CloseService(_ticketInput.Text, selectedService.Id, _additionalAmount);
+
             _serviceReceiptText.Text = result.AdditionalAmount > 0
-                ? $"{result.ServiceName} {result.ServicePrice:0.00} + adicional {result.AdditionalAmount:0.00}"
+                ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
                 : $"{result.ServiceName} {result.ServicePrice:0.00}";
-            _messageText.Text = $"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}";
+            _successPlayer.Play();
+            SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
             _ticketInput.Text = string.Empty;
+            ClearTicketDetails();
             _serviceSelector.SelectedItem = null;
             _additionalAmount = 0;
             SyncAdditionalButtons(null);
             UpdateServiceTotal();
-            SetStatus("Cerrado", success: true);
             LoadCashBox();
-            _barberSelector.SelectedItem = _barbers.FirstOrDefault(candidate => candidate.Id == barber.Id);
         }
         catch (Exception exception)
         {
             ShowError(exception.Message);
         }
+        finally
+        {
+            DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
+        }
     }
 
     private void ShowReadyState()
     {
-        _receiptText.Text = "Sin recibo";
-        _amountText.Text = "0.00";
-        _commissionText.Text = "0.00";
-        _serviceReceiptText.Text = "Sin servicio";
-        _servicePriceText.Text = "Selecciona un servicio para cargar el precio base.";
-        _cashTotalText.Text = "Total: $0.00";
-        _messageText.Text = "Esperando ticket, barbero y servicio.";
+        _amountText.Text = "$0.00";
+        _commissionText.Text = "$0.00";
+        _serviceReceiptText.Text = "No service";
+        _servicePriceText.Text = string.Empty;
+        _cashTotalText.Text = "$0.00";
+        ClearTicketDetails();
+        SetMessage("Waiting for ticket and service.", NeutralTextBrush);
+    }
+
+    private void LookupTicket()
+    {
+        try
+        {
+            var ticket = _service.LookupTicket(_ticketInput.Text);
+            _ticketCustomerText.Text = ticket.CustomerName;
+            _ticketBarberText.Text = $"{ticket.BarberStationCode} - {ticket.BarberName}";
+            SetMessage($"Ticket {ticket.DisplayTicketNumber} found. Verify customer and barber before completing.", SuccessTextBrush);
+        }
+        catch (Exception exception)
+        {
+            ClearTicketDetails();
+            ShowError(exception.Message);
+        }
+    }
+
+    private void ClearTicketDetails()
+    {
+        _ticketCustomerText.Text = "No ticket";
+        _ticketBarberText.Text = "No ticket";
     }
 
     private void UpdateServiceTotal()
     {
         if (_serviceSelector.SelectedItem is not Service selectedService)
         {
-            _servicePriceText.Text = "Selecciona un servicio para cargar el precio base.";
-            _cashTotalText.Text = "Total: $0.00";
+            _servicePriceText.Text = string.Empty;
+            _amountText.Text = "$0.00";
+            _commissionText.Text = "$0.00";
+            _cashTotalText.Text = "$0.00";
             return;
         }
-
-        _servicePriceText.Text = _additionalAmount > 0
-            ? $"Precio base: ${selectedService.Price:0.00}. Adicional seleccionado: ${_additionalAmount:0.00}."
-            : $"Precio base: ${selectedService.Price:0.00}. Sin adicional.";
-        _cashTotalText.Text = $"Total: ${selectedService.Price + _additionalAmount:0.00}";
+        _servicePriceText.Text = $"${selectedService.Price:0.00}";
+        _amountText.Text = $"${selectedService.Price:0.00}";
+        _commissionText.Text = $"${_additionalAmount:0.00}";
+        _cashTotalText.Text = $"${selectedService.Price + _additionalAmount:0.00}";
     }
 
     private void SyncAdditionalButtons(ToggleButton? selectedButton)
@@ -159,16 +209,33 @@ public sealed partial class CashBoxPage : Page
 
     private void ShowError(string message)
     {
-        _messageText.Text = message;
-        SetStatus("Revisar", success: false);
+        SetMessage(message, ErrorTextBrush);
     }
 
-    private void SetStatus(string text, bool success)
+    private void ApplyResponsiveLayout(double width)
     {
-        _statusBadgeText.Text = text;
-        _statusBadge.Background = success ? Brush(235, 248, 244) : Brush(255, 240, 238);
-        _statusBadge.BorderBrush = success ? Brush(181, 224, 211) : Brush(231, 170, 162);
-        _statusBadgeText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
+        var useNarrowLayout = width > 0 && width < NarrowLayoutThreshold;
+
+        _screenScrollViewer.Padding = useNarrowLayout
+            ? new Thickness(20, 72, 20, 24)
+            : new Thickness(48, 48, 48, 32);
+
+        _cashBoxContentGrid.ColumnSpacing = useNarrowLayout ? 0 : 24;
+        _cashBoxContentGrid.RowSpacing = useNarrowLayout ? 24 : 0;
+        _activeTicketColumn.Width = new GridLength(7, GridUnitType.Star);
+        _paymentSummaryColumn.Width = useNarrowLayout
+            ? new GridLength(0)
+            : new GridLength(3, GridUnitType.Star);
+        _paymentSummaryColumn.MinWidth = useNarrowLayout ? 0 : 320;
+
+        Grid.SetColumn(_summaryPanel, useNarrowLayout ? 0 : 1);
+        Grid.SetRow(_summaryPanel, useNarrowLayout ? 1 : 0);
+    }
+
+    private void SetMessage(string message, SolidColorBrush foreground)
+    {
+        _messageText.Text = message;
+        _messageText.Foreground = foreground;
     }
 
     private static SolidColorBrush Brush(byte red, byte green, byte blue)

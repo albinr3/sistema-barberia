@@ -40,34 +40,55 @@ public sealed class CashBoxCloseService
     public CashBoxSnapshot Load()
     {
         using var connection = _connectionFactory.OpenConnection();
-        var barbers = new LocalBarberRepository(connection)
-            .ListAll()
-            .Where(barber => barber.IsActive)
-            .ToArray();
         var services = new ServiceRepository(connection).ListActive();
-        return new CashBoxSnapshot(DateTimeOffset.Now, barbers, services);
+        return new CashBoxSnapshot(DateTimeOffset.Now, services);
     }
 
-    public CashBoxDepositResult CloseService(Guid barberId, string ticketNumber, Guid serviceId, decimal additionalAmount)
+    public CashBoxTicketLookupResult LookupTicket(string ticketNumber)
     {
-        if (barberId == Guid.Empty)
-        {
-            throw new InvalidOperationException("Selecciona el barbero que esta cerrando el servicio.");
-        }
-
         if (string.IsNullOrWhiteSpace(ticketNumber))
         {
-            throw new InvalidOperationException("Escanea o introduce el ticket del servicio.");
+            throw new InvalidOperationException("Scan or enter the service ticket.");
+        }
+
+        using var connection = _connectionFactory.OpenConnection();
+        var turnRepository = new LocalTurnRepository(connection);
+        var barberRepository = new LocalBarberRepository(connection);
+        var now = DateTimeOffset.Now;
+
+        var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
+            ?? throw new InvalidOperationException("Ticket not found in local database.");
+
+        var barberId = turn.AssignedBarberId
+            ?? throw new InvalidOperationException("The ticket has no assigned barber.");
+        var barber = barberRepository.GetById(barberId)
+            ?? throw new InvalidOperationException("Assigned barber does not exist in local database.");
+        var barberStationCode = barber.StationCode
+            ?? throw new InvalidOperationException("Active barber has no assigned station.");
+
+        return new CashBoxTicketLookupResult(
+            turn.DisplayTicketNumber,
+            turn.TicketNumber,
+            string.IsNullOrWhiteSpace(turn.CustomerName) ? "Walk-in customer" : turn.CustomerName,
+            barber.DisplayName,
+            barberStationCode);
+    }
+
+    public CashBoxDepositResult CloseService(string ticketNumber, Guid serviceId, decimal additionalAmount)
+    {
+        if (string.IsNullOrWhiteSpace(ticketNumber))
+        {
+            throw new InvalidOperationException("Scan or enter the service ticket.");
         }
 
         if (serviceId == Guid.Empty)
         {
-            throw new InvalidOperationException("Selecciona el servicio prestado.");
+            throw new InvalidOperationException("Select the provided service.");
         }
 
         if (additionalAmount is not (0m or 2m or 3m or 5m))
         {
-            throw new InvalidOperationException("El adicional debe ser 0, 2, 3 o 5 dolares.");
+            throw new InvalidOperationException("The addition must be 0, 2, 3 or 5 dollars.");
         }
 
         var now = DateTimeOffset.Now;
@@ -84,43 +105,40 @@ public sealed class CashBoxCloseService
             var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
 
+            var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
+                ?? throw new InvalidOperationException("Ticket not found in local database.");
+
+            var barberId = turn.AssignedBarberId
+                ?? throw new InvalidOperationException("The ticket has no assigned barber.");
             var barber = barberRepository.GetById(barberId)
-                ?? throw new InvalidOperationException("Barbero no encontrado en la base local.");
+                ?? throw new InvalidOperationException("Assigned barber does not exist in local database.");
             if (!barber.IsActive)
             {
-                throw new InvalidOperationException("Este barbero esta desactivado por administracion.");
-            }
-
-            var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
-                ?? throw new InvalidOperationException("Ticket no encontrado en la base local.");
-
-            if (turn.AssignedBarberId != barberId)
-            {
-                throw new InvalidOperationException("El ticket no pertenece al barbero seleccionado.");
+                throw new InvalidOperationException("Assigned barber is deactivated by administration.");
             }
 
             if (turn.State != TurnState.InService || barber.State != BarberState.InService)
             {
-                throw new InvalidOperationException("El ticket y el barbero deben estar en servicio para cerrar en autocaja.");
+                throw new InvalidOperationException("Ticket and barber must be in service to close at cash box.");
             }
 
             var service = serviceRepository.GetById(serviceId)
-                ?? throw new InvalidOperationException("Servicio no encontrado en la base local.");
+                ?? throw new InvalidOperationException("Service not found in local database.");
             if (!service.IsActive)
             {
-                throw new InvalidOperationException("Este servicio esta desactivado por administracion.");
+                throw new InvalidOperationException("This service is deactivated by administration.");
             }
 
             var servicePrice = service.Price;
             if (servicePrice <= 0)
             {
-                throw new InvalidOperationException("El precio base del servicio debe ser mayor que cero.");
+                throw new InvalidOperationException("The service base price must be greater than zero.");
             }
 
             var amount = servicePrice + additionalAmount;
             var commission = decimal.Round(amount * CommissionRate, 2, MidpointRounding.AwayFromZero);
             var barberStationCode = barber.StationCode
-                ?? throw new InvalidOperationException("El barbero activo no tiene estacion asignada.");
+                ?? throw new InvalidOperationException("Active barber has no assigned station.");
             var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
                 receiptNumber,
                 turn.DisplayTicketNumber,
@@ -136,13 +154,13 @@ public sealed class CashBoxCloseService
                 deviceId));
             if (!printResult.Succeeded)
             {
-                throw new InvalidOperationException($"No se pudo imprimir la constancia: {printResult.ErrorMessage}");
+                throw new InvalidOperationException($"Could not print receipt: {printResult.ErrorMessage}");
             }
 
             var drawerResult = _cashDrawer.Open(deviceId);
             if (!drawerResult.Succeeded)
             {
-                throw new InvalidOperationException($"No se pudo abrir el cash drawer: {drawerResult.ErrorMessage}");
+                throw new InvalidOperationException($"Could not open cash drawer: {drawerResult.ErrorMessage}");
             }
 
             var barbers = barberRepository
@@ -248,10 +266,10 @@ public sealed class CashBoxCloseService
                 commission,
                 receiptNumber,
                 now,
-                "Servicio cerrado localmente. Deposita el efectivo en el cash drawer.");
+                "Service closed locally. Deposit cash into cash drawer.");
         });
 
-        return result ?? throw new InvalidOperationException("No se pudo cerrar el servicio en autocaja.");
+        return result ?? throw new InvalidOperationException("Could not close service at cash box.");
     }
 
     private TurnAssignmentDecision? TryAssignNextWaitingTurn(

@@ -62,12 +62,22 @@ public sealed class BarberPanelService
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
 
             var turn = turnRepository.GetByTicketInputForToday(scannedTicketNumber, now)
-                ?? throw new InvalidOperationException("Ticket was not found in the local database.");
+                ?? throw new InvalidOperationException("Ticket does not exist");
 
             var barberId = turn.AssignedBarberId
                 ?? throw new InvalidOperationException("The ticket does not have an assigned barber.");
             var barber = barberRepository.GetById(barberId)
                 ?? throw new InvalidOperationException("The assigned barber does not exist in the local database.");
+
+            if (turn.State == TurnState.InService)
+            {
+                throw new InvalidOperationException("This ticket is already being attended by another barber.");
+            }
+
+            if (turn.State == TurnState.Completed)
+            {
+                throw new InvalidOperationException($"This ticket was already completed and charged by {barber.DisplayName}.");
+            }
             if (!barber.IsActive)
             {
                 throw new InvalidOperationException("The assigned barber is disabled by administration.");
