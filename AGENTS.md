@@ -21,3 +21,29 @@ Todo cambio mediano o grande debe documentarse en los archivos pertinentes del p
 No dejes documentación obsoleta. Si un cambio altera funcionamiento, configuración, uso o mantenimiento, actualiza la documentación como parte del mismo trabajo.
 
 Si no existe dónde registrar el cambio, avisa y pregunta si crear nueva documentación.
+
+## Contexto y archivos a ignorar
+
+No explores el repositorio completo si no hace falta. Evita leer archivos o directorios irrelevantes para tu tarea actual con el fin de reducir el uso de contexto.
+
+Ignora siempre los siguientes archivos y directorios salvo instrucción explícita:
+- .codex-build/
+- .vs/
+- bin/
+- obj/
+- *.dll
+- *.pdb
+- *.exe
+- *.xbf
+- *.pri
+- project.assets.json
+- *.nuget.dgspec.json
+- *.docx
+- *.zip
+- *.pdf
+- *.png
+- *.jpg
+- *.jpeg
+- src/desktop/Barberia.Desktop/Views/ggg*.html
+
+Para tareas de Fase 1, lee primero `docs/fases/phase-1-current-status.md` y NO leas el historial archivado salvo necesidad explícita.
