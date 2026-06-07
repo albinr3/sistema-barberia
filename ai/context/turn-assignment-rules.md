@@ -2,7 +2,8 @@
 
 ## Reglas Confirmadas
 
-- El motor toma el usuario mas antiguo en estado `waiting`.
+- El motor evalua usuarios `waiting` por orden de llegada y asigna el primero que tenga barbero compatible disponible.
+- Si el usuario mas antiguo no tiene ningun barbero compatible disponible, queda `waiting` y no bloquea a tickets posteriores compatibles, incluyendo tickets "cualquiera".
 - Si el usuario selecciona un barbero especifico, solo ese barbero puede recibir el turno.
 - Si el usuario selecciona varios barberos, solo esos barberos pueden recibir el turno.
 - Si el usuario selecciona "cualquiera", cualquier barbero activo, compatible y disponible puede recibir el turno.
@@ -47,17 +48,18 @@ Estados del turno:
 
 ## Flujo De Asignacion
 
-1. Tomar el turno mas antiguo en `waiting`.
+1. Revisar los turnos `waiting` por orden de llegada.
 2. Determinar barberos compatibles segun seleccion del usuario.
 3. Filtrar barberos con `is_active=true`.
 4. Filtrar barberos compatibles en `available`.
 5. Excluir barberos protegidos por cita confirmada dentro de los proximos 15 minutos.
-6. Si hay compatibles con 0 clientes atendidos ese dia, asignar por orden de llegada o cola inicial.
-7. Si todos los compatibles ya atendieron al menos 1 cliente, asignar por cola rotativa.
-8. Cambiar el turno a `called`.
-9. Cuando el barbero escanee el ticket asignado, cambiar turno y barbero a `in_service`.
-10. Cuando cierre en autocaja, cambiar turno a `completed`, barbero a `available` y mover al barbero al final de la cola rotativa.
-11. Si administracion local cancela un ticket activo asignado, cambiar turno a `cancelled`, devolver el barbero activo a `available` e intentar asignar automaticamente el siguiente ticket `waiting` compatible.
+6. Si un turno no tiene barberos compatibles disponibles, dejarlo `waiting` y evaluar el siguiente turno por orden de llegada.
+7. Si hay compatibles con 0 clientes atendidos ese dia, asignar por orden de llegada o cola inicial.
+8. Si todos los compatibles ya atendieron al menos 1 cliente, asignar por cola rotativa.
+9. Cambiar el turno a `called`.
+10. Cuando el barbero escanee el ticket asignado, cambiar turno y barbero a `in_service`.
+11. Cuando cierre en autocaja, cambiar turno a `completed`, barbero a `available` y mover al barbero al final de la cola rotativa.
+12. Si administracion local cancela un ticket activo asignado, cambiar turno a `cancelled`, devolver el barbero activo a `available` e intentar asignar automaticamente el siguiente ticket `waiting` compatible.
 
 ## Exclusiones
 

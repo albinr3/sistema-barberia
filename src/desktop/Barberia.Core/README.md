@@ -2,7 +2,7 @@
 
 Libreria de dominio puro para reglas de negocio de Fase 1.
 
-Responsabilidades futuras:
+Responsabilidades:
 
 - Motor de asignacion de turnos.
 - Estados centrales de barbero y turno.
@@ -12,5 +12,5 @@ Responsabilidades futuras:
 Restricciones actuales:
 
 - No depende de WinUI, SQLite, EF Core, Supabase, hardware ni APIs.
-- No implementa el motor de turnos todavia.
-- No contiene logica de negocio funcional en este skeleton.
+- El motor evalua turnos `waiting` por orden de llegada y asigna el primero que tenga barbero compatible disponible.
+- Un turno especifico sin barbero compatible disponible queda esperando y no bloquea la asignacion de un turno posterior que acepte cualquier barbero.

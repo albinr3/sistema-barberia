@@ -8,47 +8,52 @@ public sealed class TurnAssignmentEngine
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var turn = request.Turns
+        var waitingTurns = request.Turns
             .Where(candidate => candidate.State == TurnState.Waiting)
             .OrderBy(candidate => candidate.CheckedInAt)
             .ThenBy(candidate => candidate.TicketNumber, StringComparer.Ordinal)
-            .FirstOrDefault();
+            .ToArray();
 
-        if (turn is null)
+        if (waitingTurns.Length == 0)
         {
             throw new InvalidOperationException("No waiting turns are available for assignment.");
         }
 
-        var requestedBarberIds = turn.RequestedBarberIds?.ToHashSet() ?? [];
-        var requestedAnyBarber = requestedBarberIds.Count == 0;
         var protectedBarberIds = GetProtectedBarberIds(request.Appointments, request.Now);
 
-        var compatibleBarbers = request.Barbers
-            .Where(barber => requestedAnyBarber || requestedBarberIds.Contains(barber.Id))
-            .Where(barber => barber.State == BarberState.Available)
-            .Where(barber => !protectedBarberIds.Contains(barber.Id))
-            .ToArray();
-
-        if (compatibleBarbers.Length == 0)
+        foreach (var turn in waitingTurns)
         {
-            throw new InvalidOperationException("No compatible available barbers are eligible for assignment.");
+            var requestedBarberIds = turn.RequestedBarberIds?.ToHashSet() ?? [];
+            var requestedAnyBarber = requestedBarberIds.Count == 0;
+            var compatibleBarbers = request.Barbers
+                .Where(barber => requestedAnyBarber || requestedBarberIds.Contains(barber.Id))
+                .Where(barber => barber.State == BarberState.Available)
+                .Where(barber => !protectedBarberIds.Contains(barber.Id))
+                .ToArray();
+
+            if (compatibleBarbers.Length == 0)
+            {
+                continue;
+            }
+
+            var zeroClientBarbers = compatibleBarbers
+                .Where(barber => barber.ClientsServedToday == 0)
+                .ToArray();
+
+            var selectedBarber = zeroClientBarbers.Length > 0
+                ? SelectByInitialQueue(zeroClientBarbers, request.RotationQueue)
+                : SelectByRotatingQueue(compatibleBarbers, request.RotationQueue);
+
+            return new TurnAssignmentDecision(
+                turn.Id,
+                turn.TicketNumber,
+                turn.DisplayTicketNumber,
+                selectedBarber.Id,
+                TurnState.Called,
+                BarberState.Called);
         }
 
-        var zeroClientBarbers = compatibleBarbers
-            .Where(barber => barber.ClientsServedToday == 0)
-            .ToArray();
-
-        var selectedBarber = zeroClientBarbers.Length > 0
-            ? SelectByInitialQueue(zeroClientBarbers, request.RotationQueue)
-            : SelectByRotatingQueue(compatibleBarbers, request.RotationQueue);
-
-        return new TurnAssignmentDecision(
-            turn.Id,
-            turn.TicketNumber,
-            turn.DisplayTicketNumber,
-            selectedBarber.Id,
-            TurnState.Called,
-            BarberState.Called);
+        throw new InvalidOperationException("No compatible available barbers are eligible for assignment.");
     }
 
     public CashBoxCloseResult CloseServiceAtCashBox(CashBoxCloseRequest request)

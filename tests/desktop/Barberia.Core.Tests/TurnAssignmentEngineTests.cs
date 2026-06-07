@@ -187,6 +187,28 @@ public sealed class TurnAssignmentEngineTests
         Assert.Equal(barberForOldestTurn, decision.BarberId);
     }
 
+    [Fact]
+    public void AssignNextTurn_SkipsOlderTurnWithoutCompatibleAvailableBarber()
+    {
+        var unavailableRequestedBarber = Guid.NewGuid();
+        var anyBarberCandidate = Guid.NewGuid();
+        var blockedSpecificTurn = WaitingTurn("A-001", BaseTime, [unavailableRequestedBarber]);
+        var anyBarberTurn = WaitingTurn("A-002", BaseTime.AddMinutes(5));
+        var request = CreateRequest(
+            [blockedSpecificTurn, anyBarberTurn],
+            [
+                BarberWithState(unavailableRequestedBarber, BarberState.Called, rotationOrder: 0),
+                AvailableBarber(anyBarberCandidate, clientsServedToday: 1, rotationOrder: 1),
+            ],
+            [unavailableRequestedBarber, anyBarberCandidate]);
+
+        var decision = new TurnAssignmentEngine().AssignNextTurn(request);
+
+        Assert.Equal(anyBarberTurn.Id, decision.TurnId);
+        Assert.Equal("A-002", decision.TicketNumber);
+        Assert.Equal(anyBarberCandidate, decision.BarberId);
+    }
+
     private static TurnAssignmentRequest CreateRequest(
         IEnumerable<Turn> turns,
         IEnumerable<Barber> barbers,
