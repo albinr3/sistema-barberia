@@ -58,6 +58,9 @@ public sealed class LocalDatabaseInitializer
                 assigned_barber_id TEXT NULL,
                 appointment_id TEXT NULL,
                 requested_barber_ids TEXT NULL,
+                started_at TEXT NULL,
+                completed_at TEXT NULL,
+                cancelled_at TEXT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (assigned_barber_id) REFERENCES barbers(id),
                 FOREIGN KEY (appointment_id) REFERENCES appointment_reservations(id)
@@ -137,7 +140,11 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "turns", "customer_name", "TEXT NULL");
         EnsureColumn(connection, "turns", "display_ticket_number", "INTEGER NULL");
         EnsureColumn(connection, "turns", "ticket_date", "TEXT NULL");
+        EnsureColumn(connection, "turns", "started_at", "TEXT NULL");
+        EnsureColumn(connection, "turns", "completed_at", "TEXT NULL");
+        EnsureColumn(connection, "turns", "cancelled_at", "TEXT NULL");
         BackfillDisplayTicketNumbers(connection);
+        BackfillTurnLifecycleTimes(connection);
         EnsureDisplayTicketIndex(connection);
         EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
         EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
@@ -334,5 +341,43 @@ public sealed class LocalDatabaseInitializer
         }
 
         return false;
+    }
+
+    private static void BackfillTurnLifecycleTimes(SqliteConnection connection)
+    {
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE turns
+                SET completed_at = (
+                    SELECT collected_at
+                    FROM cash_payments
+                    WHERE cash_payments.turn_id = turns.id
+                    LIMIT 1
+                )
+                WHERE state = 4 AND completed_at IS NULL;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE turns
+                SET completed_at = updated_at
+                WHERE state = 4 AND completed_at IS NULL;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE turns
+                SET cancelled_at = updated_at
+                WHERE state IN (5, 6, 7) AND cancelled_at IS NULL;
+                """;
+            command.ExecuteNonQuery();
+        }
     }
 }

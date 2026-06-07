@@ -1,0 +1,91 @@
+<Page
+    x:Class="Barberia.Desktop.Views.TicketHistoryPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded">
+
+    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
+        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
+            <Border Style="{StaticResource HeroCardBorderStyle}">
+                <Grid ColumnSpacing="18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource HeroIconBoxStyle}">
+                        <FontIcon
+                            FontSize="30"
+                            Foreground="{StaticResource SurfaceBrush}"
+                            Glyph="&#xE81C;" />
+                    </Border>
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Spacing="5">
+                        <TextBlock
+                            Style="{StaticResource HeroTitleTextStyle}"
+                            Text="Ticket History" />
+                        <TextBlock
+                            FontSize="15"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Archive of all completed, cancelled, voided and no-show tickets." />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource PanelBorderStyle}" Padding="16">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="6" Grid.Column="0">
+                        <TextBlock Text="Status" Style="{StaticResource SmallMutedTextStyle}" />
+                        <ComboBox x:Name="_statusComboBox" HorizontalAlignment="Stretch" PlaceholderText="All statuses" SelectionChanged="OnSelectionFilterChanged">
+                            <ComboBoxItem Content="All statuses" Tag="All" />
+                            <ComboBoxItem Content="Completed" Tag="Completed" />
+                            <ComboBoxItem Content="Cancelled" Tag="Cancelled" />
+                            <ComboBoxItem Content="No show" Tag="NoShow" />
+                            <ComboBoxItem Content="Voided" Tag="Voided" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" Grid.Column="1">
+                        <TextBlock Text="Barber" Style="{StaticResource SmallMutedTextStyle}" />
+                        <ComboBox x:Name="_barberComboBox" HorizontalAlignment="Stretch" PlaceholderText="All barbers" DisplayMemberPath="DisplayName" SelectionChanged="OnSelectionFilterChanged" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" Grid.Column="2">
+                        <TextBlock Text="Date Range" Style="{StaticResource SmallMutedTextStyle}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <DatePicker x:Name="_fromDatePicker" DateChanged="OnDateFilterChanged" />
+                            <TextBlock Text="-" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                            <DatePicker x:Name="_toDatePicker" DateChanged="OnDateFilterChanged" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource PanelBorderStyle}">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock
+                            Style="{StaticResource SectionTitleTextStyle}"
+                            Text="Results" />
+                        <TextBlock
+                            x:Name="_resultsCountText"
+                            Style="{StaticResource SmallMutedTextStyle}"
+                            Text="Showing 0 tickets" />
+                    </StackPanel>
+                    <StackPanel
+                        x:Name="_historyRows"
+                        Spacing="10" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

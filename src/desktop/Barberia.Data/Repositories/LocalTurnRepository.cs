@@ -1,4 +1,5 @@
 using Barberia.Core.Domain;
+using Barberia.Data.Models;
 using Microsoft.Data.Sqlite;
 
 namespace Barberia.Data.Repositories;
@@ -21,10 +22,10 @@ public sealed class LocalTurnRepository
         command.CommandText = """
             INSERT INTO turns (
                 id, ticket_number, display_ticket_number, ticket_date, state, source, customer_name, checked_in_at, assigned_barber_id,
-                appointment_id, requested_barber_ids, updated_at
+                appointment_id, requested_barber_ids, started_at, completed_at, cancelled_at, updated_at
             ) VALUES (
                 $id, $ticket_number, $display_ticket_number, $ticket_date, $state, $source, $customer_name, $checked_in_at, $assigned_barber_id,
-                $appointment_id, $requested_barber_ids, $updated_at
+                $appointment_id, $requested_barber_ids, $started_at, $completed_at, $cancelled_at, $updated_at
             )
             ON CONFLICT(id) DO UPDATE SET
                 ticket_number = excluded.ticket_number,
@@ -37,6 +38,9 @@ public sealed class LocalTurnRepository
                 assigned_barber_id = excluded.assigned_barber_id,
                 appointment_id = excluded.appointment_id,
                 requested_barber_ids = excluded.requested_barber_ids,
+                started_at = excluded.started_at,
+                completed_at = excluded.completed_at,
+                cancelled_at = excluded.cancelled_at,
                 updated_at = excluded.updated_at;
             """;
         command.AddText("$id", turn.Id.ToString());
@@ -50,6 +54,9 @@ public sealed class LocalTurnRepository
         command.AddText("$assigned_barber_id", turn.AssignedBarberId?.ToString());
         command.AddText("$appointment_id", turn.AppointmentId?.ToString());
         command.AddText("$requested_barber_ids", FormatIds(turn.RequestedBarberIds));
+        command.AddText("$started_at", turn.StartedAt?.ToString("O"));
+        command.AddText("$completed_at", turn.CompletedAt?.ToString("O"));
+        command.AddText("$cancelled_at", turn.CancelledAt?.ToString("O"));
         command.AddText("$updated_at", updatedAt.ToString("O"));
         command.ExecuteNonQuery();
     }
@@ -60,7 +67,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE id = $id;
             """;
@@ -76,7 +83,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE ticket_number = $ticket_number;
             """;
@@ -113,7 +120,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE ticket_date = $ticket_date
               AND display_ticket_number = $display_ticket_number;
@@ -144,7 +151,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE state = $state
             ORDER BY checked_in_at, ticket_number;
@@ -167,7 +174,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE state IN ($waiting, $called, $in_service)
             ORDER BY
@@ -193,13 +200,47 @@ public sealed class LocalTurnRepository
         return turns;
     }
 
+    public IReadOnlyList<ActiveTurnRow> ListActiveWithUpdatedAt()
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at, updated_at
+            FROM turns
+            WHERE state IN ($waiting, $called, $in_service)
+            ORDER BY
+                CASE state
+                    WHEN $called THEN 0
+                    WHEN $in_service THEN 2
+                    ELSE 3
+                END,
+                checked_in_at,
+                ticket_number;
+            """;
+        command.AddInteger("$waiting", (int)TurnState.Waiting);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddInteger("$in_service", (int)TurnState.InService);
+
+        using var reader = command.ExecuteReader();
+        var turns = new List<ActiveTurnRow>();
+        while (reader.Read())
+        {
+            var turn = ReadTurn(reader);
+            var updatedAt = DateTimeOffset.Parse(reader.GetString(14));
+            turns.Add(new ActiveTurnRow(turn, updatedAt));
+        }
+
+        return turns;
+    }
+
     public IReadOnlyList<Turn> ListAssignedToBarber(Guid barberId)
     {
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE assigned_barber_id = $barber_id
               AND state = $called
@@ -224,7 +265,7 @@ public sealed class LocalTurnRepository
         command.Transaction = _transaction;
         command.CommandText = """
             SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
-                   appointment_id, requested_barber_ids, customer_name
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE assigned_barber_id IS NOT NULL
               AND state = $called
@@ -271,11 +312,13 @@ public sealed class LocalTurnRepository
         command.CommandText = """
             UPDATE turns
             SET state = $state,
+                completed_at = $completed_at,
                 updated_at = $updated_at
             WHERE id = $turn_id;
             """;
         command.AddText("$turn_id", turnId.ToString());
         command.AddInteger("$state", (int)TurnState.Completed);
+        command.AddText("$completed_at", updatedAt.ToString("O"));
         command.AddText("$updated_at", updatedAt.ToString("O"));
 
         if (command.ExecuteNonQuery() != 1)
@@ -291,6 +334,7 @@ public sealed class LocalTurnRepository
         command.CommandText = """
             UPDATE turns
             SET state = $state,
+                cancelled_at = $cancelled_at,
                 updated_at = $updated_at
             WHERE id = $turn_id
               AND state IN ($waiting, $called, $in_service);
@@ -300,6 +344,7 @@ public sealed class LocalTurnRepository
         command.AddInteger("$waiting", (int)TurnState.Waiting);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddInteger("$in_service", (int)TurnState.InService);
+        command.AddText("$cancelled_at", updatedAt.ToString("O"));
         command.AddText("$updated_at", updatedAt.ToString("O"));
 
         if (command.ExecuteNonQuery() != 1)
@@ -315,6 +360,7 @@ public sealed class LocalTurnRepository
         command.CommandText = """
             UPDATE turns
             SET state = $state,
+                started_at = $started_at,
                 updated_at = $updated_at
             WHERE id = $turn_id
               AND assigned_barber_id = $barber_id
@@ -324,6 +370,7 @@ public sealed class LocalTurnRepository
         command.AddText("$barber_id", barberId.ToString());
         command.AddInteger("$state", (int)TurnState.InService);
         command.AddInteger("$called", (int)TurnState.Called);
+        command.AddText("$started_at", updatedAt.ToString("O"));
         command.AddText("$updated_at", updatedAt.ToString("O"));
 
         if (command.ExecuteNonQuery() != 1)
@@ -345,7 +392,10 @@ public sealed class LocalTurnRepository
             reader.IsDBNull(7) ? null : Guid.Parse(reader.GetString(7)),
             reader.IsDBNull(8) ? null : Guid.Parse(reader.GetString(8)),
             ParseIds(reader.IsDBNull(9) ? null : reader.GetString(9)),
-            reader.IsDBNull(10) ? null : reader.GetString(10));
+            reader.IsDBNull(10) ? null : reader.GetString(10),
+            reader.IsDBNull(11) ? null : DateTimeOffset.Parse(reader.GetString(11)),
+            reader.IsDBNull(12) ? null : DateTimeOffset.Parse(reader.GetString(12)),
+            reader.IsDBNull(13) ? null : DateTimeOffset.Parse(reader.GetString(13)));
     }
 
     private static string FormatDate(DateOnly value)

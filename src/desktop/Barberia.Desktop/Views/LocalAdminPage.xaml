@@ -218,6 +218,16 @@
                 </Border>
             </Grid>
 
+            <Border Style="{StaticResource PanelBorderStyle}">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Alerts / Problemas del momento" />
+                        <TextBlock Style="{StaticResource SmallMutedTextStyle}" Text="Operational issues requiring attention." />
+                    </StackPanel>
+                    <StackPanel x:Name="_alertRows" Spacing="10" />
+                </StackPanel>
+            </Border>
+
             <Grid
                 ColumnSpacing="14"
                 RowSpacing="14">
@@ -525,6 +535,32 @@
                     </StackPanel>
                 </Border>
             </Grid>
+
+            <Border Style="{StaticResource PanelBorderStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <TextBlock
+                                Style="{StaticResource SectionTitleTextStyle}"
+                                Text="Ticket History Today" />
+                            <TextBlock
+                                Style="{StaticResource SmallMutedTextStyle}"
+                                Text="Recently completed, cancelled or no-show tickets." />
+                        </StackPanel>
+                        <Button
+                            Grid.Column="1"
+                            Click="OnViewFullHistoryClick"
+                            Content="View full history" />
+                    </Grid>
+                    <StackPanel
+                        x:Name="_historyRows"
+                        Spacing="10" />
+                </StackPanel>
+            </Border>
 
             <Border Style="{StaticResource PanelBorderStyle}">
                 <StackPanel Spacing="14">

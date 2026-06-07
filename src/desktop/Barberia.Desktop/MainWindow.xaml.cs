@@ -112,7 +112,7 @@ public sealed partial class MainWindow : Window
         NavigateTo(moduleKey);
     }
 
-    private void NavigateTo(ShellModuleKey moduleKey)
+    internal void NavigateTo(ShellModuleKey moduleKey)
     {
         if (!_modules.TryGetValue(moduleKey, out var module))
         {

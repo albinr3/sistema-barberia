@@ -7,5 +7,6 @@ public enum ShellModuleKey
     BarberPanel,
     CashBox,
     LocalAdmin,
-    Reports
+    Reports,
+    TicketHistory
 }

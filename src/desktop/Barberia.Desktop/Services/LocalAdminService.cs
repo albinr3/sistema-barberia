@@ -35,15 +35,19 @@ public sealed class LocalAdminService
         var report = new LocalAdminReportRepository(connection).Load(from, to, now);
         var barbers = new LocalBarberRepository(connection).ListAll();
         var services = new ServiceRepository(connection).ListAll();
-        var activeTurns = new LocalTurnRepository(connection).ListActiveForPublicDisplay();
+        var activeTurnRows = new LocalTurnRepository(connection).ListActiveWithUpdatedAt();
+        var activeTurns = activeTurnRows.Select(row => row.Turn).ToArray();
         var auditEvents = new AuditEventRepository(connection)
             .ListAll()
             .OrderByDescending(auditEvent => auditEvent.OccurredAt)
             .Take(10)
             .ToArray();
+        var recentHistory = new LocalTicketHistoryRepository(connection).ListRecentHistoryToday(10);
         var databaseSize = File.Exists(LocalAppPaths.DatabasePath)
             ? new FileInfo(LocalAppPaths.DatabasePath).Length
             : 0;
+
+        var alerts = CalculateAlerts(activeTurnRows, now, barbers);
 
         return new LocalAdminSnapshot(
             now,
@@ -55,7 +59,9 @@ public sealed class LocalAdminService
             services,
             ProfileImageCatalog.ListProfileImages(),
             activeTurns,
-            auditEvents);
+            alerts,
+            auditEvents,
+            recentHistory);
     }
 
     public void SaveBarber(
@@ -685,5 +691,55 @@ public sealed class LocalAdminService
     private static string FormatStationCode(int stationNumber)
     {
         return $"B-{stationNumber}";
+    }
+
+    public static IReadOnlyList<LocalAdminAlert> CalculateAlerts(
+        IReadOnlyList<ActiveTurnRow> activeTurnRows,
+        DateTimeOffset now,
+        IReadOnlyList<Barber> barbers)
+    {
+        var alerts = new List<LocalAdminAlert>();
+
+        var longWaitingTurns = activeTurnRows
+            .Where(row => row.Turn.State == TurnState.Waiting)
+            .Select(row => new { row.Turn, Elapsed = (int)(now - row.Turn.CheckedInAt).TotalMinutes })
+            .Where(x => x.Elapsed > 30)
+            .OrderByDescending(x => x.Elapsed)
+            .ToList();
+
+        if (longWaitingTurns.Count > 0)
+        {
+            var oldest = longWaitingTurns[0];
+            alerts.Add(new LocalAdminAlert(
+                AlertSeverity.Warning,
+                $"{longWaitingTurns.Count} client{(longWaitingTurns.Count == 1 ? "" : "s")} waiting more than 30 minutes",
+                $"Ticket #{oldest.Turn.DisplayTicketNumber} has been waiting for {oldest.Elapsed} minutes.",
+                null,
+                null,
+                null,
+                oldest.Elapsed));
+        }
+
+        foreach (var row in activeTurnRows.Where(r => r.Turn.State == TurnState.Called))
+        {
+            var elapsed = (int)(now - row.UpdatedAt).TotalMinutes;
+            if (elapsed > 4)
+            {
+                var barberName = row.Turn.AssignedBarberId is null
+                    ? "a barber"
+                    : barbers.FirstOrDefault(b => b.Id == row.Turn.AssignedBarberId)?.DisplayName ?? "a barber";
+
+                alerts.Add(new LocalAdminAlert(
+                    AlertSeverity.Critical,
+                    $"Ticket #{row.Turn.DisplayTicketNumber} not started",
+                    $"Ticket #{row.Turn.DisplayTicketNumber} was called {elapsed} minutes ago by {barberName} and is not in service.",
+                    row.Turn.DisplayTicketNumber,
+                    row.Turn.Id,
+                    row.Turn.AssignedBarberId,
+                    elapsed));
+            }
+        }
+
+        return alerts;
     }
 }

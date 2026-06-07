@@ -1,4 +1,4 @@
-# Sistema operativo
+﻿# Sistema operativo
 .DS_Store
 Thumbs.db
 Desktop.ini
@@ -50,3 +50,5 @@ temp/
 
 # Codex build output
 .codex-build/
+.build-validation*/
+.build-validationDebug/

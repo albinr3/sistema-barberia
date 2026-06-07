@@ -303,6 +303,43 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void TurnRepository_ListActiveWithUpdatedAt_ReturnsActiveTurnsInOrder()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T12:00:00Z");
+        var repository = new LocalTurnRepository(database.Connection);
+        var called = CreateTurn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
+        var inService = CreateTurn(Guid.NewGuid(), "A-001", TurnState.InService, TurnSource.Appointment, now);
+        var waiting = CreateTurn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
+        var completed = CreateTurn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
+
+        repository.Upsert(waiting, now);
+        repository.Upsert(completed, now);
+        repository.Upsert(called, now.AddMinutes(10));
+        repository.Upsert(inService, now.AddMinutes(20));
+
+        var activeTurnRows = repository.ListActiveWithUpdatedAt();
+
+        Assert.Collection(
+            activeTurnRows,
+            row =>
+            {
+                Assert.Equal(called.Id, row.Turn.Id);
+                Assert.Equal(now.AddMinutes(10), row.UpdatedAt);
+            },
+            row =>
+            {
+                Assert.Equal(inService.Id, row.Turn.Id);
+                Assert.Equal(now.AddMinutes(20), row.UpdatedAt);
+            },
+            row =>
+            {
+                Assert.Equal(waiting.Id, row.Turn.Id);
+                Assert.Equal(now, row.UpdatedAt);
+            });
+    }
+
+    [Fact]
     public void TurnRepository_ReturnsAssignedTurnsForSelectedBarber()
     {
         using var database = TestDatabase.Create();

@@ -12,6 +12,7 @@ Componentes web para booking, usuarios y administracion.
 - POR CONFIRMAR: panel admin web.
 - CRUD web de barberos sincronizado con el CRUD local de Fase 1.
 - CRUD web de servicios sincronizado con el catalogo local de Fase 1: nombre, precio base mayor que cero, activo/inactivo y orden de visualizacion.
+- Sincronizacion del historial de tickets, incluyendo los tiempos de ciclo de vida completos (`started_at`, `completed_at`, `cancelled_at`), desde la operacion local hacia Supabase/PostgreSQL.
 - El booking web debe mostrar los servicios disponibles con su precio base.
 - Los barberos cloud deben incluir al menos `id`, nombre visible, `station_number`/`station_code`, orden de rotacion, imagen de perfil opcional, estado operativo sincronizable cuando aplique y bandera `is_active`.
 - La bandera `is_active=false` debe ocultar al barbero de booking web, kiosco local y flujos operativos para nuevos turnos, sin borrar historial.

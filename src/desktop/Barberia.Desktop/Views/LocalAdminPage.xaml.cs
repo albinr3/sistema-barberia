@@ -1,6 +1,7 @@
 using Barberia.Core.Domain;
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
+using Barberia.Desktop.Shell;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -77,6 +78,10 @@ public sealed partial class LocalAdminPage : Page
         SyncEditor(snapshot);
         SyncServiceEditor(snapshot);
 
+        ReplaceChildren(
+            _alertRows,
+            snapshot.Alerts.Select(CreateAlertRow),
+            "No current alerts.");
         ReplaceChildren(
             _barberRows,
             snapshot.Barbers.Select(CreateBarberRow),
@@ -425,6 +430,89 @@ public sealed partial class LocalAdminPage : Page
         return WrapRow(row, Brush(255, 255, 255));
     }
 
+    private static UIElement CreateAlertRow(LocalAdminAlert alert)
+    {
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+
+        var iconBox = new Border
+        {
+            Width = 42,
+            Height = 42,
+            CornerRadius = new CornerRadius(8),
+            Background = alert.Severity switch
+            {
+                AlertSeverity.Critical => Brush(255, 240, 238),
+                AlertSeverity.Warning => Brush(255, 248, 230),
+                _ => Brush(235, 248, 244)
+            }
+        };
+
+        var icon = new FontIcon
+        {
+            Glyph = alert.Severity switch
+            {
+                AlertSeverity.Critical => "\uEA39", // Warning icon
+                AlertSeverity.Warning => "\uE7BA", // Warning icon
+                _ => "\uE946" // Info icon
+            },
+            FontSize = 19,
+            Foreground = alert.Severity switch
+            {
+                AlertSeverity.Critical => Brush(154, 58, 47),
+                AlertSeverity.Warning => Brush(140, 96, 16),
+                _ => Brush(17, 105, 88)
+            },
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        iconBox.Child = icon;
+        Grid.SetColumn(iconBox, 0);
+        row.Children.Add(iconBox);
+
+        var details = new StackPanel
+        {
+            Spacing = 3,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = alert.Title,
+                    FontSize = 16,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(30, 31, 34),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                },
+                new TextBlock
+                {
+                    Text = alert.Detail,
+                    FontSize = 13,
+                    Foreground = Brush(101, 108, 116),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                }
+            }
+        };
+        Grid.SetColumn(details, 1);
+        row.Children.Add(details);
+
+        return WrapRow(row, alert.Severity switch
+        {
+            AlertSeverity.Critical => Brush(255, 240, 238),
+            AlertSeverity.Warning => Brush(255, 252, 240),
+            _ => Brush(255, 255, 255)
+        });
+    }
+
+    private void OnViewFullHistoryClick(object sender, RoutedEventArgs args)
+    {
+        if (App.MainWindowInstance is MainWindow mainWindow)
+        {
+            mainWindow.NavigateTo(ShellModuleKey.TicketHistory);
+        }
+    }
+
     private static UIElement CreateAuditRow(AuditEvent auditEvent)
     {
         return WrapRow(
@@ -482,8 +570,11 @@ public sealed partial class LocalAdminPage : Page
         _turnRows.Children.Clear();
         _auditRows.Children.Clear();
         _serviceRows.Children.Clear();
+        _historyRows.Children.Clear();
+        _alertRows.Children.Clear();
         _deleteBarberButton.IsEnabled = false;
         _deleteServiceButton.IsEnabled = false;
+        _alertRows.Children.Add(CreateEmptyState("Could not read alerts."));
         _barberRows.Children.Add(CreateEmptyState("Could not read barbers from the local database."));
         _serviceRows.Children.Add(CreateEmptyState("Could not read services from the local database."));
         _turnRows.Children.Add(CreateEmptyState("Could not read active turns."));

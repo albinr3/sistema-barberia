@@ -8,7 +8,7 @@ Aplicacion movil iOS/Android.
 
 - POR CONFIRMAR: reservas.
 - POR CONFIRMAR: login.
-- POR CONFIRMAR: historial.
+- POR CONFIRMAR: historial de tickets (debe aprovechar los tiempos de ciclo de vida: creacion, `started_at`, `completed_at`, `cancelled_at`).
 - POR CONFIRMAR: cuenta de barbero.
 - POR CONFIRMAR: panel admin movil.
 - POR CONFIRMAR: CRUD de barberos desde movil.
