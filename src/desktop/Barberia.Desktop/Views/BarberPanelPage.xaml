@@ -140,8 +140,8 @@
                             Click="OnStartServiceClick"
                             HorizontalAlignment="Stretch"
                             MinHeight="58"
-                            Background="{StaticResource AccentGreenBrush}"
-                            BorderBrush="{StaticResource AccentGreenBrush}"
+                            Background="#FF0020C2"
+                            BorderBrush="#FF0020C2"
                             Foreground="{StaticResource SurfaceBrush}"
                             ToolTipService.ToolTip="Start service">
                             <StackPanel
