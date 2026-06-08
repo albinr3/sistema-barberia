@@ -2,6 +2,7 @@ using Barberia.Core.Domain;
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
 using Barberia.Desktop.Shell;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -9,6 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
+using Windows.Graphics.Imaging;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -81,9 +83,34 @@ public sealed partial class LocalAdminPage : Page
             _auditRows,
             snapshot.RecentAuditEvents.Select(CreateAuditRow),
             "No audit events recorded yet.");
+
+        var staffElements = snapshot.Barbers.Take(10).Select(CreateStaffRow).ToList();
+        var staffChildren = new List<UIElement>();
+        
+        if (staffElements.Count > 0)
+        {
+            var grid = new Grid { ColumnSpacing = 16, RowSpacing = 16 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            for (int i = 0; i < 5; i++)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            for (int i = 0; i < staffElements.Count; i++)
+            {
+                var child = (FrameworkElement)staffElements[i];
+                Grid.SetRow(child, i % 5);
+                Grid.SetColumn(child, i / 5);
+                grid.Children.Add(child);
+            }
+            staffChildren.Add(grid);
+        }
+
         ReplaceChildren(
             _staffRows,
-            snapshot.Barbers.Select(CreateStaffRow),
+            staffChildren,
             "No barbers registered in the local database.");
     }
 
@@ -159,6 +186,10 @@ public sealed partial class LocalAdminPage : Page
         row.Children.Add(statusBadge);
 
         var cancelButton = CreateSmallActionButton("Cancel");
+        cancelButton.Background = Brush(255, 218, 214);
+        cancelButton.BorderBrush = Brush(186, 26, 26);
+        cancelButton.BorderThickness = new Thickness(1);
+        cancelButton.Foreground = Brush(147, 0, 10);
         cancelButton.IsEnabled = turn.State is TurnState.Waiting or TurnState.Called or TurnState.InService;
         cancelButton.Click += (_, _) => ExecuteAdminAction(() => _service.CancelTurn(turn.Id), "Cancelled");
 
@@ -380,6 +411,27 @@ public sealed partial class LocalAdminPage : Page
                 VerticalAlignment = VerticalAlignment.Center
             }
         });
+
+        var imagePath = ProfileImageCatalog.ResolveImagePath(barber.ProfileImagePath);
+        if (imagePath is not null)
+        {
+            var imageBrush = new ImageBrush
+            {
+                Stretch = Stretch.UniformToFill
+            };
+            var imageCircle = new Ellipse
+            {
+                Width = 48,
+                Height = 48,
+                Fill = imageBrush,
+                Stroke = Brush(255, 255, 255),
+                StrokeThickness = 2,
+                Visibility = Visibility.Collapsed
+            };
+            avatar.Children.Add(imageCircle);
+            _ = LoadProfileImageAsync(imageBrush, imageCircle, imagePath);
+        }
+
         avatar.Children.Add(new Ellipse
         {
             Width = 12,
@@ -394,6 +446,7 @@ public sealed partial class LocalAdminPage : Page
 
         var details = new StackPanel
         {
+            MinWidth = 96,
             Spacing = 2,
             VerticalAlignment = VerticalAlignment.Center,
             Children =
@@ -404,6 +457,7 @@ public sealed partial class LocalAdminPage : Page
                     FontSize = 14,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = Brush(26, 28, 30),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
                     TextWrapping = TextWrapping.WrapWholeWords
                 },
                 new TextBlock
@@ -411,6 +465,7 @@ public sealed partial class LocalAdminPage : Page
                     Text = FormatBarberState(barber.State),
                     FontSize = 12,
                     Foreground = isOnline ? Brush(68, 70, 85) : Brush(117, 118, 135),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
                     TextWrapping = TextWrapping.WrapWholeWords
                 }
             }
@@ -420,10 +475,13 @@ public sealed partial class LocalAdminPage : Page
 
         var toggleSwitch = new ToggleSwitch
         {
+            Width = 46,
+            MinWidth = 46,
             IsOn = isOnline,
-            OnContent = "On",
-            OffContent = "Off",
+            OnContent = null,
+            OffContent = null,
             IsEnabled = barber.IsActive && barber.State is not BarberState.Called and not BarberState.InService,
+            HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -758,6 +816,28 @@ public sealed partial class LocalAdminPage : Page
     private static SolidColorBrush Brush(byte red, byte green, byte blue)
     {
         return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
+    }
+
+    private static async Task LoadProfileImageAsync(ImageBrush imageBrush, UIElement imageElement, string fullPath)
+    {
+        try
+        {
+            await using var fileStream = File.OpenRead(fullPath);
+            using var imageStream = fileStream.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(imageStream);
+            var bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            var source = new SoftwareBitmapSource();
+            await source.SetBitmapAsync(bitmap);
+            imageBrush.ImageSource = source;
+            imageElement.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            imageBrush.ImageSource = null;
+            imageElement.Visibility = Visibility.Collapsed;
+        }
     }
 
     private sealed record ReassignTicketOption(Guid TurnId, string DisplayText);

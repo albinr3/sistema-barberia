@@ -7,6 +7,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using System.Globalization;
 
 namespace Barberia.Desktop.Views;
 
@@ -15,6 +16,7 @@ public sealed partial class ServicesPage : Page
     private readonly LocalAdminService _service = new();
     private Guid? _editingServiceId;
     private int _nextServiceDisplayOrder;
+    private bool _resetDisplayOrderToDefault = true;
 
     public ServicesPage()
     {
@@ -114,12 +116,14 @@ public sealed partial class ServicesPage : Page
     private void OnNewServiceClick(object sender, RoutedEventArgs args)
     {
         _editingServiceId = null;
+        _resetDisplayOrderToDefault = true;
         ClearServiceEditor();
         SetStatus("New service", success: true);
     }
 
     private void OnSaveServiceClick(object sender, RoutedEventArgs args)
     {
+        var isEditing = _editingServiceId is not null;
         ExecuteAdminAction(
             () =>
             {
@@ -130,9 +134,10 @@ public sealed partial class ServicesPage : Page
                     _serviceActiveCheckBox.IsChecked == true,
                     ParseServiceDisplayOrder());
                 _editingServiceId = null;
+                _resetDisplayOrderToDefault = true;
                 ClearServiceEditor();
             },
-            "Saved");
+            isEditing ? "Updated" : "Saved");
     }
 
     private void OnDeleteServiceClick(object sender, RoutedEventArgs args)
@@ -147,6 +152,7 @@ public sealed partial class ServicesPage : Page
 
                 _service.DeleteService(serviceId);
                 _editingServiceId = null;
+                _resetDisplayOrderToDefault = true;
                 ClearServiceEditor();
             },
             "Deleted");
@@ -204,24 +210,29 @@ public sealed partial class ServicesPage : Page
             if (service is not null)
             {
                 LoadServiceIntoEditor(service);
+                SetEditorModeText(service.Name);
                 return;
             }
 
             _editingServiceId = null;
         }
 
-        if (string.IsNullOrWhiteSpace(_serviceDisplayOrderInput.Text))
+        if (_resetDisplayOrderToDefault || string.IsNullOrWhiteSpace(_serviceDisplayOrderInput.Text))
         {
             _serviceDisplayOrderInput.Text = _nextServiceDisplayOrder.ToString();
+            _resetDisplayOrderToDefault = false;
         }
 
+        SetEditorModeText(null);
         _deleteServiceButton.IsEnabled = false;
     }
 
     private void EditService(Service service)
     {
         _editingServiceId = service.Id;
+        _resetDisplayOrderToDefault = false;
         LoadServiceIntoEditor(service);
+        SetEditorModeText(service.Name);
         SetStatus("Editing", success: true);
     }
 
@@ -241,12 +252,22 @@ public sealed partial class ServicesPage : Page
         _serviceDisplayOrderInput.Text = _nextServiceDisplayOrder.ToString();
         _serviceActiveCheckBox.IsChecked = true;
         _deleteServiceButton.IsEnabled = false;
+        SetEditorModeText(null);
+    }
+
+    private void SetEditorModeText(string? serviceName)
+    {
+        _editorModeText.Text = serviceName is null
+            ? "Creating a new service"
+            : $"Editing: {serviceName}";
     }
 
     private decimal ParseServicePrice()
     {
-        var text = _servicePriceInput.Text.Trim();
-        if (!decimal.TryParse(text, out var price) || price <= 0)
+        var text = _servicePriceInput.Text.Trim().Replace("$", string.Empty).Trim();
+        if ((!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var price)
+                && !decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out price))
+            || price <= 0)
         {
             throw new InvalidOperationException("Service price must be greater than zero.");
         }

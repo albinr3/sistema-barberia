@@ -12,6 +12,53 @@ namespace Barberia.Desktop.Tests;
 public class LocalAdminServiceTests
 {
     [Fact]
+    public void SaveService_WithExistingService_UpdatesService()
+    {
+        using var database = TestDatabase.Create();
+        var serviceId = Guid.NewGuid();
+        var now = DateTimeOffset.Parse("2026-06-08T10:00:00Z");
+
+        using (var connection = database.ConnectionFactory.OpenConnection())
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO services (
+                    id, name, price_cents, is_active, display_order, created_at, updated_at
+                ) VALUES (
+                    $id, $name, $price_cents, $is_active, $display_order, $created_at, $updated_at
+                );
+                """;
+            command.Parameters.AddWithValue("$id", serviceId.ToString("N"));
+            command.Parameters.AddWithValue("$name", "REGULAR HAIRCUT");
+            command.Parameters.AddWithValue("$price_cents", 2500);
+            command.Parameters.AddWithValue("$is_active", 1);
+            command.Parameters.AddWithValue("$display_order", 0);
+            command.Parameters.AddWithValue("$created_at", now.ToString("O"));
+            command.Parameters.AddWithValue("$updated_at", now.ToString("O"));
+            command.ExecuteNonQuery();
+        }
+
+        new LocalAdminService(database.ConnectionFactory).SaveService(
+            serviceId,
+            "REGULAR HAIRCUT",
+            30m,
+            isActive: false,
+            3);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var services = new ServiceRepository(verifyConnection).ListAll();
+        var saved = Assert.Single(services);
+        var auditEvents = new AuditEventRepository(verifyConnection).ListAll();
+
+        Assert.Equal(serviceId, saved.Id);
+        Assert.Equal("REGULAR HAIRCUT", saved.Name);
+        Assert.Equal(30m, saved.Price);
+        Assert.False(saved.IsActive);
+        Assert.Equal(3, saved.DisplayOrder);
+        Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "admin_service_updated" && auditEvent.AggregateId == serviceId);
+    }
+
+    [Fact]
     public void ReassignTurn_CalledTicketToAvailableBarber_CallsTargetAndReleasesPrevious()
     {
         using var database = TestDatabase.Create();

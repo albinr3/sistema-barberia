@@ -95,6 +95,12 @@
                             <TextBlock
                                 Style="{StaticResource SmallMutedTextStyle}"
                                 Text="Create services with a required base price for autocaja." />
+                            <TextBlock
+                                x:Name="_editorModeText"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource AccentGreenBrush}"
+                                Text="Creating a new service" />
                         </StackPanel>
 
                         <StackPanel Spacing="12">

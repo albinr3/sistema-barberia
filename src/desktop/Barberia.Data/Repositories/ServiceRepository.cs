@@ -45,9 +45,9 @@ public sealed class ServiceRepository
         command.CommandText = """
             SELECT id, name, price_cents, is_active, display_order, created_at, updated_at
             FROM services
-            WHERE id = $id;
+            WHERE id = $id OR id = $id_n;
             """;
-        command.AddText("$id", id.ToString());
+        AddIdParameters(command, id);
 
         using var reader = command.ExecuteReader();
         return reader.Read() ? ReadService(reader) : null;
@@ -81,9 +81,10 @@ public sealed class ServiceRepository
                 is_active = $is_active,
                 display_order = $display_order,
                 updated_at = $updated_at
-            WHERE id = $id;
+            WHERE id = $id OR id = $id_n;
             """;
         AddServiceParameters(command, service);
+        command.AddText("$id_n", service.Id.ToString("N"));
         command.ExecuteNonQuery();
     }
 
@@ -94,9 +95,9 @@ public sealed class ServiceRepository
             UPDATE services
             SET is_active = $is_active,
                 updated_at = $updated_at
-            WHERE id = $id;
+            WHERE id = $id OR id = $id_n;
             """;
-        command.AddText("$id", id.ToString());
+        AddIdParameters(command, id);
         command.AddInteger("$is_active", isActive ? 1 : 0);
         command.AddText("$updated_at", updatedAt.ToString("O"));
         command.ExecuteNonQuery();
@@ -105,8 +106,8 @@ public sealed class ServiceRepository
     public void Delete(Guid id)
     {
         using var command = CreateCommand();
-        command.CommandText = "DELETE FROM services WHERE id = $id;";
-        command.AddText("$id", id.ToString());
+        command.CommandText = "DELETE FROM services WHERE id = $id OR id = $id_n;";
+        AddIdParameters(command, id);
         command.ExecuteNonQuery();
     }
 
@@ -126,6 +127,12 @@ public sealed class ServiceRepository
         command.AddInteger("$display_order", service.DisplayOrder);
         command.AddText("$created_at", service.CreatedAt.ToString("O"));
         command.AddText("$updated_at", service.UpdatedAt.ToString("O"));
+    }
+
+    private static void AddIdParameters(SqliteCommand command, Guid id)
+    {
+        command.AddText("$id", id.ToString());
+        command.AddText("$id_n", id.ToString("N"));
     }
 
     private static IReadOnlyList<Service> ReadServices(SqliteCommand command)

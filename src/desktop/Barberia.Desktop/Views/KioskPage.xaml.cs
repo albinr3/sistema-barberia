@@ -21,6 +21,7 @@ public sealed partial class KioskPage : Page
     private readonly KioskCheckInService _checkInService = new();
     private readonly Dictionary<Guid, Button> _barberButtons = [];
     private readonly HashSet<Guid> _selectedBarberIds = [];
+    private int _barberColumnCount = 4;
     private IReadOnlyList<Barber> _barbers = [];
     private bool _acceptsAnyBarber = true;
     private string _customerName = string.Empty;
@@ -34,6 +35,42 @@ public sealed partial class KioskPage : Page
         LoadBarbers();
         RenderBarberChoices();
         UpdateInteractionState();
+    }
+
+    private void OnKioskSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        UpdateKioskResponsiveLayout(args.NewSize.Width, args.NewSize.Height);
+    }
+
+    private void UpdateKioskResponsiveLayout(double width, double height)
+    {
+        if (width <= 0)
+        {
+            return;
+        }
+
+        _contentCanvas.Width = width;
+        _contentCanvas.MinHeight = Math.Max(1, height - _topBar.ActualHeight);
+
+        var compact = width < 760;
+        var medium = width < 1080;
+        var edgePadding = compact ? 16 : medium ? 28 : 48;
+        var verticalPadding = compact ? 20 : medium ? 30 : 42;
+        var panelPadding = compact ? 20 : medium ? 32 : 48;
+
+        _topBar.Padding = new Thickness(edgePadding, 0, edgePadding, 0);
+        _contentCanvas.Padding = new Thickness(edgePadding, verticalPadding, edgePadding, verticalPadding);
+        _checkInPanel.Padding = new Thickness(panelPadding);
+        _nameInputSection.MaxWidth = compact ? double.PositiveInfinity : 720;
+
+        var nextColumnCount = width < 680 ? 1 : width < 980 ? 2 : width < 1320 ? 3 : 4;
+        if (_barberColumnCount == nextColumnCount)
+        {
+            return;
+        }
+
+        _barberColumnCount = nextColumnCount;
+        RenderBarberChoices();
     }
 
     private void LoadBrandLogo()
@@ -200,7 +237,7 @@ public sealed partial class KioskPage : Page
         _barberGrid.RowDefinitions.Clear();
         _barberButtons.Clear();
 
-        for (var column = 0; column < 4; column++)
+        for (var column = 0; column < _barberColumnCount; column++)
         {
             _barberGrid.ColumnDefinitions.Add(new ColumnDefinition());
         }
@@ -209,14 +246,14 @@ public sealed partial class KioskPage : Page
         {
             _barberGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var emptyState = CreateEmptyState();
-            Grid.SetColumnSpan(emptyState, 4);
+            Grid.SetColumnSpan(emptyState, _barberColumnCount);
             _barberGrid.Children.Add(emptyState);
             return;
         }
 
         for (var index = 0; index < _barbers.Count; index++)
         {
-            if (index % 4 == 0)
+            if (index % _barberColumnCount == 0)
             {
                 _barberGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             }
@@ -224,8 +261,8 @@ public sealed partial class KioskPage : Page
             var barber = _barbers[index];
             var button = CreateBarberCard(barber);
             _barberButtons[barber.Id] = button;
-            Grid.SetRow(button, index / 4);
-            Grid.SetColumn(button, index % 4);
+            Grid.SetRow(button, index / _barberColumnCount);
+            Grid.SetColumn(button, index % _barberColumnCount);
             _barberGrid.Children.Add(button);
         }
 

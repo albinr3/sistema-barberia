@@ -1,7 +1,10 @@
 <Page
     x:Class="Barberia.Desktop.Views.KioskPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    HorizontalAlignment="Stretch"
+    SizeChanged="OnKioskSizeChanged"
+    VerticalAlignment="Stretch">
 
     <Page.Resources>
         <SolidColorBrush x:Key="KioskBackgroundBrush" Color="#FFF9F9FC" />
@@ -21,9 +24,11 @@
         <SolidColorBrush x:Key="KioskBusyTextBrush" Color="#FF93000A" />
     </Page.Resources>
 
-    <Grid Background="{StaticResource KioskBackgroundBrush}">
+    <Grid
+        x:Name="_pageRoot"
+        Background="{StaticResource KioskBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
+            <RowDefinition Height="Auto" />
             <RowDefinition />
         </Grid.RowDefinitions>
 
@@ -31,7 +36,10 @@
             Background="{StaticResource KioskSurfaceBrush}"
             BorderBrush="{StaticResource KioskOutlineBrush}"
             BorderThickness="0,0,0,1">
-            <Grid Padding="48,0">
+            <Grid
+                x:Name="_topBar"
+                MinHeight="64"
+                Padding="48,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition Width="Auto" />
@@ -72,12 +80,22 @@
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1">
-            <Grid Padding="48,42">
+        <ScrollViewer
+            x:Name="_screenScrollViewer"
+            Grid.Row="1"
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Auto"
+            ZoomMode="Disabled">
+            <Grid
+                x:Name="_contentCanvas"
+                MinHeight="1"
+                Padding="48,42"
+                HorizontalAlignment="Stretch">
                 <Border
                     x:Name="_checkInPanel"
-                    MaxWidth="896"
-                    HorizontalAlignment="Center"
+                    HorizontalAlignment="Stretch"
                     Padding="48"
                     Background="{StaticResource KioskSurfaceBrush}"
                     BorderBrush="{StaticResource KioskOutlineBrush}"
@@ -106,7 +124,8 @@
                         </StackPanel>
 
                         <StackPanel
-                            Width="720"
+                            x:Name="_nameInputSection"
+                            MaxWidth="720"
                             Margin="0,0,0,40"
                             HorizontalAlignment="Center"
                             Spacing="8">

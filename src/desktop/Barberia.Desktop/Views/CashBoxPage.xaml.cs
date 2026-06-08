@@ -14,6 +14,7 @@ namespace Barberia.Desktop.Views;
 public sealed partial class CashBoxPage : Page
 {
     private const double NarrowLayoutThreshold = 900;
+    private const int ServiceOptionColumnCount = 3;
 
     private static readonly SolidColorBrush SuccessTextBrush = Brush(17, 105, 88);
     private static readonly SolidColorBrush ErrorTextBrush = Brush(154, 58, 47);
@@ -22,6 +23,8 @@ public sealed partial class CashBoxPage : Page
     private readonly CashBoxCloseService _service = new();
     private readonly MediaPlayer _successPlayer;
     private IReadOnlyList<Service> _services = [];
+    private Service? _selectedService;
+    private ToggleButton? _selectedServiceButton;
     private decimal _additionalAmount;
 
     public event EventHandler? ShellMenuRequested;
@@ -54,13 +57,6 @@ public sealed partial class CashBoxPage : Page
     private void OnSizeChanged(object sender, SizeChangedEventArgs args)
     {
         ApplyResponsiveLayout(args.NewSize.Width);
-    }
-
-    private void OnServiceSelectionChanged(object sender, SelectionChangedEventArgs args)
-    {
-        _additionalAmount = 0;
-        SyncAdditionalButtons(null);
-        UpdateServiceTotal();
     }
 
     private void OnAdditionalClick(object sender, RoutedEventArgs args)
@@ -100,7 +96,7 @@ public sealed partial class CashBoxPage : Page
         {
             var snapshot = _service.Load();
             _services = snapshot.Services;
-            _serviceSelector.ItemsSource = _services;
+            SyncServiceOptions();
             _lastRefreshText.Text = $"Updated: {snapshot.LoadedAt:hh:mm tt}";
             SetMessage("Waiting for ticket and service.", SuccessTextBrush);
             UpdateServiceTotal();
@@ -113,7 +109,7 @@ public sealed partial class CashBoxPage : Page
 
     private void CloseService()
     {
-        if (_serviceSelector.SelectedItem is not Service selectedService)
+        if (_selectedService is not Service selectedService)
         {
             ShowError("Select a service.");
             DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
@@ -131,7 +127,7 @@ public sealed partial class CashBoxPage : Page
             SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
             _ticketInput.Text = string.Empty;
             ClearTicketDetails();
-            _serviceSelector.SelectedItem = null;
+            SelectService(null, null);
             _additionalAmount = 0;
             SyncAdditionalButtons(null);
             UpdateServiceTotal();
@@ -152,8 +148,8 @@ public sealed partial class CashBoxPage : Page
         _amountText.Text = "$0.00";
         _commissionText.Text = "$0.00";
         _serviceReceiptText.Text = "No service";
-        _servicePriceText.Text = string.Empty;
         _cashTotalText.Text = "$0.00";
+        SelectService(null, null);
         ClearTicketDetails();
         SetMessage("Waiting for ticket and service.", NeutralTextBrush);
     }
@@ -182,18 +178,140 @@ public sealed partial class CashBoxPage : Page
 
     private void UpdateServiceTotal()
     {
-        if (_serviceSelector.SelectedItem is not Service selectedService)
+        if (_selectedService is not Service selectedService)
         {
-            _servicePriceText.Text = string.Empty;
             _amountText.Text = "$0.00";
             _commissionText.Text = "$0.00";
             _cashTotalText.Text = "$0.00";
             return;
         }
-        _servicePriceText.Text = $"${selectedService.Price:0.00}";
         _amountText.Text = $"${selectedService.Price:0.00}";
         _commissionText.Text = $"${_additionalAmount:0.00}";
         _cashTotalText.Text = $"${selectedService.Price + _additionalAmount:0.00}";
+    }
+
+    private void SyncServiceOptions()
+    {
+        var selectedServiceId = _selectedService?.Id;
+        _serviceOptionsGrid.Children.Clear();
+        _serviceOptionsGrid.RowDefinitions.Clear();
+        _selectedService = null;
+        _selectedServiceButton = null;
+
+        if (_services.Count == 0)
+        {
+            _serviceOptionsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            _serviceOptionsGrid.Children.Add(new TextBlock
+            {
+                Text = "No active services available.",
+                Foreground = Brush(117, 118, 135),
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 6, 0, 0)
+            });
+            return;
+        }
+
+        var rows = (_services.Count + ServiceOptionColumnCount - 1) / ServiceOptionColumnCount;
+        for (var rowIndex = 0; rowIndex < rows; rowIndex++)
+        {
+            _serviceOptionsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
+        for (var index = 0; index < _services.Count; index++)
+        {
+            var service = _services[index];
+            var serviceButton = CreateServiceButton(service);
+            Grid.SetColumn(serviceButton, index % ServiceOptionColumnCount);
+            Grid.SetRow(serviceButton, index / ServiceOptionColumnCount);
+            _serviceOptionsGrid.Children.Add(serviceButton);
+
+            if (service.Id == selectedServiceId)
+            {
+                SelectService(service, serviceButton);
+            }
+        }
+    }
+
+    private ToggleButton CreateServiceButton(Service service)
+    {
+        var nameText = new TextBlock
+        {
+            Text = service.Name,
+            FontSize = 14,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = NeutralTextBrush,
+            TextWrapping = TextWrapping.WrapWholeWords,
+            MaxLines = 2
+        };
+
+        var priceText = new TextBlock
+        {
+            Text = $"${service.Price:0.00}",
+            FontSize = 18,
+            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
+            Foreground = Brush(0, 32, 194)
+        };
+
+        var content = new StackPanel
+        {
+            Spacing = 6
+        };
+        content.Children.Add(nameText);
+        content.Children.Add(priceText);
+
+        var button = new ToggleButton
+        {
+            MinHeight = 64,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(12, 10, 12, 10),
+            Background = Brush(249, 249, 252),
+            BorderBrush = Brush(226, 226, 229),
+            BorderThickness = new Thickness(1),
+            Content = content,
+            Tag = service
+        };
+        button.Click += OnServiceOptionClick;
+        ToolTipService.SetToolTip(button, service.DisplayNameWithPrice);
+        return button;
+    }
+
+    private void OnServiceOptionClick(object sender, RoutedEventArgs args)
+    {
+        if (sender is not ToggleButton button || button.Tag is not Service service)
+        {
+            return;
+        }
+
+        SelectService(service, button);
+        _additionalAmount = 0;
+        SyncAdditionalButtons(null);
+        UpdateServiceTotal();
+    }
+
+    private void SelectService(Service? service, ToggleButton? selectedButton)
+    {
+        if (_selectedServiceButton is not null && _selectedServiceButton != selectedButton)
+        {
+            SetServiceButtonSelected(_selectedServiceButton, false);
+        }
+
+        _selectedService = service;
+        _selectedServiceButton = selectedButton;
+
+        if (selectedButton is not null)
+        {
+            SetServiceButtonSelected(selectedButton, true);
+        }
+    }
+
+    private static void SetServiceButtonSelected(ToggleButton button, bool isSelected)
+    {
+        button.IsChecked = isSelected;
+        button.Background = isSelected ? Brush(235, 240, 255) : Brush(249, 249, 252);
+        button.BorderBrush = isSelected ? Brush(0, 32, 194) : Brush(226, 226, 229);
     }
 
     private void SyncAdditionalButtons(ToggleButton? selectedButton)

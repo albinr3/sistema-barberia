@@ -71,11 +71,11 @@
                                 CornerRadius="12,12,0,0" />
 
                             <StackPanel
-                                Padding="24"
-                                Spacing="24">
+                                Padding="22"
+                                Spacing="18">
                                 <StackPanel
                                     Margin="0,8,0,0"
-                                    Spacing="16">
+                                    Spacing="14">
                                     <Border
                                         Padding="0,0,0,16"
                                         BorderBrush="#FFE2E2E5"
@@ -183,11 +183,10 @@
                                     </Grid>
                                 </StackPanel>
 
-                                <StackPanel Spacing="24">
+                                <StackPanel Spacing="18">
                                     <Grid ColumnSpacing="16">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition />
-                                            <ColumnDefinition Width="150" />
                                         </Grid.ColumnDefinitions>
 
                                         <StackPanel Spacing="8">
@@ -196,39 +195,17 @@
                                                 FontWeight="SemiBold"
                                                 Foreground="#FF444655"
                                                 Text="Select Service" />
-                                            <ComboBox
-                                                x:Name="_serviceSelector"
-                                                MinHeight="48"
-                                                DisplayMemberPath="DisplayNameWithPrice"
-                                                PlaceholderText="Select service"
-                                                SelectionChanged="OnServiceSelectionChanged"
-                                                Style="{StaticResource OperationalComboBoxStyle}" />
+                                            <Grid
+                                                x:Name="_serviceOptionsGrid"
+                                                ColumnSpacing="10"
+                                                RowSpacing="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition />
+                                                    <ColumnDefinition />
+                                                    <ColumnDefinition />
+                                                </Grid.ColumnDefinitions>
+                                            </Grid>
                                         </StackPanel>
-
-                                        <Border
-                                            Grid.Column="1"
-                                            Padding="12"
-                                            VerticalAlignment="Bottom"
-                                            Background="#FFF9F9FC"
-                                            BorderBrush="#FFE2E2E5"
-                                            BorderThickness="1"
-                                            CornerRadius="8">
-                                            <StackPanel HorizontalAlignment="Right">
-                                                <TextBlock
-                                                    HorizontalAlignment="Right"
-                                                    FontSize="12"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="#FF444655"
-                                                    Text="Base Price" />
-                                                <TextBlock
-                                                    x:Name="_servicePriceText"
-                                                    HorizontalAlignment="Right"
-                                                    FontSize="14"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="#FF1A1C1E"
-                                                    TextWrapping="Wrap" />
-                                            </StackPanel>
-                                        </Border>
                                     </Grid>
 
                                     <StackPanel Spacing="12">

@@ -173,7 +173,7 @@ public sealed partial class BarbersPage : Page
 
     private void OnSaveBarberClick(object sender, RoutedEventArgs args)
     {
-        ExecuteAdminAction(
+        var success = ExecuteAdminAction(
             () =>
             {
                 _service.SaveBarber(
@@ -184,9 +184,13 @@ public sealed partial class BarbersPage : Page
                     GetSelectedProfileImagePath(),
                     _showInKioskCheckBox.IsChecked == true);
                 _editingBarberId = null;
-                ClearBarberEditor();
             },
             "Saved");
+
+        if (success)
+        {
+            ClearBarberEditor();
+        }
     }
 
     private async void OnBrowseProfileImageClick(object sender, RoutedEventArgs args)
@@ -228,7 +232,7 @@ public sealed partial class BarbersPage : Page
 
     private void OnDeleteBarberClick(object sender, RoutedEventArgs args)
     {
-        ExecuteAdminAction(
+        var success = ExecuteAdminAction(
             () =>
             {
                 if (_editingBarberId is not Guid barberId)
@@ -238,23 +242,29 @@ public sealed partial class BarbersPage : Page
 
                 _service.DeleteBarber(barberId);
                 _editingBarberId = null;
-                ClearBarberEditor();
             },
             "Deleted");
+
+        if (success)
+        {
+            ClearBarberEditor();
+        }
     }
 
-    private void ExecuteAdminAction(Action action, string successStatus = "Updated")
+    private bool ExecuteAdminAction(Action action, string successStatus = "Updated")
     {
         try
         {
             action();
             LoadAdmin();
             SetStatus(successStatus, success: true);
+            return true;
         }
         catch (Exception exception)
         {
             _messageText.Text = exception.Message;
             SetStatus("Action blocked", success: false);
+            return false;
         }
     }
 
