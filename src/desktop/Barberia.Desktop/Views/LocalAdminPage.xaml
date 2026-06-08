@@ -56,10 +56,10 @@
         </Style>
     </Page.Resources>
 
-    <ScrollViewer
-        Background="{StaticResource AdminBackgroundBrush}"
-        VerticalScrollBarVisibility="Auto"
-        VerticalScrollMode="Enabled">
+    <Grid Background="{StaticResource AdminBackgroundBrush}">
+        <ScrollViewer
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Enabled">
         <Grid
             MaxWidth="1200"
             Padding="48,48,48,72"
@@ -472,5 +472,23 @@
                 </Grid>
             </StackPanel>
         </Grid>
-    </ScrollViewer>
+        </ScrollViewer>
+
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="0,24,24,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="{StaticResource AdminSurfaceBrush}"
+            BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="{StaticResource AdminTextBrush}"
+                Glyph="&#xE700;" />
+        </Button>
+    </Grid>
 </Page>

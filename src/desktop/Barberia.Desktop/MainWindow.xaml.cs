@@ -162,6 +162,10 @@ public sealed partial class MainWindow : Window
         {
             cashBoxPage.ShellMenuRequested += (_, _) => ShowShellMenu();
         }
+        else if (page is LocalAdminPage localAdminPage)
+        {
+            localAdminPage.ShellMenuRequested += (_, _) => ShowShellMenu();
+        }
 
         return page;
     }

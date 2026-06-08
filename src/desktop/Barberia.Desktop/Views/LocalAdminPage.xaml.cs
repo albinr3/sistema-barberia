@@ -18,9 +18,16 @@ public sealed partial class LocalAdminPage : Page
 {
     private readonly LocalAdminService _service = new();
 
+    public event EventHandler? ShellMenuRequested;
+
     public LocalAdminPage()
     {
         InitializeComponent();
+    }
+
+    private void OnMenuButtonClick(object sender, RoutedEventArgs args)
+    {
+        ShellMenuRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
@@ -334,7 +341,7 @@ public sealed partial class LocalAdminPage : Page
             Brush(255, 255, 255));
     }
 
-    private static UIElement CreateStaffRow(Barber barber)
+    private UIElement CreateStaffRow(Barber barber)
     {
         var isOnline = barber.IsActive && barber.State != BarberState.Offline;
         var initial = string.IsNullOrWhiteSpace(barber.DisplayName)
@@ -411,12 +418,29 @@ public sealed partial class LocalAdminPage : Page
         Grid.SetColumn(details, 1);
         row.Children.Add(details);
 
-        var statePill = CreateTextBadge(
-            barber.IsActive ? "Active" : "Offline",
-            barber.IsActive ? Brush(223, 224, 255) : Brush(238, 238, 240),
-            barber.IsActive ? Brush(0, 32, 194) : Brush(68, 70, 85));
-        Grid.SetColumn(statePill, 2);
-        row.Children.Add(statePill);
+        var toggleSwitch = new ToggleSwitch
+        {
+            IsOn = isOnline,
+            OnContent = "On",
+            OffContent = "Off",
+            IsEnabled = barber.IsActive && barber.State is not BarberState.Called and not BarberState.InService,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        toggleSwitch.Toggled += (_, _) =>
+        {
+            if (toggleSwitch.IsOn)
+            {
+                ExecuteAdminAction(() => _service.MarkBarberAvailable(barber.Id), "Available");
+            }
+            else
+            {
+                ExecuteAdminAction(() => _service.MarkBarberOffline(barber.Id), "Offline");
+            }
+        };
+
+        Grid.SetColumn(toggleSwitch, 2);
+        row.Children.Add(toggleSwitch);
 
         return row;
     }
