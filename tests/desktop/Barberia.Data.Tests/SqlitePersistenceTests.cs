@@ -392,6 +392,50 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void TurnRepository_AssignsWaitingOrCalledTicketManuallyToBarber()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T14:10:00Z");
+        var turnId = Guid.NewGuid();
+        var barberId = Guid.NewGuid();
+        var barberRepository = new LocalBarberRepository(database.Connection);
+        var repository = new LocalTurnRepository(database.Connection);
+
+        barberRepository.Upsert(new Barber(barberId, "Pedro", BarberState.Available, 0, 0, now, stationNumber: 1), now);
+        repository.Upsert(CreateTurn(turnId, "B-005", TurnState.Waiting, TurnSource.WalkIn, now), now);
+        repository.AssignManuallyToBarber(turnId, barberId, now.AddMinutes(1));
+
+        var savedTurn = repository.GetById(turnId);
+
+        Assert.Equal(TurnState.Called, savedTurn?.State);
+        Assert.Equal(barberId, savedTurn?.AssignedBarberId);
+        Assert.Equal([barberId], savedTurn?.RequestedBarberIds);
+    }
+
+    [Fact]
+    public void TurnRepository_ReservesWaitingOrCalledTicketForBarber()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-03T14:15:00Z");
+        var turnId = Guid.NewGuid();
+        var previousBarberId = Guid.NewGuid();
+        var targetBarberId = Guid.NewGuid();
+        var barberRepository = new LocalBarberRepository(database.Connection);
+        var repository = new LocalTurnRepository(database.Connection);
+
+        barberRepository.Upsert(new Barber(previousBarberId, "Juan", BarberState.Called, 0, 0, now, stationNumber: 1), now);
+        barberRepository.Upsert(new Barber(targetBarberId, "Pedro", BarberState.InService, 0, 1, now, stationNumber: 2), now);
+        repository.Upsert(CreateTurn(turnId, "B-006", TurnState.Called, TurnSource.WalkIn, now, previousBarberId), now);
+        repository.ReserveForBarber(turnId, targetBarberId, now.AddMinutes(1));
+
+        var savedTurn = repository.GetById(turnId);
+
+        Assert.Equal(TurnState.Waiting, savedTurn?.State);
+        Assert.Null(savedTurn?.AssignedBarberId);
+        Assert.Equal([targetBarberId], savedTurn?.RequestedBarberIds);
+    }
+
+    [Fact]
     public void TurnRepository_CancelsActiveTurns()
     {
         using var database = TestDatabase.Create();

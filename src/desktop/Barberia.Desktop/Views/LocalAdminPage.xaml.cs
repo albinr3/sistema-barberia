@@ -60,6 +60,7 @@ public sealed partial class LocalAdminPage : Page
         _databasePathText.Text = snapshot.DatabasePath;
         _databaseSizeText.Text = FormatBytes(snapshot.DatabaseSizeBytes);
         _messageText.Text = $"Completed services today: {snapshot.Operations.CompletedServices}. Cash payments: {snapshot.Cash.PaymentCount}.";
+        UpdateReassignmentControls(snapshot);
         ReplaceChildren(
             _alertRows,
             snapshot.Alerts.Select(CreateAlertRow),
@@ -75,12 +76,32 @@ public sealed partial class LocalAdminPage : Page
     }
 
 
+    private void UpdateReassignmentControls(LocalAdminSnapshot snapshot)
+    {
+        var ticketOptions = snapshot.ActiveTurns
+            .Where(turn => turn.State is TurnState.Waiting or TurnState.Called)
+            .Select(turn => new ReassignTicketOption(turn.Id, FormatReassignTicketOption(turn, snapshot.Barbers)))
+            .ToArray();
+        var barberOptions = snapshot.Barbers
+            .Where(barber => barber.IsActive)
+            .Select(barber => new ReassignBarberOption(barber.Id, FormatReassignBarberOption(barber)))
+            .ToArray();
+
+        _reassignTicketComboBox.ItemsSource = ticketOptions;
+        _reassignTicketComboBox.SelectedIndex = ticketOptions.Length > 0 ? 0 : -1;
+        _reassignTicketComboBox.IsEnabled = ticketOptions.Length > 0;
+
+        _reassignBarberComboBox.ItemsSource = barberOptions;
+        _reassignBarberComboBox.SelectedIndex = barberOptions.Length > 0 ? 0 : -1;
+        _reassignBarberComboBox.IsEnabled = barberOptions.Length > 0;
+
+        UpdateReassignmentButtonState();
+    }
+
 
     private UIElement CreateTurnRow(Turn turn, IReadOnlyList<Barber> barbers)
     {
-        var barberName = turn.AssignedBarberId is null
-            ? "Unassigned"
-            : barbers.FirstOrDefault(barber => barber.Id == turn.AssignedBarberId)?.DisplayNameWithStation ?? "Local barber";
+        var barberName = FormatTurnBarberText(turn, barbers);
         var customerName = string.IsNullOrWhiteSpace(turn.CustomerName) ? "Walk-in customer" : turn.CustomerName;
 
         var row = new Grid
@@ -137,6 +158,39 @@ public sealed partial class LocalAdminPage : Page
         row.Children.Add(actions);
 
         return WrapRow(row, Brush(255, 255, 255));
+    }
+
+    private void OnReassignmentSelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        UpdateReassignmentButtonState();
+    }
+
+    private void OnReassignTicketClick(object sender, RoutedEventArgs args)
+    {
+        if (_reassignTicketComboBox.SelectedItem is not ReassignTicketOption ticketOption)
+        {
+            _messageText.Text = "Select a waiting or called ticket before reassigning.";
+            SetStatus("Action blocked", success: false);
+            return;
+        }
+
+        if (_reassignBarberComboBox.SelectedItem is not ReassignBarberOption barberOption)
+        {
+            _messageText.Text = "Select an active barber before reassigning.";
+            SetStatus("Action blocked", success: false);
+            return;
+        }
+
+        ExecuteAdminAction(
+            () => _service.ReassignTurn(ticketOption.TurnId, barberOption.BarberId),
+            "Reassigned");
+    }
+
+    private void UpdateReassignmentButtonState()
+    {
+        _reassignButton.IsEnabled =
+            _reassignTicketComboBox.SelectedItem is ReassignTicketOption
+            && _reassignBarberComboBox.SelectedItem is ReassignBarberOption;
     }
 
     private static UIElement CreateAlertRow(LocalAdminAlert alert)
@@ -275,6 +329,11 @@ public sealed partial class LocalAdminPage : Page
         _databasePathText.Text = LocalAppPaths.DatabasePath;
         _databaseSizeText.Text = "0 B";
         _messageText.Text = message;
+        _reassignTicketComboBox.ItemsSource = null;
+        _reassignTicketComboBox.IsEnabled = false;
+        _reassignBarberComboBox.ItemsSource = null;
+        _reassignBarberComboBox.IsEnabled = false;
+        _reassignButton.IsEnabled = false;
         _turnRows.Children.Clear();
         _auditRows.Children.Clear();
         _historyRows.Children.Clear();
@@ -390,6 +449,49 @@ public sealed partial class LocalAdminPage : Page
         return source == TurnSource.Appointment ? "Appointment" : "Walk-in";
     }
 
+    private static string FormatTurnBarberText(Turn turn, IReadOnlyList<Barber> barbers)
+    {
+        if (turn.AssignedBarberId is Guid assignedBarberId)
+        {
+            return barbers.FirstOrDefault(barber => barber.Id == assignedBarberId)?.DisplayNameWithStation ?? "Local barber";
+        }
+
+        if (turn.State == TurnState.Waiting
+            && turn.RequestedBarberIds?.Count == 1
+            && turn.RequestedBarberIds.FirstOrDefault() is Guid reservedBarberId
+            && reservedBarberId != Guid.Empty)
+        {
+            var barberName = barbers.FirstOrDefault(barber => barber.Id == reservedBarberId)?.DisplayNameWithStation ?? "local barber";
+            return $"Reserved for {barberName}";
+        }
+
+        return "Unassigned";
+    }
+
+    private static string FormatReassignTicketOption(Turn turn, IReadOnlyList<Barber> barbers)
+    {
+        var customerName = string.IsNullOrWhiteSpace(turn.CustomerName) ? "Walk-in customer" : turn.CustomerName;
+        return $"#{turn.DisplayTicketNumber} - {customerName} - {FormatTurnState(turn.State)} - {FormatTurnBarberText(turn, barbers)}";
+    }
+
+    private static string FormatReassignBarberOption(Barber barber)
+    {
+        return $"{barber.DisplayNameWithStation} - {FormatBarberState(barber.State)}";
+    }
+
+    private static string FormatBarberState(BarberState state)
+    {
+        return state switch
+        {
+            BarberState.NotCheckedIn => "Not checked in",
+            BarberState.Available => "Available",
+            BarberState.Called => "Called",
+            BarberState.InService => "In service",
+            BarberState.Offline => "Offline",
+            _ => state.ToString()
+        };
+    }
+
 
 
     private static Brush GetTurnBackground(TurnState state)
@@ -439,4 +541,8 @@ public sealed partial class LocalAdminPage : Page
     {
         return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
     }
+
+    private sealed record ReassignTicketOption(Guid TurnId, string DisplayText);
+
+    private sealed record ReassignBarberOption(Guid BarberId, string DisplayText);
 }

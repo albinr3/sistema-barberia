@@ -13,8 +13,8 @@ namespace Barberia.Desktop.Views;
 
 public sealed partial class PublicDisplayPage : Page
 {
-    private const int WaitingGridColumns = 2;
-    private const int WaitingGridRows = 6;
+    private const int WaitingGridColumns = 1;
+    private const int WaitingGridRows = 12;
     private const int BarberGridColumns = 2;
     private const int NowCallingGridColumns = 2;
 
@@ -763,7 +763,11 @@ public sealed partial class PublicDisplayPage : Page
     {
         if (turn.AssignedBarberId is Guid assignedBarberId)
         {
-            return barbers.FirstOrDefault(barber => barber.Id == assignedBarberId)?.DisplayName ?? "Local barber";
+            var barber = barbers.FirstOrDefault(b => b.Id == assignedBarberId);
+            if (barber is null) return "Local barber";
+            return string.IsNullOrWhiteSpace(barber.StationCode) 
+                ? barber.DisplayName 
+                : $"{barber.StationCode} {barber.DisplayName}";
         }
 
         if (turn.RequestedBarberIds is null || turn.RequestedBarberIds.Count == 0)
@@ -772,9 +776,9 @@ public sealed partial class PublicDisplayPage : Page
         }
 
         var requestedNames = turn.RequestedBarberIds
-            .Select(requestedId => barbers.FirstOrDefault(barber => barber.Id == requestedId)?.DisplayName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Cast<string>()
+            .Select(requestedId => barbers.FirstOrDefault(barber => barber.Id == requestedId))
+            .Where(barber => barber is not null && !string.IsNullOrWhiteSpace(barber.DisplayName))
+            .Select(barber => string.IsNullOrWhiteSpace(barber!.StationCode) ? barber.DisplayName : $"{barber.StationCode} {barber.DisplayName}")
             .ToArray();
 
         return requestedNames.Length == 0 ? "Any Available" : string.Join(", ", requestedNames);

@@ -305,6 +305,59 @@ public sealed class LocalTurnRepository
         }
     }
 
+    public void AssignManuallyToBarber(Guid turnId, Guid barberId, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE turns
+            SET state = $state,
+                assigned_barber_id = $barber_id,
+                requested_barber_ids = $requested_barber_ids,
+                updated_at = $updated_at
+            WHERE id = $turn_id
+              AND state IN ($waiting, $called);
+            """;
+        command.AddText("$turn_id", turnId.ToString());
+        command.AddText("$barber_id", barberId.ToString());
+        command.AddText("$requested_barber_ids", FormatIds([barberId]));
+        command.AddInteger("$state", (int)TurnState.Called);
+        command.AddInteger("$waiting", (int)TurnState.Waiting);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddText("$updated_at", updatedAt.ToString("O"));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Waiting or called turn was not found for manual assignment.");
+        }
+    }
+
+    public void ReserveForBarber(Guid turnId, Guid barberId, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE turns
+            SET state = $state,
+                assigned_barber_id = NULL,
+                requested_barber_ids = $requested_barber_ids,
+                updated_at = $updated_at
+            WHERE id = $turn_id
+              AND state IN ($waiting, $called);
+            """;
+        command.AddText("$turn_id", turnId.ToString());
+        command.AddText("$requested_barber_ids", FormatIds([barberId]));
+        command.AddInteger("$state", (int)TurnState.Waiting);
+        command.AddInteger("$waiting", (int)TurnState.Waiting);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddText("$updated_at", updatedAt.ToString("O"));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Waiting or called turn was not found for barber reservation.");
+        }
+    }
+
     public void MarkCompleted(Guid turnId, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();

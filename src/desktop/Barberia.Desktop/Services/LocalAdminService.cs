@@ -445,6 +445,138 @@ public sealed class LocalAdminService
         });
     }
 
+    public void ReassignTurn(Guid turnId, Guid targetBarberId)
+    {
+        if (turnId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Select a ticket before reassigning.");
+        }
+
+        if (targetBarberId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Select a target barber before reassigning.");
+        }
+
+        var now = DateTimeOffset.Now;
+        var deviceId = Environment.MachineName;
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
+            var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
+            var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var turn = turnRepository.GetById(turnId)
+                ?? throw new InvalidOperationException("Ticket was not found in the local database.");
+            var targetBarber = barberRepository.GetById(targetBarberId)
+                ?? throw new InvalidOperationException("Target barber was not found in the local database.");
+
+            if (turn.State is not (TurnState.Waiting or TurnState.Called))
+            {
+                throw new InvalidOperationException("Only waiting or called tickets can be reassigned from Local Admin.");
+            }
+
+            if (!targetBarber.IsActive)
+            {
+                throw new InvalidOperationException("Target barber is inactive. Activate the barber before reassigning tickets.");
+            }
+
+            if (IsAssignedOrReservedFor(turn, targetBarberId))
+            {
+                throw new InvalidOperationException("Ticket is already assigned or reserved for the selected barber.");
+            }
+
+            Barber? previousBarber = null;
+            if (turn.AssignedBarberId is Guid previousBarberId)
+            {
+                previousBarber = barberRepository.GetById(previousBarberId)
+                    ?? throw new InvalidOperationException("Assigned barber was not found in the local database.");
+            }
+
+            var resultTurnState = targetBarber.State == BarberState.Available
+                ? TurnState.Called
+                : TurnState.Waiting;
+
+            if (resultTurnState == TurnState.Called)
+            {
+                turnRepository.AssignManuallyToBarber(turnId, targetBarberId, now);
+                barberRepository.SetState(targetBarberId, BarberState.Called, now);
+            }
+            else
+            {
+                turnRepository.ReserveForBarber(turnId, targetBarberId, now);
+            }
+
+            var previousBarberReleased = false;
+            if (previousBarber is not null
+                && previousBarber.IsActive
+                && previousBarber.Id != targetBarberId
+                && previousBarber.State == BarberState.Called)
+            {
+                barberRepository.SetState(previousBarber.Id, BarberState.Available, now);
+                previousBarberReleased = true;
+            }
+
+            TurnAssignmentDecision? reassignment = null;
+            if (previousBarberReleased)
+            {
+                reassignment = TryAssignNextWaitingTurn(
+                    turnRepository,
+                    barberRepository,
+                    new AppointmentReservationRepository(connection, sqliteTransaction),
+                    now);
+            }
+
+            auditRepository.Add(new AuditEvent(
+                Guid.NewGuid(),
+                now,
+                "admin_turn_reassigned",
+                "turn",
+                turnId,
+                JsonSerializer.Serialize(new
+                {
+                    turnId,
+                    displayTicketNumber = turn.DisplayTicketNumber,
+                    internalTicketNumber = turn.TicketNumber,
+                    customerName = turn.CustomerName,
+                    previousTurnState = turn.State.ToString(),
+                    previousBarberId = previousBarber?.Id,
+                    previousBarberName = previousBarber?.DisplayName,
+                    targetBarberId,
+                    targetBarberName = targetBarber.DisplayName,
+                    targetPreviousState = targetBarber.State.ToString(),
+                    resultTurnState = resultTurnState.ToString(),
+                    resultAssignedBarberId = resultTurnState == TurnState.Called ? targetBarberId : (Guid?)null,
+                    resultRequestedBarberIds = new[] { targetBarberId },
+                    previousBarberReleased,
+                    reassignedDisplayTicketNumber = reassignment?.DisplayTicketNumber,
+                    reassignedInternalTicketNumber = reassignment?.TicketNumber,
+                    reassignedBarberId = reassignment?.BarberId
+                }),
+                deviceId));
+
+            if (reassignment is not null)
+            {
+                auditRepository.Add(new AuditEvent(
+                    Guid.NewGuid(),
+                    now,
+                    "admin_waiting_turn_assigned",
+                    "turn",
+                    reassignment.TurnId,
+                    JsonSerializer.Serialize(new
+                    {
+                        turnId = reassignment.TurnId,
+                        displayTicketNumber = reassignment.DisplayTicketNumber,
+                        internalTicketNumber = reassignment.TicketNumber,
+                        barberId = reassignment.BarberId,
+                        turnState = reassignment.TurnState.ToString(),
+                        barberState = reassignment.BarberState.ToString(),
+                        reason = "ticket_reassigned"
+                    }),
+                    deviceId));
+            }
+        });
+    }
+
     private TurnAssignmentDecision? TryAssignNextWaitingTurn(
         LocalTurnRepository turnRepository,
         LocalBarberRepository barberRepository,
@@ -480,6 +612,18 @@ public sealed class LocalAdminService
         {
             return null;
         }
+    }
+
+    private static bool IsAssignedOrReservedFor(Turn turn, Guid barberId)
+    {
+        if (turn.AssignedBarberId == barberId)
+        {
+            return true;
+        }
+
+        return turn.State == TurnState.Waiting
+            && turn.RequestedBarberIds?.Count == 1
+            && turn.RequestedBarberIds.Contains(barberId);
     }
 
     private void UpdateBarberState(Guid barberId, BarberState state)

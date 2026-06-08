@@ -228,6 +228,66 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource PanelBorderStyle}">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock
+                            Style="{StaticResource SectionTitleTextStyle}"
+                            Text="Reassign Ticket" />
+                        <TextBlock
+                            Style="{StaticResource SmallMutedTextStyle}"
+                            Text="Move a waiting or called ticket to an active barber." />
+                    </StackPanel>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock
+                                FontSize="13"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Ticket" />
+                            <ComboBox
+                                x:Name="_reassignTicketComboBox"
+                                DisplayMemberPath="DisplayText"
+                                HorizontalAlignment="Stretch"
+                                MinHeight="42"
+                                PlaceholderText="Select ticket"
+                                SelectionChanged="OnReassignmentSelectionChanged" />
+                        </StackPanel>
+
+                        <StackPanel
+                            Grid.Column="1"
+                            Spacing="6">
+                            <TextBlock
+                                FontSize="13"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Target barber" />
+                            <ComboBox
+                                x:Name="_reassignBarberComboBox"
+                                DisplayMemberPath="DisplayText"
+                                HorizontalAlignment="Stretch"
+                                MinHeight="42"
+                                PlaceholderText="Select barber"
+                                SelectionChanged="OnReassignmentSelectionChanged" />
+                        </StackPanel>
+
+                        <Button
+                            x:Name="_reassignButton"
+                            Grid.Column="2"
+                            MinHeight="42"
+                            MinWidth="120"
+                            VerticalAlignment="Bottom"
+                            Click="OnReassignTicketClick"
+                            Content="Reassign" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
 
 
             <Grid
