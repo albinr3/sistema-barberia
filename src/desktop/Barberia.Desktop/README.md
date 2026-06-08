@@ -7,7 +7,7 @@ Responsabilidades:
 - Navegacion y composicion visual.
 - Wiring de dependencias entre modulos.
 - Pantallas de kiosco, pantalla publica, panel de barbero, autocaja, administracion local y reportes.
-- Administracion local separada en paginas dedicadas (`LocalAdminPage` para el dashboard general, `BarbersPage` para el CRUD de barberos, y `ServicesPage` para el CRUD de servicios) compartiendo la misma logica del `LocalAdminService`; `LocalAdminPage` permite reasignar tickets `waiting` o `called` a barberos activos, reservandolos para el destino si esta ocupado; autocaja usa el catalogo de servicios para calcular el monto sin campo libre.
+- Administracion local separada en paginas dedicadas (`LocalAdminPage` para el dashboard general, `BarbersPage` para el CRUD de barberos, y `ServicesPage` para el CRUD de servicios) compartiendo la misma logica del `LocalAdminService`; `LocalAdminPage` usa chrome de pantalla completa sin panel lateral y muestra KPI, alertas, monitor de cola, historial del dia, auditoria, roster, reasignacion de tickets y accesos internos a barberos/servicios. Permite reasignar tickets `waiting` o `called` a barberos activos, reservandolos para el destino si esta ocupado; autocaja usa el catalogo de servicios para calcular el monto sin campo libre.
 - Calculo en memoria de alertas administrativas para notificar problemas operativos en base a umbrales de tiempo.
 
 Shell y UI actual:

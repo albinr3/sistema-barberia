@@ -2,6 +2,7 @@ using Barberia.Core.Domain;
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
 using Barberia.Desktop.Shell;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -9,6 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
+using Windows.Graphics.Imaging;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -533,22 +535,6 @@ public sealed partial class BarbersPage : Page
             StrokeThickness = 1
         });
 
-        var imageUri = ProfileImageCatalog.ResolveImageUri(barber.ProfileImagePath);
-        if (imageUri is not null)
-        {
-            avatar.Children.Add(new Ellipse
-            {
-                Fill = new ImageBrush
-                {
-                    ImageSource = new BitmapImage(imageUri),
-                    Stretch = Stretch.UniformToFill
-                },
-                Stroke = Brush(255, 255, 255),
-                StrokeThickness = 1
-            });
-            return avatar;
-        }
-
         avatar.Children.Add(new TextBlock
         {
             Text = GetInitials(barber.DisplayName),
@@ -558,6 +544,24 @@ public sealed partial class BarbersPage : Page
             FontWeight = FontWeights.Bold,
             Foreground = Brush(0, 19, 135)
         });
+
+        var imagePath = ProfileImageCatalog.ResolveImagePath(barber.ProfileImagePath);
+        if (imagePath is not null)
+        {
+            var imageBrush = new ImageBrush
+            {
+                Stretch = Stretch.UniformToFill
+            };
+            var imageCircle = new Ellipse
+            {
+                Fill = imageBrush,
+                Stroke = Brush(255, 255, 255),
+                StrokeThickness = 1,
+                Visibility = Visibility.Collapsed
+            };
+            avatar.Children.Add(imageCircle);
+            _ = LoadProfileImageAsync(imageBrush, imageCircle, imagePath);
+        }
 
         return avatar;
     }
@@ -572,4 +576,27 @@ public sealed partial class BarbersPage : Page
         var initials = string.Concat(parts);
         return string.IsNullOrWhiteSpace(initials) ? "?" : initials;
     }
+
+    private static async Task LoadProfileImageAsync(ImageBrush imageBrush, UIElement imageElement, string fullPath)
+    {
+        try
+        {
+            await using var fileStream = File.OpenRead(fullPath);
+            using var imageStream = fileStream.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(imageStream);
+            var bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            var source = new SoftwareBitmapSource();
+            await source.SetBitmapAsync(bitmap);
+            imageBrush.ImageSource = source;
+            imageElement.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            imageBrush.ImageSource = null;
+            imageElement.Visibility = Visibility.Collapsed;
+        }
+    }
+
 }

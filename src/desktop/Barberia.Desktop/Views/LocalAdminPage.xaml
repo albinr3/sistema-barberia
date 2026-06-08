@@ -4,400 +4,473 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Loaded="OnLoaded">
 
-    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
-        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
-            <Border Style="{StaticResource HeroCardBorderStyle}">
-                <Grid ColumnSpacing="18">
+    <Page.Resources>
+        <SolidColorBrush x:Key="AdminBackgroundBrush" Color="#FFF9F9FC" />
+        <SolidColorBrush x:Key="AdminSurfaceBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="AdminSurfaceLowBrush" Color="#FFF3F3F6" />
+        <SolidColorBrush x:Key="AdminSurfaceContainerBrush" Color="#FFEEEEF0" />
+        <SolidColorBrush x:Key="AdminSurfaceHighBrush" Color="#FFE8E8EA" />
+        <SolidColorBrush x:Key="AdminPrimaryBrush" Color="#FF001387" />
+        <SolidColorBrush x:Key="AdminPrimaryContainerBrush" Color="#FF0020C2" />
+        <SolidColorBrush x:Key="AdminPrimaryFixedBrush" Color="#FFDFE0FF" />
+        <SolidColorBrush x:Key="AdminTextBrush" Color="#FF1A1C1E" />
+        <SolidColorBrush x:Key="AdminMutedTextBrush" Color="#FF444655" />
+        <SolidColorBrush x:Key="AdminOutlineBrush" Color="#FF757687" />
+        <SolidColorBrush x:Key="AdminOutlineVariantBrush" Color="#FFC5C5D8" />
+        <SolidColorBrush x:Key="AdminErrorBrush" Color="#FFBA1A1A" />
+        <SolidColorBrush x:Key="AdminErrorContainerBrush" Color="#FFFFDAD6" />
+        <SolidColorBrush x:Key="AdminSuccessBrush" Color="#FF137333" />
+        <SolidColorBrush x:Key="AdminSuccessContainerBrush" Color="#FFE6F4EA" />
+        <SolidColorBrush x:Key="AdminWarningBrush" Color="#FF8A5A00" />
+        <SolidColorBrush x:Key="AdminWarningContainerBrush" Color="#FFFFF8E1" />
+
+        <Style x:Key="AdminCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource AdminSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AdminSurfaceContainerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="20" />
+        </Style>
+
+        <Style x:Key="AdminTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource AdminTextBrush}" />
+        </Style>
+
+        <Style x:Key="AdminLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource AdminMutedTextBrush}" />
+        </Style>
+
+        <Style x:Key="AdminBodyStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{StaticResource AdminMutedTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style x:Key="AdminComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer
+        Background="{StaticResource AdminBackgroundBrush}"
+        VerticalScrollBarVisibility="Auto"
+        VerticalScrollMode="Enabled">
+        <Grid
+            MaxWidth="1200"
+            Padding="48,48,48,72"
+            Background="Transparent"
+            HorizontalAlignment="Center">
+            <StackPanel Spacing="32">
+                <Grid ColumnSpacing="16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                        <ColumnDefinition />
                     </Grid.ColumnDefinitions>
 
-                    <Border Style="{StaticResource HeroIconBoxStyle}">
-                        <FontIcon
-                            FontSize="30"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Glyph="&#xE713;" />
+                    <Border Style="{StaticResource AdminCardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Border
+                                    Width="40"
+                                    Height="40"
+                                    HorizontalAlignment="Left"
+                                    Background="{StaticResource AdminPrimaryFixedBrush}"
+                                    CornerRadius="8">
+                                    <FontIcon
+                                        FontSize="18"
+                                        Foreground="{StaticResource AdminPrimaryContainerBrush}"
+                                        Glyph="&#xE895;" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Active Turns" />
+                            <TextBlock
+                                x:Name="_activeTurnsText"
+                                FontSize="48"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource AdminTextBrush}" />
+                        </StackPanel>
                     </Border>
+
+                    <Border
+                        Grid.Column="1"
+                        Style="{StaticResource AdminCardStyle}">
+                        <StackPanel Spacing="14">
+                            <Border
+                                Width="40"
+                                Height="40"
+                                HorizontalAlignment="Left"
+                                Background="{StaticResource AdminSurfaceHighBrush}"
+                                CornerRadius="8">
+                                <FontIcon
+                                    FontSize="18"
+                                    Foreground="{StaticResource AdminTextBrush}"
+                                    Glyph="&#xE716;" />
+                            </Border>
+                            <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Check-ins Today" />
+                            <TextBlock
+                                x:Name="_checkInsText"
+                                FontSize="48"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource AdminTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        Grid.Column="2"
+                        Style="{StaticResource AdminCardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Border
+                                    Width="40"
+                                    Height="40"
+                                    HorizontalAlignment="Left"
+                                    Background="{StaticResource AdminSurfaceHighBrush}"
+                                    CornerRadius="8">
+                                    <FontIcon
+                                        FontSize="18"
+                                        Foreground="{StaticResource AdminTextBrush}"
+                                        Glyph="&#xE7C9;" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Active Barbers" />
+                            <TextBlock
+                                x:Name="_availableBarbersText"
+                                FontSize="48"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource AdminTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        Grid.Column="3"
+                        Style="{StaticResource AdminCardStyle}">
+                        <StackPanel Spacing="14">
+                            <Border
+                                Width="40"
+                                Height="40"
+                                HorizontalAlignment="Left"
+                                Background="{StaticResource AdminPrimaryBrush}"
+                                CornerRadius="8">
+                                <FontIcon
+                                    FontSize="18"
+                                    Foreground="White"
+                                    Glyph="&#xE8C7;" />
+                            </Border>
+                            <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Cash Today" />
+                            <TextBlock
+                                x:Name="_cashText"
+                                FontSize="38"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource AdminPrimaryBrush}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Grid
+                    ColumnSpacing="32"
+                    RowSpacing="32">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.25*" />
+                        <ColumnDefinition Width="0.9*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="32">
+                        <Border Style="{StaticResource AdminCardStyle}">
+                            <StackPanel Spacing="16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Width="36"
+                                        Height="36"
+                                        Background="{StaticResource AdminErrorContainerBrush}"
+                                        CornerRadius="8">
+                                        <FontIcon
+                                            FontSize="18"
+                                            Foreground="{StaticResource AdminErrorBrush}"
+                                            Glyph="&#xE7BA;" />
+                                    </Border>
+                                    <StackPanel
+                                        Grid.Column="1"
+                                        Margin="10,0,0,0">
+                                        <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Alerts" />
+                                        <TextBlock Style="{StaticResource AdminBodyStyle}" Text="Operational issues that need attention." />
+                                    </StackPanel>
+                                    <TextBlock
+                                        x:Name="_lastRefreshText"
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource AdminOutlineBrush}" />
+                                </Grid>
+                                <StackPanel x:Name="_alertRows" Spacing="12" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Background="{StaticResource AdminSurfaceBrush}"
+                            BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12">
+                            <StackPanel>
+                                <Grid
+                                    Padding="20"
+                                    Background="#FFF9F9FC"
+                                    BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+                                    BorderThickness="0,0,0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Active Queue Monitor" />
+                                        <Border
+                                            Padding="10,4"
+                                            Background="{StaticResource AdminPrimaryBrush}"
+                                            CornerRadius="6">
+                                            <TextBlock
+                                                x:Name="_waitingCountText"
+                                                FontSize="12"
+                                                FontWeight="SemiBold"
+                                                Foreground="White"
+                                                Text="0 Waiting" />
+                                        </Border>
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        Padding="8"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Click="OnRefreshClick"
+                                        ToolTipService.ToolTip="Refresh">
+                                        <FontIcon Glyph="&#xE72C;" />
+                                    </Button>
+                                </Grid>
+                                <Grid Padding="20,12,20,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="1.2*" />
+                                        <ColumnDefinition Width="0.9*" />
+                                        <ColumnDefinition Width="1.2*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Ticket ID" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource AdminLabelStyle}" Text="Client" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource AdminLabelStyle}" Text="Status" />
+                                    <TextBlock Grid.Column="3" Style="{StaticResource AdminLabelStyle}" Text="Assigned To" />
+                                    <TextBlock Grid.Column="4" Style="{StaticResource AdminLabelStyle}" Text="Action" />
+                                </Grid>
+                                <StackPanel x:Name="_turnRows" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource AdminCardStyle}">
+                            <StackPanel Spacing="16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Ticket History Today" />
+                                    <Button
+                                        Grid.Column="1"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Click="OnViewFullHistoryClick"
+                                        Foreground="{StaticResource AdminPrimaryBrush}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="View full history" />
+                                            <FontIcon FontSize="14" Glyph="&#xE72A;" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <StackPanel x:Name="_historyRows" Spacing="12" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource AdminCardStyle}">
+                            <Expander
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                IsExpanded="False">
+                                <Expander.Header>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Audit Trail" />
+                                            <TextBlock Style="{StaticResource AdminBodyStyle}" Text="Displays the most recent local events to help monitor operations." />
+                                        </StackPanel>
+                                        <Border
+                                            Grid.Column="1"
+                                            Padding="10,6"
+                                            VerticalAlignment="Center"
+                                            BorderBrush="{StaticResource AdminOutlineVariantBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                            <TextBlock
+                                                FontSize="13"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource AdminPrimaryBrush}"
+                                                Text="History" />
+                                        </Border>
+                                    </Grid>
+                                </Expander.Header>
+                                <StackPanel x:Name="_auditRows" Spacing="10" />
+                            </Expander>
+                        </Border>
+                    </StackPanel>
 
                     <StackPanel
                         Grid.Column="1"
-                        Spacing="5">
-                        <TextBlock
-                            Style="{StaticResource HeroTitleTextStyle}"
-                            Text="Local Admin" />
-                        <TextBlock
-                            FontSize="15"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Live operations, local database and team controls" />
-                        <TextBlock
-                            x:Name="_lastRefreshText"
-                            FontSize="13"
-                            Foreground="{StaticResource TextSecondaryBrush}" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="2"
-                        Spacing="10">
-                        <Border
-                            x:Name="_statusBadge"
-                            Style="{StaticResource StatusBadgeStyle}">
-                            <StackPanel
-                                Orientation="Horizontal"
-                                Spacing="7">
-                                <Ellipse
-                                    Width="8"
-                                    Height="8"
-                                    Fill="{StaticResource AccentGreenBrush}"
-                                    VerticalAlignment="Center" />
-                                <TextBlock
-                                    x:Name="_statusBadgeText"
-                                    Style="{StaticResource StatusBadgeTextStyle}" />
+                        Spacing="32">
+                        <Border Style="{StaticResource AdminCardStyle}">
+                            <StackPanel Spacing="18">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Barbers" />
+                                    <Button
+                                        Grid.Column="1"
+                                        Padding="12,7"
+                                        BorderBrush="{StaticResource AdminPrimaryBrush}"
+                                        Click="OnManageBarbersClick"
+                                        Content="Manage Barbers"
+                                        Foreground="{StaticResource AdminPrimaryBrush}" />
+                                </Grid>
+                                <StackPanel x:Name="_staffRows" Spacing="16" />
                             </StackPanel>
                         </Border>
 
-                        <Button
-                            MinHeight="42"
-                            Click="OnRefreshClick"
-                            Style="{StaticResource PrimaryActionButtonStyle}">
-                            <StackPanel
-                                HorizontalAlignment="Center"
-                                Orientation="Horizontal"
-                                Spacing="8">
-                                <FontIcon
-                                    FontSize="16"
-                                    Glyph="&#xE72C;" />
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Text="Refresh" />
+                        <Border Style="{StaticResource AdminCardStyle}">
+                            <StackPanel Spacing="18">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Reassign Ticket" />
+                                        <TextBlock Style="{StaticResource AdminBodyStyle}" Text="Select an active ticket and choose the barber who should take it." />
+                                    </StackPanel>
+                                    <Border
+                                        Grid.Column="1"
+                                        Width="40"
+                                        Height="40"
+                                        Background="{StaticResource AdminPrimaryFixedBrush}"
+                                        CornerRadius="8">
+                                        <FontIcon
+                                            FontSize="18"
+                                            Foreground="{StaticResource AdminPrimaryContainerBrush}"
+                                            Glyph="&#xE8AB;" />
+                                    </Border>
+                                </Grid>
+
+                                <ComboBox
+                                    x:Name="_reassignTicketComboBox"
+                                    DisplayMemberPath="DisplayText"
+                                    Header="Ticket"
+                                    PlaceholderText="Select ticket"
+                                    SelectionChanged="OnReassignmentSelectionChanged"
+                                    Style="{StaticResource AdminComboBoxStyle}" />
+
+                                <ComboBox
+                                    x:Name="_reassignBarberComboBox"
+                                    DisplayMemberPath="DisplayText"
+                                    Header="Assign to barber"
+                                    PlaceholderText="Select barber"
+                                    SelectionChanged="OnReassignmentSelectionChanged"
+                                    Style="{StaticResource AdminComboBoxStyle}" />
+
+
+                                <Button
+                                    x:Name="_reassignButton"
+                                    MinHeight="46"
+                                    Background="{StaticResource AdminPrimaryBrush}"
+                                    BorderBrush="{StaticResource AdminPrimaryBrush}"
+                                    Click="OnReassignTicketClick"
+                                    Foreground="White">
+                                    <StackPanel
+                                        HorizontalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="8">
+                                        <FontIcon FontSize="17" Glyph="&#xE8D4;" />
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Text="Reassign Ticket" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
-                        </Button>
+                        </Border>
+
+                        <Border
+                            Background="{StaticResource AdminSurfaceLowBrush}"
+                            BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12">
+                            <Grid>
+                                <!-- Top blue line -->
+                                <Border Height="4" Background="{StaticResource AdminPrimaryBrush}" VerticalAlignment="Top" CornerRadius="11,11,0,0" Margin="0" />
+                                
+                                <StackPanel Spacing="16" Padding="24">
+                                    <Border
+                                        Width="48"
+                                        Height="48"
+                                        HorizontalAlignment="Center"
+                                        Background="{StaticResource AdminSurfaceBrush}"
+                                        BorderBrush="{StaticResource AdminOutlineVariantBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="999">
+                                        <FontIcon
+                                            FontSize="21"
+                                            Foreground="{StaticResource AdminPrimaryBrush}"
+                                            Glyph="&#xE8EC;" />
+                                    </Border>
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Style="{StaticResource AdminTitleStyle}"
+                                        Text="Service Menu" />
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Style="{StaticResource AdminBodyStyle}"
+                                        Text="Update pricing, durations, and available service categories."
+                                        TextAlignment="Center" />
+                                    <Button
+                                        MinHeight="42"
+                                        HorizontalAlignment="Stretch"
+                                        Background="{StaticResource AdminSurfaceBrush}"
+                                        BorderBrush="{StaticResource AdminPrimaryBrush}"
+                                        BorderThickness="1.5"
+                                        Click="OnManageServicesClick"
+                                        Content="Manage Services"
+                                        Foreground="{StaticResource AdminPrimaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+
                     </StackPanel>
                 </Grid>
-            </Border>
-
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                </Grid.ColumnDefinitions>
-
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="3">
-                            <TextBlock
-                                FontSize="14"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Active turns" />
-                            <TextBlock
-                                x:Name="_activeTurnsText"
-                                FontSize="30"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}" />
-                        </StackPanel>
-                        <Border
-                            Grid.Column="1"
-                            Width="42"
-                            Height="42"
-                            Background="{StaticResource AccentGreenMutedBrush}"
-                            CornerRadius="8">
-                            <FontIcon
-                                FontSize="19"
-                                Foreground="{StaticResource AccentGreenTextBrush}"
-                                Glyph="&#xE8A5;" />
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <Border
-                    Grid.Column="1"
-                    Style="{StaticResource PanelBorderStyle}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="3">
-                            <TextBlock
-                                FontSize="14"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Check-ins today" />
-                            <TextBlock
-                                x:Name="_checkInsText"
-                                FontSize="30"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}" />
-                        </StackPanel>
-                        <Border
-                            Grid.Column="1"
-                            Width="42"
-                            Height="42"
-                            Background="{StaticResource AccentBlueMutedBrush}"
-                            CornerRadius="8">
-                            <FontIcon
-                                FontSize="19"
-                                Foreground="{StaticResource AccentBlueTextBrush}"
-                                Glyph="&#xE787;" />
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <Border
-                    Grid.Column="2"
-                    Style="{StaticResource PanelBorderStyle}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="3">
-                            <TextBlock
-                                FontSize="14"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Available barbers" />
-                            <TextBlock
-                                x:Name="_availableBarbersText"
-                                FontSize="30"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}" />
-                        </StackPanel>
-                        <Border
-                            Grid.Column="1"
-                            Width="42"
-                            Height="42"
-                            Background="{StaticResource AccentGoldMutedBrush}"
-                            CornerRadius="8">
-                            <FontIcon
-                                FontSize="19"
-                                Foreground="{StaticResource AccentGoldTextBrush}"
-                                Glyph="&#xE716;" />
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <Border
-                    Grid.Column="3"
-                    Style="{StaticResource PanelBorderStyle}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="3">
-                            <TextBlock
-                                FontSize="14"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Cash today" />
-                            <TextBlock
-                                x:Name="_cashText"
-                                FontSize="30"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-                        <Border
-                            Grid.Column="1"
-                            Width="42"
-                            Height="42"
-                            Background="{StaticResource SurfaceMutedBrush}"
-                            CornerRadius="8">
-                            <FontIcon
-                                FontSize="19"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Glyph="&#xE8C7;" />
-                        </Border>
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <Border Style="{StaticResource PanelBorderStyle}">
-                <StackPanel Spacing="14">
-                    <StackPanel Spacing="2">
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Alerts / Problemas del momento" />
-                        <TextBlock Style="{StaticResource SmallMutedTextStyle}" Text="Operational issues requiring attention." />
-                    </StackPanel>
-                    <StackPanel x:Name="_alertRows" Spacing="10" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource PanelBorderStyle}">
-                <StackPanel Spacing="14">
-                    <StackPanel Spacing="2">
-                        <TextBlock
-                            Style="{StaticResource SectionTitleTextStyle}"
-                            Text="Reassign Ticket" />
-                        <TextBlock
-                            Style="{StaticResource SmallMutedTextStyle}"
-                            Text="Move a waiting or called ticket to an active barber." />
-                    </StackPanel>
-
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Spacing="6">
-                            <TextBlock
-                                FontSize="13"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Ticket" />
-                            <ComboBox
-                                x:Name="_reassignTicketComboBox"
-                                DisplayMemberPath="DisplayText"
-                                HorizontalAlignment="Stretch"
-                                MinHeight="42"
-                                PlaceholderText="Select ticket"
-                                SelectionChanged="OnReassignmentSelectionChanged" />
-                        </StackPanel>
-
-                        <StackPanel
-                            Grid.Column="1"
-                            Spacing="6">
-                            <TextBlock
-                                FontSize="13"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Target barber" />
-                            <ComboBox
-                                x:Name="_reassignBarberComboBox"
-                                DisplayMemberPath="DisplayText"
-                                HorizontalAlignment="Stretch"
-                                MinHeight="42"
-                                PlaceholderText="Select barber"
-                                SelectionChanged="OnReassignmentSelectionChanged" />
-                        </StackPanel>
-
-                        <Button
-                            x:Name="_reassignButton"
-                            Grid.Column="2"
-                            MinHeight="42"
-                            MinWidth="120"
-                            VerticalAlignment="Bottom"
-                            Click="OnReassignTicketClick"
-                            Content="Reassign" />
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-
-
-            <Grid
-                ColumnSpacing="14"
-                RowSpacing="14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition />
-                    <ColumnDefinition />
-                </Grid.ColumnDefinitions>
-
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Active Queue" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Waiting, called and in-service turns." />
-                        </StackPanel>
-                        <StackPanel
-                            x:Name="_turnRows"
-                            Spacing="10" />
-                    </StackPanel>
-                </Border>
-
-                <Border
-                    Grid.Column="1"
-                    Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Audit Trail" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Most recent local events." />
-                        </StackPanel>
-                        <StackPanel
-                            x:Name="_auditRows"
-                            Spacing="10" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <Border Style="{StaticResource PanelBorderStyle}">
-                <StackPanel Spacing="14">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Ticket History Today" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Recently completed, cancelled or no-show tickets." />
-                        </StackPanel>
-                        <Button
-                            Grid.Column="1"
-                            Click="OnViewFullHistoryClick"
-                            Content="View full history" />
-                    </Grid>
-                    <StackPanel
-                        x:Name="_historyRows"
-                        Spacing="10" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource PanelBorderStyle}">
-                <StackPanel Spacing="14">
-                    <StackPanel Spacing="2">
-                        <TextBlock
-                            Style="{StaticResource SectionTitleTextStyle}"
-                            Text="Local Database" />
-                        <TextBlock
-                            Style="{StaticResource SmallMutedTextStyle}"
-                            Text="Current offline-first storage." />
-                    </StackPanel>
-
-                    <StackPanel Spacing="10">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                FontSize="14"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Database size" />
-                            <TextBlock
-                                x:Name="_databaseSizeText"
-                                Grid.Column="1"
-                                FontSize="17"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}" />
-                        </Grid>
-                        <TextBlock
-                            x:Name="_databasePathText"
-                            FontSize="13"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            TextWrapping="Wrap" />
-                        <TextBlock
-                            x:Name="_messageText"
-                            Style="{StaticResource SmallMutedTextStyle}" />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </StackPanel>
+            </StackPanel>
+        </Grid>
     </ScrollViewer>
 </Page>

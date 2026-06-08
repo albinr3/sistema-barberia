@@ -39,7 +39,6 @@ public sealed partial class LocalAdminPage : Page
         {
             var snapshot = _service.Load();
             ShowSnapshot(snapshot);
-            SetStatus("Local", success: true);
         }
         catch (Exception exception)
         {
@@ -57,9 +56,7 @@ public sealed partial class LocalAdminPage : Page
         _availableBarbersText.Text = $"{availableCount}/{activeCount}";
         _cashText.Text = FormatMoney(snapshot.Cash.TotalAmountCents, snapshot.Cash.Currency);
         _lastRefreshText.Text = $"Updated: {snapshot.GeneratedAt:hh:mm tt}";
-        _databasePathText.Text = snapshot.DatabasePath;
-        _databaseSizeText.Text = FormatBytes(snapshot.DatabaseSizeBytes);
-        _messageText.Text = $"Completed services today: {snapshot.Operations.CompletedServices}. Cash payments: {snapshot.Cash.PaymentCount}.";
+        _waitingCountText.Text = $"{snapshot.ActiveTurns.Count(turn => turn.State == TurnState.Waiting)} Waiting";
         UpdateReassignmentControls(snapshot);
         ReplaceChildren(
             _alertRows,
@@ -70,17 +67,26 @@ public sealed partial class LocalAdminPage : Page
             snapshot.ActiveTurns.Select(turn => CreateTurnRow(turn, snapshot.Barbers)),
             "No active turns right now.");
         ReplaceChildren(
+            _historyRows,
+            snapshot.RecentTicketHistoryToday.Select(CreateHistoryRow),
+            "No ticket history recorded today.");
+        ReplaceChildren(
             _auditRows,
             snapshot.RecentAuditEvents.Select(CreateAuditRow),
             "No audit events recorded yet.");
+        ReplaceChildren(
+            _staffRows,
+            snapshot.Barbers.Select(CreateStaffRow),
+            "No barbers registered in the local database.");
     }
 
 
     private void UpdateReassignmentControls(LocalAdminSnapshot snapshot)
     {
-        var ticketOptions = snapshot.ActiveTurns
-            .Where(turn => turn.State is TurnState.Waiting or TurnState.Called)
-            .Select(turn => new ReassignTicketOption(turn.Id, FormatReassignTicketOption(turn, snapshot.Barbers)))
+        var ticketOptions = new[] { new ReassignTicketOption(Guid.Empty, "Select Ticket") }
+            .Concat(snapshot.ActiveTurns
+                .Where(turn => turn.State is TurnState.Waiting or TurnState.Called)
+                .Select(turn => new ReassignTicketOption(turn.Id, FormatReassignTicketOption(turn, snapshot.Barbers))))
             .ToArray();
         var barberOptions = snapshot.Barbers
             .Where(barber => barber.IsActive)
@@ -107,57 +113,69 @@ public sealed partial class LocalAdminPage : Page
         var row = new Grid
         {
             ColumnSpacing = 12,
+            Padding = new Thickness(20, 12, 20, 12),
             Children =
             {
-                new StackPanel
+                new TextBlock
                 {
-                    Spacing = 3,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = $"{turn.DisplayTicketNumber} - {customerName}",
-                            FontSize = 17,
-                            FontWeight = FontWeights.SemiBold,
-                            Foreground = Brush(30, 31, 34),
-                            TextWrapping = TextWrapping.WrapWholeWords
-                        },
-                        new TextBlock
-                        {
-                            Text = $"{FormatTurnSource(turn.Source)} - {barberName} - {turn.CheckedInAt:hh:mm tt} - Interno {turn.TicketNumber}",
-                            FontSize = 13,
-                            Foreground = Brush(101, 108, 116),
-                            TextWrapping = TextWrapping.WrapWholeWords
-                        }
-                    }
+                    Text = turn.DisplayTicketNumber.ToString(),
+                    FontSize = 14,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(0, 19, 135),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.WrapWholeWords
                 }
             }
         };
-        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.9, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var actions = new StackPanel
+        var clientText = new TextBlock
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
+            Text = customerName,
+            FontSize = 14,
+            Foreground = Brush(26, 28, 30),
+            TextWrapping = TextWrapping.WrapWholeWords,
             VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Right
         };
+        Grid.SetColumn(clientText, 1);
+        row.Children.Add(clientText);
 
-        actions.Children.Add(CreateTextBadge(
+        var statusBadge = CreateTextBadge(
             FormatTurnState(turn.State),
             GetTurnBackground(turn.State),
-            GetTurnForeground(turn.State)));
+            GetTurnForeground(turn.State));
+        Grid.SetColumn(statusBadge, 2);
+        row.Children.Add(statusBadge);
 
         var cancelButton = CreateSmallActionButton("Cancel");
         cancelButton.IsEnabled = turn.State is TurnState.Waiting or TurnState.Called or TurnState.InService;
         cancelButton.Click += (_, _) => ExecuteAdminAction(() => _service.CancelTurn(turn.Id), "Cancelled");
-        actions.Children.Add(cancelButton);
 
-        Grid.SetColumn(actions, 1);
-        row.Children.Add(actions);
+        var assignedText = new TextBlock
+        {
+            Text = barberName,
+            FontSize = 14,
+            Foreground = Brush(68, 70, 85),
+            TextWrapping = TextWrapping.WrapWholeWords,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(assignedText, 3);
+        row.Children.Add(assignedText);
 
-        return WrapRow(row, Brush(255, 255, 255));
+        Grid.SetColumn(cancelButton, 4);
+        row.Children.Add(cancelButton);
+
+        return new Border
+        {
+            Background = Brush(255, 255, 255),
+            BorderBrush = Brush(238, 238, 240),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = row
+        };
     }
 
     private void OnReassignmentSelectionChanged(object sender, SelectionChangedEventArgs args)
@@ -167,17 +185,13 @@ public sealed partial class LocalAdminPage : Page
 
     private void OnReassignTicketClick(object sender, RoutedEventArgs args)
     {
-        if (_reassignTicketComboBox.SelectedItem is not ReassignTicketOption ticketOption)
+        if (_reassignTicketComboBox.SelectedItem is not ReassignTicketOption ticketOption || ticketOption.TurnId == Guid.Empty)
         {
-            _messageText.Text = "Select a waiting or called ticket before reassigning.";
-            SetStatus("Action blocked", success: false);
             return;
         }
 
         if (_reassignBarberComboBox.SelectedItem is not ReassignBarberOption barberOption)
         {
-            _messageText.Text = "Select an active barber before reassigning.";
-            SetStatus("Action blocked", success: false);
             return;
         }
 
@@ -189,7 +203,7 @@ public sealed partial class LocalAdminPage : Page
     private void UpdateReassignmentButtonState()
     {
         _reassignButton.IsEnabled =
-            _reassignTicketComboBox.SelectedItem is ReassignTicketOption
+            _reassignTicketComboBox.SelectedItem is ReassignTicketOption ticketOption && ticketOption.TurnId != Guid.Empty
             && _reassignBarberComboBox.SelectedItem is ReassignBarberOption;
     }
 
@@ -276,6 +290,22 @@ public sealed partial class LocalAdminPage : Page
         }
     }
 
+    private void OnManageBarbersClick(object sender, RoutedEventArgs args)
+    {
+        if (App.MainWindowInstance is MainWindow mainWindow)
+        {
+            mainWindow.NavigateTo(ShellModuleKey.Barbers);
+        }
+    }
+
+    private void OnManageServicesClick(object sender, RoutedEventArgs args)
+    {
+        if (App.MainWindowInstance is MainWindow mainWindow)
+        {
+            mainWindow.NavigateTo(ShellModuleKey.Services);
+        }
+    }
+
     private static UIElement CreateAuditRow(AuditEvent auditEvent)
     {
         return WrapRow(
@@ -304,18 +334,198 @@ public sealed partial class LocalAdminPage : Page
             Brush(255, 255, 255));
     }
 
+    private static UIElement CreateStaffRow(Barber barber)
+    {
+        var isOnline = barber.IsActive && barber.State != BarberState.Offline;
+        var initial = string.IsNullOrWhiteSpace(barber.DisplayName)
+            ? "?"
+            : barber.DisplayName.Trim()[0].ToString().ToUpperInvariant();
+
+        var row = new Grid
+        {
+            ColumnSpacing = 12,
+            Opacity = isOnline ? 1 : 0.62
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var avatar = new Grid
+        {
+            Width = 48,
+            Height = 48
+        };
+        avatar.Children.Add(new Border
+        {
+            Width = 48,
+            Height = 48,
+            Background = isOnline ? Brush(223, 224, 255) : Brush(232, 232, 234),
+            BorderBrush = isOnline ? Brush(0, 19, 135) : Brush(197, 197, 216),
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(999),
+            Child = new TextBlock
+            {
+                Text = initial,
+                FontSize = 20,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = isOnline ? Brush(0, 19, 135) : Brush(68, 70, 85),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        });
+        avatar.Children.Add(new Ellipse
+        {
+            Width = 12,
+            Height = 12,
+            Fill = isOnline ? Brush(0, 19, 135) : Brush(117, 118, 135),
+            Stroke = Brush(255, 255, 255),
+            StrokeThickness = 2,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        });
+        row.Children.Add(avatar);
+
+        var details = new StackPanel
+        {
+            Spacing = 2,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = barber.DisplayNameWithStation,
+                    FontSize = 14,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(26, 28, 30),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                },
+                new TextBlock
+                {
+                    Text = FormatBarberState(barber.State),
+                    FontSize = 12,
+                    Foreground = isOnline ? Brush(68, 70, 85) : Brush(117, 118, 135),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                }
+            }
+        };
+        Grid.SetColumn(details, 1);
+        row.Children.Add(details);
+
+        var statePill = CreateTextBadge(
+            barber.IsActive ? "Active" : "Offline",
+            barber.IsActive ? Brush(223, 224, 255) : Brush(238, 238, 240),
+            barber.IsActive ? Brush(0, 32, 194) : Brush(68, 70, 85));
+        Grid.SetColumn(statePill, 2);
+        row.Children.Add(statePill);
+
+        return row;
+    }
+
+    private static UIElement CreateHistoryRow(TicketHistoryRow historyRow)
+    {
+        var barberName = historyRow.AssignedBarberName ?? "Unassigned";
+        var customerName = string.IsNullOrWhiteSpace(historyRow.CustomerName) ? "Walk-in customer" : historyRow.CustomerName;
+        var serviceName = string.IsNullOrWhiteSpace(historyRow.ServiceName) ? FormatTurnSource(historyRow.Source) : historyRow.ServiceName;
+
+        var row = new Grid
+        {
+            ColumnSpacing = 14
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var iconBox = new Border
+        {
+            Width = 40,
+            Height = 40,
+            Background = GetTurnBackground(historyRow.FinalState),
+            CornerRadius = new CornerRadius(999),
+            Child = new FontIcon
+            {
+                Glyph = historyRow.FinalState switch
+                {
+                    TurnState.Completed => "\uE73E",
+                    TurnState.Cancelled => "\uE711",
+                    TurnState.NoShow => "\uE77A",
+                    _ => "\uE8A5"
+                },
+                FontSize = 18,
+                Foreground = GetTurnForeground(historyRow.FinalState),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        row.Children.Add(iconBox);
+
+        var details = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = $"Ticket {historyRow.DisplayTicketNumber} - {customerName} - {serviceName}",
+                    FontSize = 14,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(26, 28, 30),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                },
+                new TextBlock
+                {
+                    Text = $"{barberName} | Created: {historyRow.CheckedInAt:hh:mm tt}" +
+                           (historyRow.StartedAt.HasValue ? $" | Service started: {historyRow.StartedAt:hh:mm tt}" : "") +
+                           (historyRow.ChargedAt.HasValue ? $" | Charged: {historyRow.ChargedAt:hh:mm tt}" : "") +
+                           (historyRow.CancelledAt.HasValue ? $" | Cancelled: {historyRow.CancelledAt:hh:mm tt}" : ""),
+                    FontSize = 12,
+                    Foreground = Brush(117, 118, 135),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                }
+            }
+        };
+        Grid.SetColumn(details, 1);
+        row.Children.Add(details);
+
+        var rightStack = new StackPanel
+        {
+            Spacing = 6,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        rightStack.Children.Add(CreateTextBadge(
+            FormatTurnState(historyRow.FinalState),
+            GetTurnBackground(historyRow.FinalState),
+            GetTurnForeground(historyRow.FinalState)));
+
+        if (historyRow.Amount.HasValue)
+        {
+            rightStack.Children.Add(new TextBlock
+            {
+                Text = $"${historyRow.Amount.Value:0.00}",
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush(19, 115, 51),
+                HorizontalAlignment = HorizontalAlignment.Right
+            });
+        }
+
+        Grid.SetColumn(rightStack, 2);
+        row.Children.Add(rightStack);
+
+        return WrapRow(row, Brush(255, 255, 255));
+    }
+
     private void ExecuteAdminAction(Action action, string successStatus = "Updated")
     {
         try
         {
             action();
             LoadAdmin();
-            SetStatus(successStatus, success: true);
         }
         catch (Exception exception)
         {
-            _messageText.Text = exception.Message;
-            SetStatus("Action blocked", success: false);
+            // Action blocked
         }
     }
 
@@ -324,11 +534,9 @@ public sealed partial class LocalAdminPage : Page
         _activeTurnsText.Text = "0";
         _checkInsText.Text = "0";
         _availableBarbersText.Text = "0/0";
-        _cashText.Text = "USD 0.00";
+        _cashText.Text = "$0";
         _lastRefreshText.Text = "No local snapshot loaded";
-        _databasePathText.Text = LocalAppPaths.DatabasePath;
-        _databaseSizeText.Text = "0 B";
-        _messageText.Text = message;
+        _waitingCountText.Text = "0 Waiting";
         _reassignTicketComboBox.ItemsSource = null;
         _reassignTicketComboBox.IsEnabled = false;
         _reassignBarberComboBox.ItemsSource = null;
@@ -338,18 +546,12 @@ public sealed partial class LocalAdminPage : Page
         _auditRows.Children.Clear();
         _historyRows.Children.Clear();
         _alertRows.Children.Clear();
+        _staffRows.Children.Clear();
         _alertRows.Children.Add(CreateEmptyState("Could not read alerts."));
         _turnRows.Children.Add(CreateEmptyState("Could not read active turns."));
         _auditRows.Children.Add(CreateEmptyState(message));
-        SetStatus("Error", success: false);
-    }
-
-    private void SetStatus(string text, bool success)
-    {
-        _statusBadgeText.Text = text;
-        _statusBadge.Background = success ? Brush(235, 248, 244) : Brush(255, 240, 238);
-        _statusBadge.BorderBrush = success ? Brush(181, 224, 211) : Brush(231, 170, 162);
-        _statusBadgeText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
+        _historyRows.Children.Add(CreateEmptyState("Could not read ticket history."));
+        _staffRows.Children.Add(CreateEmptyState("Could not read staff roster."));
     }
 
     private static Button CreateSmallActionButton(string text)
@@ -358,8 +560,8 @@ public sealed partial class LocalAdminPage : Page
         {
             Content = text,
             MinHeight = 36,
-            MinWidth = 96,
-            Padding = new Thickness(12, 6, 12, 6),
+            MinWidth = 82,
+            Padding = new Thickness(10, 6, 10, 6),
             VerticalAlignment = VerticalAlignment.Center
         };
     }
@@ -499,8 +701,11 @@ public sealed partial class LocalAdminPage : Page
         return state switch
         {
             TurnState.Waiting => Brush(255, 247, 232),
-            TurnState.Called => Brush(235, 248, 244),
-            TurnState.InService => Brush(240, 244, 250),
+            TurnState.Called => Brush(232, 232, 234),
+            TurnState.InService => Brush(223, 224, 255),
+            TurnState.Completed => Brush(230, 244, 234),
+            TurnState.Cancelled => Brush(255, 218, 214),
+            TurnState.NoShow => Brush(255, 248, 225),
             _ => Brush(248, 249, 251)
         };
     }
@@ -510,32 +715,21 @@ public sealed partial class LocalAdminPage : Page
         return state switch
         {
             TurnState.Waiting => Brush(122, 82, 21),
-            TurnState.Called => Brush(17, 105, 88),
-            TurnState.InService => Brush(63, 78, 97),
+            TurnState.Called => Brush(26, 28, 30),
+            TurnState.InService => Brush(0, 32, 194),
+            TurnState.Completed => Brush(19, 115, 51),
+            TurnState.Cancelled => Brush(147, 0, 10),
+            TurnState.NoShow => Brush(138, 90, 0),
             _ => Brush(101, 108, 116)
         };
     }
 
     private static string FormatMoney(long cents, string currency)
     {
-        return $"{currency} {Money.FromCents(cents):0.00}";
+        return $"${Money.FromCents(cents):0}";
     }
 
-    private static string FormatBytes(long bytes)
-    {
-        if (bytes < 1024)
-        {
-            return $"{bytes} B";
-        }
 
-        var kilobytes = bytes / 1024m;
-        if (kilobytes < 1024)
-        {
-            return $"{kilobytes:0.0} KB";
-        }
-
-        return $"{kilobytes / 1024m:0.0} MB";
-    }
 
     private static SolidColorBrush Brush(byte red, byte green, byte blue)
     {

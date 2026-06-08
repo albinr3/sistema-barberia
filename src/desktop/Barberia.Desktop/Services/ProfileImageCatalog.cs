@@ -63,6 +63,12 @@ internal static class ProfileImageCatalog
 
     public static Uri? ResolveImageUri(string? relativePath)
     {
+        var fullPath = ResolveImagePath(relativePath);
+        return fullPath is null ? null : new Uri(fullPath);
+    }
+
+    public static string? ResolveImagePath(string? relativePath)
+    {
         if (string.IsNullOrWhiteSpace(relativePath))
         {
             return null;
@@ -78,7 +84,7 @@ internal static class ProfileImageCatalog
             return null;
         }
 
-        return new Uri(fullPath);
+        return fullPath;
     }
 
     private static bool IsAllowedImagePath(string fullPath)
