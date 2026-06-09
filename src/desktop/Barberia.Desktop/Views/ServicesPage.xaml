@@ -4,202 +4,315 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Loaded="OnLoaded">
 
-    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
-        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
-            <Border Style="{StaticResource HeroCardBorderStyle}">
-                <Grid ColumnSpacing="18">
+    <Page.Resources>
+        <Style x:Key="ServiceTableHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Inter" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF444655" />
+            <Setter Property="CharacterSpacing" Value="80" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="ServiceFormLabelTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Inter" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF444655" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="#FFF9F9FC">
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="White"
+            BorderBrush="#FFE2E2E5"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="#FF1A1C1E"
+                Glyph="&#xE700;" />
+        </Button>
+
+        <ScrollViewer
+            Padding="48"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel
+                MaxWidth="1200"
+                HorizontalAlignment="Center"
+                Spacing="24">
+                <Grid ColumnSpacing="24">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Style="{StaticResource HeroIconBoxStyle}">
-                        <FontIcon
-                            FontSize="30"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Glyph="&#xE8EC;" />
-                    </Border>
-
-                    <StackPanel
-                        Grid.Column="1"
-                        Spacing="5">
+                    <StackPanel Spacing="4">
                         <TextBlock
-                            Style="{StaticResource HeroTitleTextStyle}"
-                            Text="Services" />
+                            FontFamily="Inter"
+                            FontSize="24"
+                            FontWeight="SemiBold"
+                            Foreground="#FF1A1C1E"
+                            Text="All Services" />
                         <TextBlock
-                            FontSize="15"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Manage services feeding autocaja and bookings" />
+                            FontFamily="Inter"
+                            FontSize="16"
+                            Foreground="#FF444655"
+                            Text="Manage your barbershop's service offerings and pricing." />
                         <TextBlock
                             x:Name="_messageText"
+                            FontFamily="Inter"
                             FontSize="13"
-                            Foreground="{StaticResource TextSecondaryBrush}" />
+                            Foreground="#FF444655" />
                     </StackPanel>
+
+                    <Button
+                        Grid.Column="1"
+                        MinHeight="44"
+                        Padding="20,10"
+                        VerticalAlignment="Top"
+                        Background="#FF001387"
+                        BorderBrush="#FF001387"
+                        Click="OnNewServiceClick"
+                        CornerRadius="8"
+                        Foreground="White">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <FontIcon
+                                FontSize="18"
+                                Glyph="&#xE710;" />
+                            <TextBlock
+                                FontFamily="Inter"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Text="Add New Service" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        MinHeight="40"
+                        Padding="20,8"
+                        Background="#FF0020C2"
+                        BorderBrush="#FF0020C2"
+                        CornerRadius="20"
+                        Foreground="#FFDFE0FF">
+                        <TextBlock
+                            FontFamily="Inter"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="All Services" />
+                    </Button>
+                </StackPanel>
+
+                <Border
+                    Background="White"
+                    BorderBrush="#FFC5C5D8"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <StackPanel>
+                        <ScrollViewer
+                            HorizontalScrollBarVisibility="Auto"
+                            HorizontalScrollMode="Enabled"
+                            VerticalScrollBarVisibility="Disabled">
+                            <Grid MinWidth="760">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid
+                                    Padding="24,16"
+                                    Background="#FFF3F3F6"
+                                    BorderBrush="#FFC5C5D8"
+                                    BorderThickness="0,0,0,1"
+                                    ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2.1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Service Name" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Price" />
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Center" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Status" />
+                                    <TextBlock Grid.Column="3" HorizontalAlignment="Right" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Actions" />
+                                </Grid>
+
+                                <StackPanel
+                                    x:Name="_serviceRows"
+                                    Grid.Row="1" />
+                            </Grid>
+                        </ScrollViewer>
+
+                        <Grid
+                            Padding="24,16"
+                            Background="#FFF3F3F6"
+                            BorderBrush="#FFC5C5D8"
+                            BorderThickness="0,1,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                x:Name="_serviceFooterText"
+                                VerticalAlignment="Center"
+                                FontFamily="Inter"
+                                FontSize="14"
+                                Foreground="#FF444655" />
+                            <StackPanel
+                                x:Name="_paginationPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="4" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid
+            x:Name="_serviceModalOverlay"
+            Background="#66000000"
+            Visibility="Collapsed">
+            <Border
+                Width="460"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="White"
+                CornerRadius="12">
+                <StackPanel>
+                    <Grid
+                        Padding="24"
+                        BorderBrush="#FFE2E2E5"
+                        BorderThickness="0,0,0,1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            x:Name="_serviceModalTitle"
+                            FontFamily="Inter"
+                            FontSize="24"
+                            FontWeight="SemiBold"
+                            Foreground="#FF1A1C1E"
+                            Text="Add New Service" />
+                        <Button
+                            Grid.Column="1"
+                            MinHeight="36"
+                            MinWidth="36"
+                            Click="OnCancelServiceClick">
+                            <FontIcon Glyph="&#xE711;" />
+                        </Button>
+                    </Grid>
 
                     <StackPanel
-                        Grid.Column="2"
-                        Spacing="10">
-                        <Border
-                            x:Name="_statusBadge"
-                            Style="{StaticResource StatusBadgeStyle}">
-                            <StackPanel
-                                Orientation="Horizontal"
-                                Spacing="7">
-                                <Ellipse
-                                    Width="8"
-                                    Height="8"
-                                    Fill="{StaticResource AccentGreenBrush}"
-                                    VerticalAlignment="Center" />
-                                <TextBlock
-                                    x:Name="_statusBadgeText"
-                                    Style="{StaticResource StatusBadgeTextStyle}" />
-                            </StackPanel>
-                        </Border>
+                        Padding="24"
+                        Spacing="16">
+                        <TextBlock
+                            x:Name="_editorModeText"
+                            FontFamily="Inter"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="#FF152DC9"
+                            Text="Creating a new service" />
 
-                        <Button
-                            MinHeight="42"
-                            Click="OnRefreshClick"
-                            Style="{StaticResource PrimaryActionButtonStyle}">
-                            <StackPanel
-                                HorizontalAlignment="Center"
-                                Orientation="Horizontal"
-                                Spacing="8">
-                                <FontIcon
-                                    FontSize="16"
-                                    Glyph="&#xE72C;" />
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Text="Refresh" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Grid
-                ColumnSpacing="14"
-                RowSpacing="14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.85*" />
-                    <ColumnDefinition Width="1.15*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Service Editor" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Create services with a required base price for autocaja." />
-                            <TextBlock
-                                x:Name="_editorModeText"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource AccentGreenBrush}"
-                                Text="Creating a new service" />
+                        <StackPanel Spacing="6">
+                            <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Service Name" />
+                            <TextBox
+                                x:Name="_serviceNameInput"
+                                MinHeight="44"
+                                PlaceholderText="e.g. Signature Haircut"
+                                TextWrapping="NoWrap" />
                         </StackPanel>
 
-                        <StackPanel Spacing="12">
-                            <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Service Name" />
-                                <TextBox
-                                    x:Name="_serviceNameInput"
-                                    MinHeight="46"
-                                    PlaceholderText="e.g., Corte"
-                                    TextWrapping="NoWrap" />
-                            </StackPanel>
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
 
                             <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Base Price" />
+                                <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Base Price" />
                                 <TextBox
                                     x:Name="_servicePriceInput"
-                                    MinHeight="46"
-                                    PlaceholderText="20.00"
+                                    MinHeight="44"
+                                    PlaceholderText="30.00"
                                     TextWrapping="NoWrap" />
                             </StackPanel>
 
-                            <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Display Order" />
+                            <StackPanel
+                                Grid.Column="1"
+                                Spacing="6">
+                                <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Display Order" />
                                 <TextBox
                                     x:Name="_serviceDisplayOrderInput"
-                                    MinHeight="46"
+                                    MinHeight="44"
                                     MaxLength="4"
                                     PlaceholderText="0"
                                     TextWrapping="NoWrap" />
                             </StackPanel>
+                        </Grid>
 
-                            <CheckBox
-                                x:Name="_serviceActiveCheckBox"
-                                MinHeight="42"
-                                Content="Active in autocaja"
-                                IsChecked="True" />
-
-                            <Grid ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition />
-                                    <ColumnDefinition />
-                                    <ColumnDefinition />
-                                </Grid.ColumnDefinitions>
-
-                                <Button
-                                    MinHeight="44"
-                                    Click="OnNewServiceClick"
-                                    Content="New"
-                                    HorizontalAlignment="Stretch" />
-                                <Button
-                                    Grid.Column="1"
-                                    MinHeight="44"
-                                    Click="OnSaveServiceClick"
-                                    Content="Save"
-                                    HorizontalAlignment="Stretch"
-                                    Style="{StaticResource PrimaryActionButtonStyle}" />
-                                <Button
-                                    x:Name="_deleteServiceButton"
-                                    Grid.Column="2"
-                                    MinHeight="44"
-                                    Click="OnDeleteServiceClick"
-                                    Content="Delete"
-                                    HorizontalAlignment="Stretch"
-                                    IsEnabled="False" />
-                            </Grid>
-                        </StackPanel>
+                        <CheckBox
+                            x:Name="_serviceActiveCheckBox"
+                            MinHeight="40"
+                            Content="Active in autocaja"
+                            IsChecked="True" />
                     </StackPanel>
-                </Border>
 
-                <Border
-                    Grid.Column="1"
-                    Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Service Catalog" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="These services feed autocaja and future booking phases." />
-                        </StackPanel>
-                        <StackPanel
-                            x:Name="_serviceRows"
-                            Spacing="10" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </StackPanel>
-    </ScrollViewer>
+                    <Grid
+                        Padding="24"
+                        Background="#FFF3F3F6"
+                        BorderBrush="#FFE2E2E5"
+                        BorderThickness="0,1,0,0"
+                        ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            x:Name="_deleteServiceButton"
+                            MinHeight="42"
+                            Click="OnDeleteServiceClick"
+                            Content="Delete"
+                            IsEnabled="False" />
+                        <Button
+                            Grid.Column="1"
+                            MinHeight="42"
+                            Padding="20,8"
+                            Click="OnCancelServiceClick"
+                            Content="Cancel" />
+                        <Button
+                            Grid.Column="2"
+                            MinHeight="42"
+                            Padding="20,8"
+                            Background="#FF001387"
+                            BorderBrush="#FF001387"
+                            Click="OnSaveServiceClick"
+                            Content="Save Service"
+                            CornerRadius="8"
+                            Foreground="White" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
 </Page>

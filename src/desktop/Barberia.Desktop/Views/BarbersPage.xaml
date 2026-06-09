@@ -4,227 +4,380 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Loaded="OnLoaded">
 
-    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
-        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
-            <Border Style="{StaticResource HeroCardBorderStyle}">
-                <Grid ColumnSpacing="18">
+    <Page.Resources>
+        <Style x:Key="BarberTableHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Inter" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF444655" />
+            <Setter Property="CharacterSpacing" Value="80" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="BarberFormLabelTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Inter" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF444655" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="#FFF9F9FC">
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="White"
+            BorderBrush="#FFE2E2E5"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="#FF1A1C1E"
+                Glyph="&#xE700;" />
+        </Button>
+        <ScrollViewer
+            Padding="48"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel
+                MaxWidth="1400"
+                HorizontalAlignment="Center"
+                Spacing="24">
+                <Grid ColumnSpacing="24">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Style="{StaticResource HeroIconBoxStyle}">
-                        <FontIcon
-                            FontSize="30"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Glyph="&#xE716;" />
-                    </Border>
-
-                    <StackPanel
-                        Grid.Column="1"
-                        Spacing="5">
+                    <StackPanel Spacing="4">
                         <TextBlock
-                            Style="{StaticResource HeroTitleTextStyle}"
+                            FontFamily="Inter"
+                            FontSize="32"
+                            FontWeight="Bold"
+                            Foreground="#FF1A1C1E"
                             Text="Barbers" />
                         <TextBlock
-                            FontSize="15"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Manage team members, stations, and availability" />
+                            FontFamily="Inter"
+                            FontSize="16"
+                            Foreground="#FF444655"
+                            Text="Manage barbers, assign stations, and track availability." />
                         <TextBlock
                             x:Name="_messageText"
+                            FontFamily="Inter"
                             FontSize="13"
-                            Foreground="{StaticResource TextSecondaryBrush}" />
+                            Foreground="#FF444655" />
                     </StackPanel>
 
-                    <StackPanel
-                        Grid.Column="2"
-                        Spacing="10">
-                        <Border
-                            x:Name="_statusBadge"
-                            Style="{StaticResource StatusBadgeStyle}">
-                            <StackPanel
-                                Orientation="Horizontal"
-                                Spacing="7">
-                                <Ellipse
-                                    Width="8"
-                                    Height="8"
-                                    Fill="{StaticResource AccentGreenBrush}"
-                                    VerticalAlignment="Center" />
-                                <TextBlock
-                                    x:Name="_statusBadgeText"
-                                    Style="{StaticResource StatusBadgeTextStyle}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Button
-                            MinHeight="42"
-                            Click="OnRefreshClick"
-                            Style="{StaticResource PrimaryActionButtonStyle}">
-                            <StackPanel
-                                HorizontalAlignment="Center"
-                                Orientation="Horizontal"
-                                Spacing="8">
-                                <FontIcon
-                                    FontSize="16"
-                                    Glyph="&#xE72C;" />
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Text="Refresh" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                    <Button
+                        Grid.Column="1"
+                        MinHeight="44"
+                        Padding="20,10"
+                        VerticalAlignment="Center"
+                        Background="#FF001387"
+                        BorderBrush="#FF001387"
+                        Click="OnNewBarberClick"
+                        CornerRadius="8"
+                        Foreground="White">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <FontIcon
+                                FontSize="18"
+                                Glyph="&#xE710;" />
+                            <TextBlock
+                                FontFamily="Inter"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Text="Add New Barber" />
+                        </StackPanel>
+                    </Button>
                 </Grid>
-            </Border>
-
-            <Grid
-                ColumnSpacing="14"
-                RowSpacing="14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.85*" />
-                    <ColumnDefinition Width="1.15*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Barber Editor" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Create barbers, assign fixed stations, edit their display order and choose an optional profile image." />
-                        </StackPanel>
-
-                        <StackPanel Spacing="12">
-                            <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Barber Name" />
-                                <TextBox
-                                    x:Name="_barberNameInput"
-                                    MinHeight="46"
-                                    PlaceholderText="e.g., Marcus"
-                                    TextWrapping="NoWrap" />
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Station Code" />
-                                <TextBox
-                                    x:Name="_stationCodeInput"
-                                    MinHeight="46"
-                                    MaxLength="8"
-                                    PlaceholderText="B-1"
-                                    TextWrapping="NoWrap" />
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Rotation Order" />
-                                <TextBox
-                                    x:Name="_rotationOrderInput"
-                                    MinHeight="46"
-                                    MaxLength="4"
-                                    PlaceholderText="0"
-                                    TextWrapping="NoWrap" />
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    Text="Profile Image" />
-                                <Grid ColumnSpacing="8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <ComboBox
-                                        x:Name="_profileImageSelector"
-                                        MinHeight="46"
-                                        HorizontalAlignment="Stretch"
-                                        DisplayMemberPath="DisplayName"
-                                        PlaceholderText="Use initials placeholder" />
-                                    <Button
-                                        Grid.Column="1"
-                                        MinHeight="46"
-                                        MinWidth="104"
-                                        Click="OnBrowseProfileImageClick"
-                                        Content="Browse" />
-                                </Grid>
-                                <TextBlock
-                                    Style="{StaticResource SmallMutedTextStyle}"
-                                    Text="Choose an image from Windows Explorer. Leave empty to use initials." />
-                            </StackPanel>
-
-                            <CheckBox
-                                x:Name="_showInKioskCheckBox"
-                                MinHeight="42"
-                                Content="Show in kiosk and local operations"
-                                IsChecked="True" />
-
-                            <Grid ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition />
-                                    <ColumnDefinition />
-                                    <ColumnDefinition />
-                                </Grid.ColumnDefinitions>
-
-                                <Button
-                                    MinHeight="44"
-                                    Click="OnNewBarberClick"
-                                    Content="New"
-                                    HorizontalAlignment="Stretch" />
-                                <Button
-                                    Grid.Column="1"
-                                    MinHeight="44"
-                                    Click="OnSaveBarberClick"
-                                    Content="Save"
-                                    HorizontalAlignment="Stretch"
-                                    Style="{StaticResource PrimaryActionButtonStyle}" />
-                                <Button
-                                    x:Name="_deleteBarberButton"
-                                    Grid.Column="2"
-                                    MinHeight="44"
-                                    Click="OnDeleteBarberClick"
-                                    Content="Delete"
-                                    HorizontalAlignment="Stretch"
-                                    IsEnabled="False" />
-                            </Grid>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
 
                 <Border
-                    Grid.Column="1"
-                    Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="2">
+                    Background="White"
+                    BorderBrush="#FFE2E2E5"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <StackPanel>
+                        <Grid
+                            Padding="16"
+                            Background="#FFF9F9FC"
+                            BorderBrush="#FFE2E2E5"
+                            BorderThickness="0,0,0,1"
+                            ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="12">
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="12">
+                                <TextBox
+                                    MinWidth="220"
+                                    MinHeight="40"
+                                    PlaceholderText="Search staff..." />
+                                <ComboBox
+                                    MinWidth="140"
+                                    MinHeight="40"
+                                    SelectedIndex="0">
+                                    <ComboBoxItem Content="All Status" />
+                                    <ComboBoxItem Content="Active Now" />
+                                    <ComboBoxItem Content="Offline" />
+                                </ComboBox>
+                                <ComboBox
+                                    MinWidth="140"
+                                    MinHeight="40"
+                                    SelectedIndex="0">
+                                    <ComboBoxItem Content="All Stations" />
+                                    <ComboBoxItem Content="B-1" />
+                                    <ComboBoxItem Content="B-2" />
+                                    <ComboBoxItem Content="B-3" />
+                                </ComboBox>
+                                <Button
+                                    MinHeight="40"
+                                    MinWidth="40"
+                                    Click="OnRefreshClick">
+                                    <FontIcon Glyph="&#xE72C;" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <ScrollViewer
+                            HorizontalScrollBarVisibility="Auto"
+                            HorizontalScrollMode="Enabled"
+                            VerticalScrollBarVisibility="Disabled">
+                            <Grid MinWidth="900">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid
+                                    Padding="16,12"
+                                    Background="#FFF3F3F6"
+                                    BorderBrush="#FFE2E2E5"
+                                    BorderThickness="0,0,0,1"
+                                    ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="44" />
+                                        <ColumnDefinition Width="2.3*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="1.4*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="1" Style="{StaticResource BarberTableHeaderTextStyle}" Text="Barber" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource BarberTableHeaderTextStyle}" Text="Status" />
+                                    <TextBlock Grid.Column="3" HorizontalAlignment="Center" Style="{StaticResource BarberTableHeaderTextStyle}" Text="Station" />
+                                    <TextBlock Grid.Column="4" Style="{StaticResource BarberTableHeaderTextStyle}" Text="Rotation" />
+                                    <TextBlock Grid.Column="5" HorizontalAlignment="Right" Style="{StaticResource BarberTableHeaderTextStyle}" Text="Actions" />
+                                </Grid>
+
+                                <StackPanel
+                                    x:Name="_barberRows"
+                                    Grid.Row="1" />
+                            </Grid>
+                        </ScrollViewer>
+
+                        <Grid
+                            Padding="16"
+                            Background="#FFF9F9FC"
+                            BorderBrush="#FFE2E2E5"
+                            BorderThickness="0,1,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
                             <TextBlock
-                                Style="{StaticResource SectionTitleTextStyle}"
-                                Text="Barber Directory" />
-                            <TextBlock
-                                Style="{StaticResource SmallMutedTextStyle}"
-                                Text="Edit barbers or change availability when they are not called or in service." />
-                        </StackPanel>
-                        <StackPanel
-                            x:Name="_barberRows"
-                            Spacing="10" />
+                                x:Name="_barberFooterText"
+                                VerticalAlignment="Center"
+                                FontFamily="Inter"
+                                FontSize="14"
+                                Foreground="#FF444655" />
+                            <StackPanel
+                                x:Name="_paginationPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="4">
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
-            </Grid>
-        </StackPanel>
-    </ScrollViewer>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid
+            x:Name="_barberModalOverlay"
+            Background="#66000000"
+            Visibility="Collapsed">
+            <Border
+                Width="520"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="White"
+                CornerRadius="12">
+                <StackPanel>
+                    <Grid
+                        Padding="24"
+                        BorderBrush="#FFE2E2E5"
+                        BorderThickness="0,0,0,1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            x:Name="_barberModalTitle"
+                            FontFamily="Inter"
+                            FontSize="24"
+                            FontWeight="SemiBold"
+                            Foreground="#FF1A1C1E"
+                            Text="Add New Barber" />
+                        <Button
+                            Grid.Column="1"
+                            MinHeight="36"
+                            MinWidth="36"
+                            Click="OnCancelBarberClick">
+                            <FontIcon Glyph="&#xE711;" />
+                        </Button>
+                    </Grid>
+
+                    <StackPanel
+                        Padding="24"
+                        Spacing="16">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Style="{StaticResource BarberFormLabelTextStyle}" Text="Profile Picture" />
+                                <Grid
+                                    x:Name="_modalAvatarHost"
+                                    Width="64"
+                                    Height="64" />
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Margin="0,22,0,0"
+                                Spacing="8">
+                                <Button
+                                    MinHeight="40"
+                                    HorizontalAlignment="Left"
+                                    Click="OnBrowseProfileImageClick">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE898;" />
+                                        <TextBlock Text="Upload Photo" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock
+                                    FontFamily="Inter"
+                                    FontSize="12"
+                                    Foreground="#FF444655"
+                                    Text="JPG, PNG or GIF. Max 1MB." />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Style="{StaticResource BarberFormLabelTextStyle}" Text="Full Name" />
+                            <TextBox
+                                x:Name="_barberNameInput"
+                                MinHeight="44"
+                                PlaceholderText="e.g. John Doe"
+                                TextWrapping="NoWrap" />
+                        </StackPanel>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Style="{StaticResource BarberFormLabelTextStyle}" Text="Station Assignment" />
+                                <TextBox
+                                    x:Name="_stationCodeInput"
+                                    MinHeight="44"
+                                    MaxLength="8"
+                                    PlaceholderText="e.g. B-8"
+                                    TextWrapping="NoWrap" />
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Spacing="6">
+                                <TextBlock Style="{StaticResource BarberFormLabelTextStyle}" Text="Rotation Order" />
+                                <TextBox
+                                    x:Name="_rotationOrderInput"
+                                    MinHeight="44"
+                                    MaxLength="4"
+                                    PlaceholderText="8"
+                                    TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="6" Visibility="Collapsed">
+                        </StackPanel>
+
+                        <CheckBox
+                            x:Name="_showInKioskCheckBox"
+                            MinHeight="40"
+                            Content="Show in kiosk and local operations"
+                            IsChecked="True" />
+                    </StackPanel>
+
+                    <Grid
+                        Padding="24"
+                        Background="#FFF3F3F6"
+                        BorderBrush="#FFE2E2E5"
+                        BorderThickness="0,1,0,0"
+                        ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            x:Name="_deleteBarberButton"
+                            MinHeight="42"
+                            Click="OnDeleteBarberClick"
+                            Content="Delete"
+                            IsEnabled="False" />
+                        <Button
+                            Grid.Column="1"
+                            MinHeight="42"
+                            Padding="20,8"
+                            Click="OnCancelBarberClick"
+                            Content="Cancel" />
+                        <Button
+                            Grid.Column="2"
+                            MinHeight="42"
+                            Padding="20,8"
+                            Click="OnSaveBarberClick"
+                            Content="Save Barber"
+                            Style="{StaticResource PrimaryActionButtonStyle}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
 </Page>

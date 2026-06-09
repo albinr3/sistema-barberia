@@ -6,78 +6,68 @@
 
     <Grid Background="{StaticResource AppBackgroundBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="_navigationColumn" Width="292" />
+            <ColumnDefinition x:Name="_navigationColumn" Width="256" />
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
 
         <Border
             x:Name="_sidebar"
             Grid.Column="0"
-            Background="{StaticResource SidebarBrush}">
-            <Grid Padding="18,22,18,18">
+            Background="#FFF3F3F6"
+            BorderBrush="#FFE8E8EA"
+            BorderThickness="0,0,1,0">
+            <Grid Padding="16,24,16,24">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Grid Margin="0,0,0,28">
+                <Grid Margin="8,0,8,32">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
 
                     <Border
-                        Width="42"
-                        Height="42"
-                        Background="{StaticResource AccentGoldBrush}"
-                        CornerRadius="8">
+                        Width="40"
+                        Height="40"
+                        Background="#FF001387"
+                        CornerRadius="4">
                         <FontIcon
-                            FontSize="22"
-                            Foreground="{StaticResource SidebarBrush}"
-                            Glyph="&#xE7C9;" />
+                            FontSize="18"
+                            Foreground="#FFFFFFFF"
+                            Glyph="&#xE8C6;" />
                     </Border>
 
                     <StackPanel
                         Grid.Column="1"
-                        Margin="12,1,0,0"
-                        Spacing="1">
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center">
                         <TextBlock
                             FontSize="20"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Text="Barberia" />
+                            FontWeight="Bold"
+                            Foreground="#FF001387"
+                            Text="Master Clips" />
                         <TextBlock
                             FontSize="12"
-                            Foreground="{StaticResource SidebarTextMutedBrush}"
-                            Text="Local system" />
+                            FontWeight="SemiBold"
+                            Foreground="#FF444655"
+                            CharacterSpacing="50"
+                            Text="ADMIN PORTAL" />
                     </StackPanel>
                 </Grid>
 
                 <StackPanel
                     x:Name="_navigationItems"
                     Grid.Row="1"
-                    Spacing="8" />
+                    Spacing="4" />
 
                 <Border
                     Grid.Row="2"
-                    Background="{StaticResource SidebarSurfaceBrush}"
-                    BorderBrush="{StaticResource SidebarBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="14">
-                    <StackPanel Spacing="3">
-                        <TextBlock
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Text="Offline-first" />
-                        <TextBlock
-                            FontSize="12"
-                            Foreground="{StaticResource SidebarTextMutedBrush}"
-                            Text="Runs without internet dependency"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
+                    BorderBrush="#FFE2E2E5"
+                    BorderThickness="0,1,0,0"
+                    Padding="0,16,0,0">
                 </Border>
             </Grid>
         </Border>

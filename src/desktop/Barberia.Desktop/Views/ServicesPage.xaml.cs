@@ -1,7 +1,6 @@
 using Barberia.Core.Domain;
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
-using Barberia.Desktop.Shell;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -13,22 +12,25 @@ namespace Barberia.Desktop.Views;
 
 public sealed partial class ServicesPage : Page
 {
+    private const int PageSize = 10;
+
     private readonly LocalAdminService _service = new();
     private Guid? _editingServiceId;
     private int _nextServiceDisplayOrder;
     private bool _resetDisplayOrderToDefault = true;
+    private IReadOnlyList<Service> _services = [];
+    private int _currentPage = 1;
+
+    public event EventHandler? ShellMenuRequested;
 
     public ServicesPage()
     {
         InitializeComponent();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs args)
-    {
-        LoadAdmin();
-    }
+    private void OnMenuButtonClick(object sender, RoutedEventArgs args) => ShellMenuRequested?.Invoke(this, EventArgs.Empty);
 
-    private void OnRefreshClick(object sender, RoutedEventArgs args)
+    private void OnLoaded(object sender, RoutedEventArgs args)
     {
         LoadAdmin();
     }
@@ -39,7 +41,7 @@ public sealed partial class ServicesPage : Page
         {
             var snapshot = _service.Load();
             ShowSnapshot(snapshot);
-            SetStatus("Local", success: true);
+            _messageText.Text = string.Empty;
         }
         catch (Exception exception)
         {
@@ -55,41 +57,128 @@ public sealed partial class ServicesPage : Page
 
         SyncServiceEditor(snapshot);
 
+        _services = snapshot.Services
+            .OrderBy(service => service.DisplayOrder)
+            .ThenBy(service => service.Name)
+            .ToList();
+        _currentPage = 1;
+        UpdatePagination();
+    }
+
+    private void UpdatePagination()
+    {
+        var totalItems = _services.Count;
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)PageSize));
+
+        if (_currentPage > totalPages)
+        {
+            _currentPage = totalPages;
+        }
+
+        var pagedServices = _services.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
+
         ReplaceChildren(
             _serviceRows,
-            snapshot.Services.Select(CreateServiceRow),
+            pagedServices.Select(CreateServiceRow),
             "No services registered in the local database.");
+
+        var startIndex = totalItems == 0 ? 0 : (_currentPage - 1) * PageSize + 1;
+        var endIndex = Math.Min(_currentPage * PageSize, totalItems);
+        _serviceFooterText.Text = $"Showing {startIndex} to {endIndex} of {totalItems} entries";
+
+        _paginationPanel.Visibility = totalPages > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+        if (totalPages > 1)
+        {
+            RenderPaginationButtons(totalPages);
+        }
+        else
+        {
+            _paginationPanel.Children.Clear();
+        }
+    }
+
+    private void RenderPaginationButtons(int totalPages)
+    {
+        _paginationPanel.Children.Clear();
+
+        var prevButton = CreatePaginationButton("Prev", isCurrent: false);
+        prevButton.IsEnabled = _currentPage > 1;
+        prevButton.Click += (_, _) =>
+        {
+            _currentPage--;
+            UpdatePagination();
+        };
+        _paginationPanel.Children.Add(prevButton);
+
+        for (var i = 1; i <= totalPages; i++)
+        {
+            var pageNumber = i;
+            var pageButton = CreatePaginationButton(pageNumber.ToString(), pageNumber == _currentPage);
+            pageButton.Click += (_, _) =>
+            {
+                _currentPage = pageNumber;
+                UpdatePagination();
+            };
+            _paginationPanel.Children.Add(pageButton);
+        }
+
+        var nextButton = CreatePaginationButton("Next", isCurrent: false);
+        nextButton.IsEnabled = _currentPage < totalPages;
+        nextButton.Click += (_, _) =>
+        {
+            _currentPage++;
+            UpdatePagination();
+        };
+        _paginationPanel.Children.Add(nextButton);
     }
 
     private UIElement CreateServiceRow(Service service)
     {
-        var row = new Grid { ColumnSpacing = 12 };
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var details = new StackPanel
+        var row = new Grid
         {
-            Spacing = 3,
-            Children =
-            {
-                new TextBlock
-                {
-                    Text = service.Name,
-                    FontSize = 18,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Brush(30, 31, 34),
-                    TextWrapping = TextWrapping.WrapWholeWords
-                },
-                new TextBlock
-                {
-                    Text = $"Base ${service.Price:0.00} - Order {service.DisplayOrder}",
-                    FontSize = 13,
-                    Foreground = Brush(101, 108, 116),
-                    TextWrapping = TextWrapping.WrapWholeWords
-                }
-            }
+            Padding = new Thickness(24, 18, 24, 18),
+            Background = Brush(255, 255, 255),
+            BorderBrush = Brush(197, 197, 216),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            ColumnSpacing = 16
         };
-        row.Children.Add(details);
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        row.Children.Add(new TextBlock
+        {
+            Text = service.Name,
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 20,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush(26, 28, 30),
+            TextWrapping = TextWrapping.WrapWholeWords,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        var priceText = new TextBlock
+        {
+            Text = $"${service.Price:0.00}",
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 20,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush(26, 28, 30),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(priceText, 1);
+        row.Children.Add(priceText);
+
+        var statusBadge = CreateTextBadge(
+            service.IsActive ? "Active" : "Archived",
+            service.IsActive ? Brush(220, 252, 231) : Brush(232, 232, 234),
+            service.IsActive ? Brush(21, 128, 61) : Brush(68, 70, 85));
+        statusBadge.HorizontalAlignment = HorizontalAlignment.Center;
+        statusBadge.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(statusBadge, 2);
+        row.Children.Add(statusBadge);
 
         var actions = new StackPanel
         {
@@ -98,19 +187,23 @@ public sealed partial class ServicesPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Right
         };
-        actions.Children.Add(CreateTextBadge(
-            service.IsActive ? "Active" : "Inactive",
-            service.IsActive ? Brush(235, 248, 244) : Brush(248, 249, 251),
-            service.IsActive ? Brush(17, 105, 88) : Brush(101, 108, 116)));
 
-        var editButton = CreateSmallActionButton("Edit");
+        var editButton = CreateIconActionButton("\uE70F", "Edit");
         editButton.Click += (_, _) => EditService(service);
         actions.Children.Add(editButton);
 
-        Grid.SetColumn(actions, 1);
+        var deleteButton = CreateIconActionButton("\uE74D", "Delete");
+        deleteButton.Click += (_, _) =>
+        {
+            _editingServiceId = service.Id;
+            OnDeleteServiceClick(deleteButton, new RoutedEventArgs());
+        };
+        actions.Children.Add(deleteButton);
+
+        Grid.SetColumn(actions, 3);
         row.Children.Add(actions);
 
-        return WrapRow(row, service.IsActive ? Brush(255, 255, 255) : Brush(248, 249, 251));
+        return row;
     }
 
     private void OnNewServiceClick(object sender, RoutedEventArgs args)
@@ -118,7 +211,17 @@ public sealed partial class ServicesPage : Page
         _editingServiceId = null;
         _resetDisplayOrderToDefault = true;
         ClearServiceEditor();
-        SetStatus("New service", success: true);
+        _serviceModalTitle.Text = "Add New Service";
+        _serviceModalOverlay.Visibility = Visibility.Visible;
+        _messageText.Text = string.Empty;
+    }
+
+    private void OnCancelServiceClick(object sender, RoutedEventArgs args)
+    {
+        _serviceModalOverlay.Visibility = Visibility.Collapsed;
+        _editingServiceId = null;
+        _resetDisplayOrderToDefault = true;
+        ClearServiceEditor();
     }
 
     private void OnSaveServiceClick(object sender, RoutedEventArgs args)
@@ -135,13 +238,31 @@ public sealed partial class ServicesPage : Page
                     ParseServiceDisplayOrder());
                 _editingServiceId = null;
                 _resetDisplayOrderToDefault = true;
+                _serviceModalOverlay.Visibility = Visibility.Collapsed;
                 ClearServiceEditor();
             },
-            isEditing ? "Updated" : "Saved");
+            isEditing ? "Service updated." : "Service saved.");
     }
 
-    private void OnDeleteServiceClick(object sender, RoutedEventArgs args)
+    private async void OnDeleteServiceClick(object sender, RoutedEventArgs args)
     {
+        var dialog = new ContentDialog
+        {
+            Title = "Confirm Deletion",
+            Content = "Are you sure you want to delete this service?",
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
         ExecuteAdminAction(
             () =>
             {
@@ -153,53 +274,36 @@ public sealed partial class ServicesPage : Page
                 _service.DeleteService(serviceId);
                 _editingServiceId = null;
                 _resetDisplayOrderToDefault = true;
+                _serviceModalOverlay.Visibility = Visibility.Collapsed;
                 ClearServiceEditor();
             },
-            "Deleted");
+            "Service deleted.");
     }
 
-    private void ExecuteAdminAction(Action action, string successStatus = "Updated")
+    private void ExecuteAdminAction(Action action, string successMessage)
     {
         try
         {
             action();
             LoadAdmin();
-            SetStatus(successStatus, success: true);
+            _messageText.Text = successMessage;
         }
         catch (Exception exception)
         {
             _messageText.Text = exception.Message;
-            SetStatus("Action blocked", success: false);
         }
     }
 
     private void ShowError(string message)
     {
         _messageText.Text = message;
+        _services = [];
         _serviceRows.Children.Clear();
         _deleteServiceButton.IsEnabled = false;
         _serviceRows.Children.Add(CreateEmptyState("Could not read services from the local database."));
-        SetStatus("Error", success: false);
-    }
-
-    private void SetStatus(string text, bool success)
-    {
-        _statusBadgeText.Text = text;
-        _statusBadge.Background = success ? Brush(235, 248, 244) : Brush(255, 240, 238);
-        _statusBadge.BorderBrush = success ? Brush(181, 224, 211) : Brush(231, 170, 162);
-        _statusBadgeText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
-    }
-
-    private static Button CreateSmallActionButton(string text)
-    {
-        return new Button
-        {
-            Content = text,
-            MinHeight = 36,
-            MinWidth = 96,
-            Padding = new Thickness(12, 6, 12, 6),
-            VerticalAlignment = VerticalAlignment.Center
-        };
+        _serviceFooterText.Text = "Showing 0 to 0 of 0 entries";
+        _paginationPanel.Visibility = Visibility.Collapsed;
+        _paginationPanel.Children.Clear();
     }
 
     private void SyncServiceEditor(LocalAdminSnapshot snapshot)
@@ -233,7 +337,9 @@ public sealed partial class ServicesPage : Page
         _resetDisplayOrderToDefault = false;
         LoadServiceIntoEditor(service);
         SetEditorModeText(service.Name);
-        SetStatus("Editing", success: true);
+        _serviceModalTitle.Text = "Edit Service";
+        _serviceModalOverlay.Visibility = Visibility.Visible;
+        _messageText.Text = string.Empty;
     }
 
     private void LoadServiceIntoEditor(Service service)
@@ -286,9 +392,52 @@ public sealed partial class ServicesPage : Page
         return displayOrder;
     }
 
-    private static SolidColorBrush Brush(byte r, byte g, byte b)
+    private static Button CreateIconActionButton(string glyph, string tooltip)
     {
-        return new SolidColorBrush(Windows.UI.Color.FromArgb(255, r, g, b));
+        var button = new Button
+        {
+            MinHeight = 36,
+            MinWidth = 36,
+            Padding = new Thickness(6),
+            Background = new SolidColorBrush(Colors.Transparent),
+            BorderBrush = new SolidColorBrush(Colors.Transparent),
+            Foreground = Brush(68, 70, 85),
+            Content = new FontIcon
+            {
+                Glyph = glyph,
+                FontSize = 18
+            }
+        };
+
+        ToolTipService.SetToolTip(button, tooltip);
+        return button;
+    }
+
+    private static Button CreatePaginationButton(string text, bool isCurrent)
+    {
+        var button = new Button
+        {
+            MinHeight = 32,
+            MinWidth = text.Length == 1 ? 34 : 64,
+            Padding = new Thickness(12, 4, 12, 4),
+            Content = text,
+            CornerRadius = new CornerRadius(4)
+        };
+
+        if (isCurrent)
+        {
+            button.Background = Brush(0, 19, 135);
+            button.BorderBrush = Brush(0, 19, 135);
+            button.Foreground = Brush(255, 255, 255);
+        }
+        else
+        {
+            button.Background = Brush(255, 255, 255);
+            button.BorderBrush = Brush(197, 197, 216);
+            button.Foreground = Brush(68, 70, 85);
+        }
+
+        return button;
     }
 
     private static Border CreateTextBadge(string text, SolidColorBrush background, SolidColorBrush foreground)
@@ -296,13 +445,14 @@ public sealed partial class ServicesPage : Page
         return new Border
         {
             Background = background,
-            Padding = new Thickness(8, 4, 8, 4),
-            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(12, 4, 12, 4),
+            CornerRadius = new CornerRadius(999),
             Child = new TextBlock
             {
                 Text = text,
+                FontFamily = new FontFamily("Inter"),
                 FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
+                FontWeight = FontWeights.Bold,
                 Foreground = foreground,
                 VerticalAlignment = VerticalAlignment.Center
             }
@@ -330,28 +480,20 @@ public sealed partial class ServicesPage : Page
         return new Border
         {
             Padding = new Thickness(24),
-            Background = Brush(248, 249, 251),
-            CornerRadius = new CornerRadius(8),
+            Background = Brush(255, 255, 255),
             Child = new TextBlock
             {
                 Text = message,
+                FontFamily = new FontFamily("Inter"),
                 FontSize = 14,
-                Foreground = Brush(101, 108, 116),
+                Foreground = Brush(68, 70, 85),
                 HorizontalAlignment = HorizontalAlignment.Center
             }
         };
     }
 
-    private static Border WrapRow(UIElement content, SolidColorBrush background)
+    private static SolidColorBrush Brush(byte red, byte green, byte blue)
     {
-        return new Border
-        {
-            Background = background,
-            BorderBrush = Brush(226, 232, 240),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(16),
-            Child = content
-        };
+        return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
     }
 }

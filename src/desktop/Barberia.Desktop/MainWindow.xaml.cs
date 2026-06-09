@@ -44,7 +44,8 @@ public sealed partial class MainWindow : Window
             Padding = new Thickness(12, 10, 12, 10),
             Background = new SolidColorBrush(Colors.Transparent),
             BorderBrush = new SolidColorBrush(Colors.Transparent),
-            Foreground = Brush(232, 230, 224)
+            Foreground = Brush(68, 70, 85),
+            CornerRadius = new CornerRadius(8)
         };
 
         ToolTipService.SetToolTip(button, module.Title);
@@ -72,19 +73,14 @@ public sealed partial class MainWindow : Window
         var textStack = new StackPanel
         {
             Spacing = 1,
+            VerticalAlignment = VerticalAlignment.Center,
             Children =
             {
                 new TextBlock
                 {
                     Text = module.Title,
                     FontSize = 14,
-                    FontWeight = FontWeights.SemiBold
-                },
-                new TextBlock
-                {
-                    Text = module.Subtitle,
-                    FontSize = 11,
-                    Opacity = 0.72
+                    FontWeight = FontWeights.Medium
                 }
             }
         };
@@ -135,8 +131,8 @@ public sealed partial class MainWindow : Window
 
     private void ApplyModuleChrome(ShellModuleKey moduleKey)
     {
-        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay or ShellModuleKey.BarberPanel or ShellModuleKey.CashBox or ShellModuleKey.LocalAdmin;
-        _navigationColumn.Width = usesFullScreenChrome ? new GridLength(0) : new GridLength(292);
+        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay or ShellModuleKey.BarberPanel or ShellModuleKey.CashBox or ShellModuleKey.LocalAdmin or ShellModuleKey.Barbers or ShellModuleKey.Services;
+        _navigationColumn.Width = usesFullScreenChrome ? new GridLength(0) : new GridLength(256);
         _sidebar.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
         _moduleHeader.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -166,13 +162,21 @@ public sealed partial class MainWindow : Window
         {
             localAdminPage.ShellMenuRequested += (_, _) => ShowShellMenu();
         }
+        else if (page is BarbersPage barbersPage)
+        {
+            barbersPage.ShellMenuRequested += (_, _) => ShowShellMenu();
+        }
+        else if (page is ServicesPage servicesPage)
+        {
+            servicesPage.ShellMenuRequested += (_, _) => ShowShellMenu();
+        }
 
         return page;
     }
 
     private void ShowShellMenu()
     {
-        _navigationColumn.Width = new GridLength(292);
+        _navigationColumn.Width = new GridLength(256);
         _sidebar.Visibility = Visibility.Visible;
         _moduleHeader.Visibility = Visibility.Visible;
     }
@@ -182,9 +186,9 @@ public sealed partial class MainWindow : Window
         foreach (var (moduleKey, button) in _moduleButtons)
         {
             var isSelected = moduleKey == selectedModuleKey;
-            button.Background = isSelected ? Brush(255, 255, 255) : new SolidColorBrush(Colors.Transparent);
-            button.BorderBrush = isSelected ? Brush(242, 181, 88) : new SolidColorBrush(Colors.Transparent);
-            button.Foreground = isSelected ? Brush(30, 29, 27) : Brush(232, 230, 224);
+            button.Background = isSelected ? Brush(0, 32, 194) : new SolidColorBrush(Colors.Transparent);
+            button.BorderBrush = new SolidColorBrush(Colors.Transparent);
+            button.Foreground = isSelected ? Brush(152, 163, 255) : Brush(68, 70, 85);
         }
     }
 

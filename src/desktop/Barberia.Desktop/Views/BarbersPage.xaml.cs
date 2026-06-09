@@ -19,16 +19,22 @@ namespace Barberia.Desktop.Views;
 public sealed partial class BarbersPage : Page
 {
     private readonly LocalAdminService _service = new();
-    private IReadOnlyList<ProfileImageOption> _profileImageOptions = [];
     private Guid? _editingBarberId;
     private int _nextRotationOrder;
     private int _nextStationNumber = 1;
+    private string? _selectedProfileImagePath;
+    private IReadOnlyList<Barber> _barbers = [];
+    private int _currentPage = 1;
+    private const int PageSize = 10;
+
+    public event EventHandler? ShellMenuRequested;
 
     public BarbersPage()
     {
         InitializeComponent();
     }
 
+    private void OnMenuButtonClick(object sender, RoutedEventArgs args) => ShellMenuRequested?.Invoke(this, EventArgs.Empty);
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         LoadAdmin();
@@ -45,7 +51,7 @@ public sealed partial class BarbersPage : Page
         {
             var snapshot = _service.Load();
             ShowSnapshot(snapshot);
-            SetStatus("Local", success: true);
+            SetStatus("", success: true);
         }
         catch (Exception exception)
         {
@@ -60,52 +66,200 @@ public sealed partial class BarbersPage : Page
             : snapshot.Barbers.Max(barber => barber.RotationOrder) + 1;
         _nextStationNumber = GetNextStationNumber(snapshot.Barbers);
 
-        SyncProfileImageOptions(snapshot.ProfileImages);
         SyncEditor(snapshot);
+
+        _barbers = snapshot.Barbers;
+        _currentPage = 1;
+        UpdatePagination();
+    }
+
+    private void UpdatePagination()
+    {
+        var totalItems = _barbers.Count;
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)PageSize));
+        
+        if (_currentPage > totalPages)
+        {
+            _currentPage = totalPages;
+        }
+
+        var pagedBarbers = _barbers.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
 
         ReplaceChildren(
             _barberRows,
-            snapshot.Barbers.Select(CreateBarberRow),
+            pagedBarbers.Select(CreateBarberRow),
             "No barbers registered in the local database.");
+
+        var startIndex = totalItems == 0 ? 0 : (_currentPage - 1) * PageSize + 1;
+        var endIndex = Math.Min(_currentPage * PageSize, totalItems);
+        _barberFooterText.Text = $"Showing {startIndex}-{endIndex} of {totalItems} barbers";
+
+        _paginationPanel.Visibility = totalPages > 1 ? Visibility.Visible : Visibility.Collapsed;
+        
+        if (totalPages > 1)
+        {
+            RenderPaginationButtons(totalPages);
+        }
+    }
+
+    private void RenderPaginationButtons(int totalPages)
+    {
+        _paginationPanel.Children.Clear();
+
+        var prevButton = new Button
+        {
+            MinHeight = 34,
+            MinWidth = 34,
+            Content = "\uE76B",
+            FontFamily = new FontFamily("Segoe MDL2 Assets"),
+            IsEnabled = _currentPage > 1
+        };
+        prevButton.Click += (_, _) => { _currentPage--; UpdatePagination(); };
+        _paginationPanel.Children.Add(prevButton);
+
+        for (int i = 1; i <= totalPages; i++)
+        {
+            var pageNum = i;
+            var isCurrent = pageNum == _currentPage;
+            var pageButton = new Button
+            {
+                MinHeight = 34,
+                MinWidth = 34,
+                Content = pageNum.ToString()
+            };
+            if (isCurrent)
+            {
+                pageButton.Background = Brush(223, 224, 255);
+                pageButton.BorderBrush = Brush(0, 19, 135);
+                pageButton.Foreground = Brush(0, 11, 98);
+            }
+            pageButton.Click += (_, _) => { _currentPage = pageNum; UpdatePagination(); };
+            _paginationPanel.Children.Add(pageButton);
+        }
+
+        var nextButton = new Button
+        {
+            MinHeight = 34,
+            MinWidth = 34,
+            Content = "\uE76C",
+            FontFamily = new FontFamily("Segoe MDL2 Assets"),
+            IsEnabled = _currentPage < totalPages
+        };
+        nextButton.Click += (_, _) => { _currentPage++; UpdatePagination(); };
+        _paginationPanel.Children.Add(nextButton);
     }
 
     private UIElement CreateBarberRow(Barber barber)
     {
         var canChangeAvailability = barber.State is not (BarberState.Called or BarberState.InService);
-        var row = new Grid { ColumnSpacing = 12 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var row = new Grid
+        {
+            Padding = new Thickness(16, 12, 16, 12),
+            Background = Brush(255, 255, 255),
+            BorderBrush = Brush(226, 226, 229),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            ColumnSpacing = 16
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.3, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
 
-        var avatar = CreateProfileAvatar(barber, 52);
-        Grid.SetColumn(avatar, 0);
-        row.Children.Add(avatar);
+        var identity = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        identity.Children.Add(CreateProfileAvatar(barber, 40));
 
         var details = new StackPanel
         {
-            Spacing = 3,
+            Spacing = 2,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = barber.DisplayName,
+                    FontFamily = new FontFamily("Inter"),
+                    FontSize = 16,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(26, 28, 30),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                },
+                new TextBlock
+                {
+                    Text = barber.StationCode ?? "Unassigned",
+                    FontFamily = new FontFamily("Inter"),
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brush(68, 70, 85),
+                    TextWrapping = TextWrapping.WrapWholeWords
+                }
+            }
+        };
+        identity.Children.Add(details);
+        Grid.SetColumn(identity, 1);
+        row.Children.Add(identity);
+
+        var stateSwitch = new ToggleSwitch
+        {
+            IsOn = barber.IsActive && barber.State != BarberState.Offline,
+            IsEnabled = barber.IsActive && canChangeAvailability,
+            OnContent = FormatBarberState(barber.State),
+            OffContent = barber.IsActive ? FormatBarberState(barber.State) : "Inactive",
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        stateSwitch.Toggled += (_, _) =>
+        {
+            if (!stateSwitch.IsEnabled)
+            {
+                return;
+            }
+
+            ExecuteAdminAction(
+                stateSwitch.IsOn
+                    ? () => _service.MarkBarberAvailable(barber.Id)
+                    : () => _service.MarkBarberOffline(barber.Id));
+        };
+        Grid.SetColumn(stateSwitch, 2);
+        row.Children.Add(stateSwitch);
+
+        var stationBadge = CreateTextBadge(
+            barber.StationCode ?? "Unassigned",
+            barber.StationCode is null ? Brush(238, 238, 240) : Brush(226, 226, 229),
+            barber.StationCode is null ? Brush(68, 70, 85) : Brush(26, 28, 30));
+        stationBadge.HorizontalAlignment = HorizontalAlignment.Center;
+        stationBadge.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(stationBadge, 3);
+        row.Children.Add(stationBadge);
+
+        var rotation = new StackPanel
+        {
+            Spacing = 2,
             VerticalAlignment = VerticalAlignment.Center,
             Children =
             {
                 new TextBlock
                 {
-                    Text = barber.DisplayNameWithStation,
-                    FontSize = 18,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Brush(30, 31, 34),
-                    TextWrapping = TextWrapping.WrapWholeWords
+                    Text = $"Order {barber.RotationOrder}",
+                    FontFamily = new FontFamily("Inter"),
+                    FontSize = 14,
+                    Foreground = Brush(26, 28, 30)
                 },
                 new TextBlock
                 {
-                    Text = $"Rotation {barber.RotationOrder} - {barber.ClientsServedToday} served today",
-                    FontSize = 13,
-                    Foreground = Brush(101, 108, 116),
-                    TextWrapping = TextWrapping.WrapWholeWords
+                    Text = $"{barber.ClientsServedToday} served today",
+                    FontFamily = new FontFamily("Inter"),
+                    FontSize = 12,
+                    Foreground = Brush(68, 70, 85)
                 }
             }
         };
-        Grid.SetColumn(details, 1);
-        row.Children.Add(details);
+        Grid.SetColumn(rotation, 4);
+        row.Children.Add(rotation);
 
         var actions = new StackPanel
         {
@@ -114,60 +268,29 @@ public sealed partial class BarbersPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Right
         };
-
-        var statusBadge = CreateTextBadge(
-            FormatBarberState(barber.State),
-            GetStateBackground(barber.State),
-            GetStateForeground(barber.State));
-        actions.Children.Add(statusBadge);
-
-        actions.Children.Add(CreateTextBadge(
-            barber.IsActive ? "Active" : "Inactive",
-            barber.IsActive ? Brush(235, 248, 244) : Brush(248, 249, 251),
-            barber.IsActive ? Brush(17, 105, 88) : Brush(101, 108, 116)));
-
-        var editButton = CreateSmallActionButton("Edit");
+        var editButton = CreateIconActionButton("\uE70F", "Edit");
         editButton.Click += (_, _) => EditBarber(barber);
         actions.Children.Add(editButton);
 
-        var availableButton = CreateSmallActionButton("Available");
-        availableButton.IsEnabled = barber.IsActive && canChangeAvailability && barber.State != BarberState.Available;
-        availableButton.Click += (_, _) => ExecuteAdminAction(() => _service.MarkBarberAvailable(barber.Id));
-        actions.Children.Add(availableButton);
-
-        var offlineButton = CreateSmallActionButton("Offline");
-        offlineButton.IsEnabled = barber.IsActive && canChangeAvailability && barber.State != BarberState.Offline;
-        offlineButton.Click += (_, _) => ExecuteAdminAction(() => _service.MarkBarberOffline(barber.Id));
-        actions.Children.Add(offlineButton);
-
-        var activeButton = CreateSmallActionButton(barber.IsActive ? "Deactivate" : "Activate");
-        activeButton.IsEnabled = canChangeAvailability;
-        activeButton.Click += (_, _) =>
+        var deleteButton = CreateIconActionButton("\uE74D", "Delete");
+        deleteButton.Click += (_, _) =>
         {
-            if (barber.IsActive)
-            {
-                ExecuteAdminAction(() => _service.DeactivateBarber(barber.Id));
-                return;
-            }
-
-            EditBarber(barber);
-            _showInKioskCheckBox.IsChecked = true;
-            _stationCodeInput.Text = string.Empty;
-            _messageText.Text = "Assign an available station code like B-1, then save.";
-            SetStatus("Assign station", success: true);
+            _editingBarberId = barber.Id;
+            OnDeleteBarberClick(deleteButton, new RoutedEventArgs());
         };
-        actions.Children.Add(activeButton);
+        actions.Children.Add(deleteButton);
 
-        Grid.SetColumn(actions, 2);
+        Grid.SetColumn(actions, 5);
         row.Children.Add(actions);
 
-        return WrapRow(row, barber.IsActive && canChangeAvailability ? Brush(255, 255, 255) : Brush(248, 249, 251));
+        return row;
     }
 
     private void OnNewBarberClick(object sender, RoutedEventArgs args)
     {
         _editingBarberId = null;
         ClearBarberEditor();
+        OpenBarberModal("Add New Barber");
         SetStatus("New barber", success: true);
     }
 
@@ -190,6 +313,7 @@ public sealed partial class BarbersPage : Page
         if (success)
         {
             ClearBarberEditor();
+            CloseBarberModal();
         }
     }
 
@@ -218,9 +342,9 @@ public sealed partial class BarbersPage : Page
             }
 
             var importedPath = _service.ImportProfileImage(file.Path);
-            SyncProfileImageOptions(_service.LoadProfileImages());
             SelectProfileImage(importedPath);
             _messageText.Text = "Profile image imported. Save the barber to apply it.";
+            RefreshModalAvatar();
             SetStatus("Image loaded", success: true);
         }
         catch (Exception exception)
@@ -248,6 +372,7 @@ public sealed partial class BarbersPage : Page
         if (success)
         {
             ClearBarberEditor();
+            CloseBarberModal();
         }
     }
 
@@ -274,39 +399,42 @@ public sealed partial class BarbersPage : Page
         _barberRows.Children.Clear();
         _deleteBarberButton.IsEnabled = false;
         _barberRows.Children.Add(CreateEmptyState("Could not read barbers from the local database."));
+        _barberFooterText.Text = "Showing 0 of 0 barbers";
+        _paginationPanel.Visibility = Visibility.Collapsed;
         SetStatus("Error", success: false);
     }
 
     private void SetStatus(string text, bool success)
     {
-        _statusBadgeText.Text = text;
-        _statusBadge.Background = success ? Brush(235, 248, 244) : Brush(255, 240, 238);
-        _statusBadge.BorderBrush = success ? Brush(181, 224, 211) : Brush(231, 170, 162);
-        _statusBadgeText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
+        _messageText.Text = text;
+        _messageText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
     }
 
-    private static Button CreateSmallActionButton(string text)
+    private void OnCancelBarberClick(object sender, RoutedEventArgs args)
     {
-        return new Button
+        _editingBarberId = null;
+        ClearBarberEditor();
+        CloseBarberModal();
+    }
+
+    private static Button CreateIconActionButton(string glyph, string toolTip)
+    {
+        var button = new Button
         {
-            Content = text,
-            MinHeight = 36,
-            MinWidth = 96,
-            Padding = new Thickness(12, 6, 12, 6),
-            VerticalAlignment = VerticalAlignment.Center
+            MinHeight = 34,
+            MinWidth = 34,
+            Padding = new Thickness(6),
+            Background = new SolidColorBrush(Colors.Transparent),
+            BorderBrush = new SolidColorBrush(Colors.Transparent),
+            Content = new FontIcon
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 16,
+                Glyph = glyph
+            }
         };
-    }
-
-    private void SyncProfileImageOptions(IReadOnlyList<ProfileImageOption> profileImages)
-    {
-        var selectedPath = GetSelectedProfileImagePath();
-        _profileImageOptions =
-        [
-            new ProfileImageOption("No image - use initials", null),
-            ..profileImages
-        ];
-        _profileImageSelector.ItemsSource = _profileImageOptions;
-        SelectProfileImage(selectedPath);
+        ToolTipService.SetToolTip(button, toolTip);
+        return button;
     }
 
     private void SyncEditor(LocalAdminSnapshot snapshot)
@@ -340,6 +468,7 @@ public sealed partial class BarbersPage : Page
     {
         _editingBarberId = barber.Id;
         LoadBarberIntoEditor(barber);
+        OpenBarberModal("Edit Barber");
         SetStatus("Editing", success: true);
     }
 
@@ -351,6 +480,7 @@ public sealed partial class BarbersPage : Page
         SelectProfileImage(barber.ProfileImagePath);
         _showInKioskCheckBox.IsChecked = barber.IsActive;
         _deleteBarberButton.IsEnabled = true;
+        RefreshModalAvatar();
     }
 
     private void ClearBarberEditor()
@@ -361,6 +491,19 @@ public sealed partial class BarbersPage : Page
         SelectProfileImage(null);
         _showInKioskCheckBox.IsChecked = true;
         _deleteBarberButton.IsEnabled = false;
+        RefreshModalAvatar();
+    }
+
+    private void OpenBarberModal(string title)
+    {
+        _barberModalTitle.Text = title;
+        _barberModalOverlay.Visibility = Visibility.Visible;
+        RefreshModalAvatar();
+    }
+
+    private void CloseBarberModal()
+    {
+        _barberModalOverlay.Visibility = Visibility.Collapsed;
     }
 
     private int ParseRotationOrder()
@@ -399,21 +542,27 @@ public sealed partial class BarbersPage : Page
 
     private string? GetSelectedProfileImagePath()
     {
-        return _profileImageSelector.SelectedItem is ProfileImageOption option
-            ? option.RelativePath
-            : null;
+        return _selectedProfileImagePath;
     }
 
     private void SelectProfileImage(string? relativePath)
     {
-        if (_profileImageOptions.Count == 0)
+        _selectedProfileImagePath = relativePath;
+        RefreshModalAvatar();
+    }
+
+    private void RefreshModalAvatar()
+    {
+        if (_modalAvatarHost is null)
         {
             return;
         }
 
-        var option = _profileImageOptions.FirstOrDefault(candidate =>
-            string.Equals(candidate.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase));
-        _profileImageSelector.SelectedItem = option ?? _profileImageOptions[0];
+        _modalAvatarHost.Children.Clear();
+        _modalAvatarHost.Children.Add(CreateProfileAvatar(
+            _barberNameInput.Text,
+            GetSelectedProfileImagePath(),
+            64));
     }
 
     private static int GetNextStationNumber(IEnumerable<Barber> barbers)
@@ -531,6 +680,11 @@ public sealed partial class BarbersPage : Page
 
     private static Grid CreateProfileAvatar(Barber barber, double size)
     {
+        return CreateProfileAvatar(barber.DisplayName, barber.ProfileImagePath, size);
+    }
+
+    private static Grid CreateProfileAvatar(string displayName, string? relativeImagePath, double size)
+    {
         var avatar = new Grid
         {
             Width = size,
@@ -547,7 +701,7 @@ public sealed partial class BarbersPage : Page
 
         avatar.Children.Add(new TextBlock
         {
-            Text = GetInitials(barber.DisplayName),
+            Text = GetInitials(displayName),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = size >= 50 ? 18 : 15,
@@ -555,7 +709,7 @@ public sealed partial class BarbersPage : Page
             Foreground = Brush(0, 19, 135)
         });
 
-        var imagePath = ProfileImageCatalog.ResolveImagePath(barber.ProfileImagePath);
+        var imagePath = ProfileImageCatalog.ResolveImagePath(relativeImagePath);
         if (imagePath is not null)
         {
             var imageBrush = new ImageBrush
