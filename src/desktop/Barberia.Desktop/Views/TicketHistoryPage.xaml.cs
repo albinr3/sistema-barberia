@@ -7,7 +7,10 @@ using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using System.Globalization;
+using Windows.UI.Text;
 
 namespace Barberia.Desktop.Views;
 
@@ -15,6 +18,10 @@ public sealed partial class TicketHistoryPage : Page
 {
     private readonly SqliteConnectionFactory _connectionFactory;
     private bool _isLoaded;
+    private int _currentPage = 1;
+    private const int PageSize = 20;
+
+    public event EventHandler? ShellMenuRequested;
 
     public TicketHistoryPage()
     {
@@ -22,30 +29,32 @@ public sealed partial class TicketHistoryPage : Page
         _connectionFactory = LocalDesktopDatabase.CreateConnectionFactory();
     }
 
+    private void OnMenuButtonClick(object sender, RoutedEventArgs args) => ShellMenuRequested?.Invoke(this, EventArgs.Empty);
+
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         if (_isLoaded) return;
-        
+
         _statusComboBox.SelectedIndex = 0;
-        
+
         try
         {
             using var connection = _connectionFactory.OpenConnection();
             var barberRepo = new LocalBarberRepository(connection);
             var barbers = barberRepo.ListAll();
-            var allBarbersList = new List<Barber> { new Barber(Guid.Empty, "All barbers", BarberState.Offline, 0, 0, null, null, null, false) };
-            allBarbersList.AddRange(barbers);
+            var allBarbersList = new List<BarberFilterItem> { new(null, "All barbers") };
+            allBarbersList.AddRange(barbers.Select(b => new BarberFilterItem(b.Id, b.DisplayName)));
             _barberComboBox.ItemsSource = allBarbersList;
             _barberComboBox.SelectedIndex = 0;
         }
         catch
         {
-            // Ignore for now
+            // The history page can still load without the barber filter.
         }
 
         _fromDatePicker.Date = DateTimeOffset.Now.Date;
         _toDatePicker.Date = DateTimeOffset.Now.Date;
-        
+
         _isLoaded = true;
         LoadHistory();
     }
@@ -53,12 +62,31 @@ public sealed partial class TicketHistoryPage : Page
     private void OnSelectionFilterChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_isLoaded) return;
+        _currentPage = 1;
         LoadHistory();
     }
 
     private void OnDateFilterChanged(object sender, DatePickerValueChangedEventArgs args)
     {
         if (!_isLoaded) return;
+        _currentPage = 1;
+        LoadHistory();
+    }
+
+    private void OnApplyFiltersClick(object sender, RoutedEventArgs args)
+    {
+        _currentPage = 1;
+        LoadHistory();
+    }
+
+    private void OnClearFiltersClick(object sender, RoutedEventArgs args)
+    {
+        _searchTextBox.Text = string.Empty;
+        _statusComboBox.SelectedIndex = 0;
+        _barberComboBox.SelectedIndex = 0;
+        _fromDatePicker.Date = DateTimeOffset.Now.Date;
+        _toDatePicker.Date = DateTimeOffset.Now.Date;
+        _currentPage = 1;
         LoadHistory();
     }
 
@@ -70,31 +98,39 @@ public sealed partial class TicketHistoryPage : Page
             var repo = new LocalTicketHistoryRepository(connection);
 
             var from = _fromDatePicker.Date.Date;
-            var to = _toDatePicker.Date.Date.AddDays(1); // Include the whole "to" day
+            var to = _toDatePicker.Date.Date.AddDays(1);
 
             TurnState? statusFilter = null;
-            if (_statusComboBox.SelectedItem is ComboBoxItem item && item.Tag is string tag && tag != "All")
+            if (_statusComboBox.SelectedItem is ComboBoxItem item && item.Tag is string tag && tag != "All" &&
+                Enum.TryParse<TurnState>(tag, out var parsedState))
             {
-                if (Enum.TryParse<TurnState>(tag, out var parsedState))
-                {
-                    statusFilter = parsedState;
-                }
+                statusFilter = parsedState;
             }
 
             Guid? barberIdFilter = null;
-            if (_barberComboBox.SelectedItem is Barber selectedBarber && selectedBarber.Id != Guid.Empty)
+            if (_barberComboBox.SelectedItem is BarberFilterItem selectedBarber && selectedBarber.Id.HasValue)
             {
                 barberIdFilter = selectedBarber.Id;
             }
 
-            var results = repo.ListHistory(from, to, statusFilter, barberIdFilter);
+            int totalItems = repo.CountHistory(from, to, statusFilter, barberIdFilter, _searchTextBox.Text);
+            int totalPages = (int)Math.Ceiling(totalItems / (double)PageSize);
+            if (totalPages == 0) totalPages = 1;
+            
+            if (_currentPage > totalPages) _currentPage = totalPages;
 
-            _resultsCountText.Text = $"Showing {results.Count} tickets";
+            int offset = (_currentPage - 1) * PageSize;
+            var results = repo.ListHistory(from, to, statusFilter, barberIdFilter, _searchTextBox.Text, PageSize, offset);
+
+            _resultsCountText.Text = results.Count == 1
+                ? "Showing 1 ticket"
+                : $"Showing {results.Count} tickets";
 
             _historyRows.Children.Clear();
             if (results.Count == 0)
             {
                 _historyRows.Children.Add(CreateEmptyState("No tickets found for the selected date range."));
+                UpdatePagination(totalPages);
                 return;
             }
 
@@ -102,91 +138,326 @@ public sealed partial class TicketHistoryPage : Page
             {
                 _historyRows.Children.Add(CreateHistoryRow(row));
             }
+
+            UpdatePagination(totalPages);
         }
         catch (Exception ex)
         {
             _historyRows.Children.Clear();
+            _resultsCountText.Text = "Showing 0 tickets";
             _historyRows.Children.Add(CreateEmptyState($"Error loading history: {ex.Message}"));
         }
     }
 
-    private static UIElement CreateHistoryRow(TicketHistoryRow historyRow)
+    private FrameworkElement CreateHistoryRow(TicketHistoryRow historyRow)
     {
         var barberName = historyRow.AssignedBarberName ?? "Unassigned";
         var customerName = string.IsNullOrWhiteSpace(historyRow.CustomerName) ? "Walk-in customer" : historyRow.CustomerName;
+        var serviceName = string.IsNullOrWhiteSpace(historyRow.ServiceName) ? FormatTurnSource(historyRow.Source) : historyRow.ServiceName;
 
-        var row = new Grid
+        var grid = new Grid
         {
+            Padding = new Thickness(16, 14, 16, 14),
             ColumnSpacing = 12,
+            Background = Brush(255, 255, 255)
+        };
+
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(76) });
+
+        AddCell(grid, CreateText(historyRow.DisplayTicketNumber.ToString(), 14, FontWeights.SemiBold, Brush(0, 19, 135)), 0);
+        AddCell(grid, CreateDateCell(historyRow.CheckedInAt), 1);
+        AddCell(grid, CreateText(customerName, 14, FontWeights.Normal, Brush(26, 28, 30)), 2);
+        AddCell(grid, CreateBarberCell(barberName), 3);
+        AddCell(grid, CreateText(serviceName, 14, FontWeights.Normal, Brush(68, 70, 85)), 4);
+        AddCell(grid, CreateText(FormatAmount(historyRow.Amount), 15, FontWeights.SemiBold, Brush(26, 28, 30), HorizontalAlignment.Right), 5);
+        AddCell(grid, CreateTextBadge(FormatTurnState(historyRow.FinalState), GetTurnBackground(historyRow.FinalState), GetTurnForeground(historyRow.FinalState)), 6);
+        AddCell(grid, CreateActionIcon(), 7);
+
+        var row = new Border
+        {
+            BorderBrush = Brush(226, 226, 229),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = grid,
+            Tag = historyRow
+        };
+
+        row.Tapped += OnHistoryRowTapped;
+        row.PointerEntered += (_, _) => grid.Background = Brush(243, 243, 246);
+        row.PointerExited += (_, _) => grid.Background = Brush(255, 255, 255);
+        ToolTipService.SetToolTip(row, "Open ticket details");
+        return row;
+    }
+
+    private async void OnHistoryRowTapped(object sender, TappedRoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: TicketHistoryRow historyRow })
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = $"Ticket Details - {historyRow.DisplayTicketNumber}",
+            PrimaryButtonText = "Close",
+            DefaultButton = ContentDialogButton.Primary,
+            Content = CreateTicketDetailsContent(historyRow)
+        };
+
+        await dialog.ShowAsync();
+    }
+
+    private static FrameworkElement CreateTicketDetailsContent(TicketHistoryRow historyRow)
+    {
+        var barberName = historyRow.AssignedBarberName ?? "Unassigned";
+        var customerName = string.IsNullOrWhiteSpace(historyRow.CustomerName) ? "Walk-in customer" : historyRow.CustomerName;
+        var serviceName = string.IsNullOrWhiteSpace(historyRow.ServiceName) ? FormatTurnSource(historyRow.Source) : historyRow.ServiceName;
+
+        var layout = new Grid
+        {
+            MinWidth = 560,
+            ColumnSpacing = 32
+        };
+        layout.ColumnDefinitions.Add(new ColumnDefinition());
+        layout.ColumnDefinitions.Add(new ColumnDefinition());
+
+        var summary = new StackPanel { Spacing = 14 };
+        summary.Children.Add(CreateSectionLabel("Ticket Summary"));
+        summary.Children.Add(CreateDetailRow("Customer", customerName));
+        summary.Children.Add(CreateDetailRow("Barber", barberName));
+        summary.Children.Add(CreateDetailRow("Service", serviceName));
+        summary.Children.Add(CreateDetailRow("Source", FormatTurnSource(historyRow.Source)));
+        summary.Children.Add(CreateDetailRow("Receipt", string.IsNullOrWhiteSpace(historyRow.ReceiptNumber) ? "No receipt" : historyRow.ReceiptNumber));
+        summary.Children.Add(CreateDivider());
+        summary.Children.Add(CreateDetailRow("Total", FormatAmount(historyRow.Amount), true));
+        summary.Children.Add(CreateDetailBadgeRow("Status", FormatTurnState(historyRow.FinalState), GetTurnBackground(historyRow.FinalState), GetTurnForeground(historyRow.FinalState)));
+        if (!string.IsNullOrWhiteSpace(historyRow.PaymentResultText))
+        {
+            summary.Children.Add(CreateDetailRow("Payment", historyRow.PaymentResultText));
+        }
+
+        var timeline = new StackPanel { Spacing = 14 };
+        timeline.Children.Add(CreateSectionLabel("Service Timeline"));
+        timeline.Children.Add(CreateTimelineItem("Created", historyRow.CheckedInAt));
+        timeline.Children.Add(CreateTimelineItem("Service Started", historyRow.StartedAt));
+        timeline.Children.Add(CreateTimelineItem("Payment Completed", historyRow.ChargedAt));
+        timeline.Children.Add(CreateTimelineItem("Completed", historyRow.CompletedAt));
+        timeline.Children.Add(CreateTimelineItem("Cancelled", historyRow.CancelledAt));
+
+        Grid.SetColumn(timeline, 1);
+        layout.Children.Add(summary);
+        layout.Children.Add(timeline);
+
+        return new ScrollViewer
+        {
+            MaxHeight = 520,
+            Content = layout
+        };
+    }
+
+    private static FrameworkElement CreateDateCell(DateTimeOffset date)
+    {
+        return new StackPanel
+        {
+            Spacing = 2,
             Children =
             {
-                new StackPanel
-                {
-                    Spacing = 3,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = $"{historyRow.DisplayTicketNumber} - {customerName}",
-                            FontSize = 17,
-                            FontWeight = FontWeights.SemiBold,
-                            Foreground = Brush(30, 31, 34),
-                            TextWrapping = TextWrapping.WrapWholeWords
-                        },
-                        new TextBlock
-                        {
-                            Text = $"{FormatTurnSource(historyRow.Source)} - {barberName}",
-                            FontSize = 13,
-                            Foreground = Brush(101, 108, 116),
-                            TextWrapping = TextWrapping.WrapWholeWords
-                        },
-                        new TextBlock
-                        {
-                            Text = $"Created: {historyRow.CheckedInAt:g}" +
-                                   (historyRow.StartedAt.HasValue ? $" | Service started: {historyRow.StartedAt:g}" : "") +
-                                   (historyRow.ChargedAt.HasValue ? $" | Charged: {historyRow.ChargedAt:g}" : "") +
-                                   (historyRow.CancelledAt.HasValue ? $" | Cancelled: {historyRow.CancelledAt:g}" : ""),
-                            FontSize = 12,
-                            Foreground = Brush(151, 158, 166),
-                            TextWrapping = TextWrapping.WrapWholeWords
-                        }
-                    }
-                }
+                CreateText(date.ToString("MMM d, yyyy", CultureInfo.CurrentCulture), 14, FontWeights.Normal, Brush(26, 28, 30)),
+                CreateText(date.ToString("h:mm tt", CultureInfo.CurrentCulture), 12, FontWeights.Normal, Brush(68, 70, 85))
             }
         };
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+    }
 
-        var rightStack = new StackPanel
+    private static FrameworkElement CreateBarberCell(string barberName)
+    {
+        return new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-
-        if (historyRow.Amount.HasValue)
-        {
-            rightStack.Children.Add(new TextBlock
+            Children =
             {
-                Text = $"${historyRow.Amount.Value:0.00}",
-                FontSize = 15,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = Brush(17, 105, 88),
-                VerticalAlignment = VerticalAlignment.Center
-            });
+                new Border
+                {
+                    Width = 24,
+                    Height = 24,
+                    CornerRadius = new CornerRadius(12),
+                    Background = Brush(226, 226, 229),
+                    Child = new FontIcon
+                    {
+                        Glyph = "\uE77B",
+                        FontSize = 12,
+                        Foreground = Brush(68, 70, 85)
+                    }
+                },
+                CreateText(barberName, 14, FontWeights.Normal, Brush(26, 28, 30))
+            }
+        };
+    }
+
+    private static FrameworkElement CreateActionIcon()
+    {
+        return new FontIcon
+        {
+            Glyph = "\uE712",
+            FontSize = 18,
+            Foreground = Brush(68, 70, 85),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+    }
+
+    private static TextBlock CreateText(string text, double size, FontWeight weight, Brush foreground, HorizontalAlignment alignment = HorizontalAlignment.Left)
+    {
+        return new TextBlock
+        {
+            Text = text,
+            FontFamily = new FontFamily("Inter"),
+            FontSize = size,
+            FontWeight = weight,
+            Foreground = foreground,
+            HorizontalAlignment = alignment,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+    }
+
+    private static TextBlock CreateSectionLabel(string text)
+    {
+        return CreateText(text.ToUpperInvariant(), 12, FontWeights.SemiBold, Brush(68, 70, 85));
+    }
+
+    private static FrameworkElement CreateDetailRow(string label, string value, bool emphasize = false)
+    {
+        var grid = new Grid { ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+
+        AddCell(grid, CreateText(label, emphasize ? 20 : 14, emphasize ? FontWeights.SemiBold : FontWeights.Normal, emphasize ? Brush(26, 28, 30) : Brush(68, 70, 85)), 0);
+        AddCell(grid, CreateText(value, emphasize ? 20 : 14, emphasize ? FontWeights.SemiBold : FontWeights.Medium, emphasize ? Brush(0, 19, 135) : Brush(26, 28, 30), HorizontalAlignment.Right), 1);
+        return grid;
+    }
+
+    private static FrameworkElement CreateDetailBadgeRow(string label, string text, Brush background, Brush foreground)
+    {
+        var grid = new Grid { ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+
+        AddCell(grid, CreateText(label, 14, FontWeights.Normal, Brush(68, 70, 85)), 0);
+        var badge = CreateTextBadge(text, background, foreground);
+        badge.HorizontalAlignment = HorizontalAlignment.Right;
+        AddCell(grid, badge, 1);
+        return grid;
+    }
+
+    private static FrameworkElement CreateTimelineItem(string label, DateTimeOffset? date)
+    {
+        if (!date.HasValue)
+        {
+            return new StackPanel();
         }
 
-        rightStack.Children.Add(CreateTextBadge(
-            FormatTurnState(historyRow.FinalState),
-            GetTurnBackground(historyRow.FinalState),
-            GetTurnForeground(historyRow.FinalState)));
+        var grid = new Grid { ColumnSpacing = 10 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
 
-        Grid.SetColumn(rightStack, 1);
-        row.Children.Add(rightStack);
+        var dot = new Border
+        {
+            Width = 22,
+            Height = 22,
+            CornerRadius = new CornerRadius(11),
+            Background = Brush(223, 224, 255),
+            Child = new Border
+            {
+                Width = 8,
+                Height = 8,
+                CornerRadius = new CornerRadius(4),
+                Background = Brush(0, 19, 135),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
 
-        return WrapRow(row, Brush(255, 255, 255));
+        var text = new StackPanel
+        {
+            Spacing = 2,
+            Children =
+            {
+                CreateText(label, 14, FontWeights.SemiBold, Brush(26, 28, 30)),
+                CreateText(date.Value.ToString("g", CultureInfo.CurrentCulture), 12, FontWeights.Normal, Brush(68, 70, 85))
+            }
+        };
+
+        AddCell(grid, dot, 0);
+        AddCell(grid, text, 1);
+        return grid;
     }
+
+    private static FrameworkElement CreateDivider()
+    {
+        return new Border
+        {
+            Height = 1,
+            Background = Brush(197, 197, 216),
+            Margin = new Thickness(0, 4, 0, 2)
+        };
+    }
+
+    private static Border CreateTextBadge(string text, Brush background, Brush foreground)
+    {
+        return new Border
+        {
+            Background = background,
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(10, 4, 10, 4),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = text,
+                FontFamily = new FontFamily("Inter"),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = foreground,
+                TextWrapping = TextWrapping.NoWrap
+            }
+        };
+    }
+
+    private static FrameworkElement CreateEmptyState(string text)
+    {
+        return new Border
+        {
+            Padding = new Thickness(16, 20, 16, 20),
+            BorderBrush = Brush(226, 226, 229),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = new TextBlock
+            {
+                Text = text,
+                FontFamily = new FontFamily("Inter"),
+                FontSize = 14,
+                Foreground = Brush(68, 70, 85),
+                TextWrapping = TextWrapping.Wrap
+            }
+        };
+    }
+
+    private static void AddCell(Grid grid, FrameworkElement child, int column)
+    {
+        Grid.SetColumn(child, column);
+        grid.Children.Add(child);
+    }
+
+    private static string FormatAmount(decimal? amount) => amount.HasValue ? $"${amount.Value:0.00}" : "-";
 
     private static string FormatTurnState(TurnState state)
     {
@@ -212,10 +483,11 @@ public sealed partial class TicketHistoryPage : Page
     {
         return state switch
         {
-            TurnState.Waiting => Brush(255, 247, 232),
-            TurnState.Called => Brush(235, 248, 244),
-            TurnState.InService => Brush(240, 244, 250),
-            _ => Brush(248, 249, 251)
+            TurnState.Completed => Brush(223, 224, 255),
+            TurnState.Cancelled => Brush(220, 38, 38), // Red
+            TurnState.NoShow => Brush(226, 226, 229),
+            TurnState.Voided => Brush(255, 218, 214),
+            _ => Brush(243, 243, 246)
         };
     }
 
@@ -223,10 +495,10 @@ public sealed partial class TicketHistoryPage : Page
     {
         return state switch
         {
-            TurnState.Waiting => Brush(122, 82, 21),
-            TurnState.Called => Brush(17, 105, 88),
-            TurnState.InService => Brush(63, 78, 97),
-            _ => Brush(101, 108, 116)
+            TurnState.Completed => Brush(0, 11, 98),
+            TurnState.Cancelled => Brush(255, 255, 255), // White
+            TurnState.Voided => Brush(147, 0, 10),
+            _ => Brush(68, 70, 85)
         };
     }
 
@@ -235,47 +507,88 @@ public sealed partial class TicketHistoryPage : Page
         return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
     }
 
-    private static UIElement WrapRow(UIElement child, Brush background)
+    private void OnSearchKeyDown(object sender, KeyRoutedEventArgs args)
     {
-        return new Border
+        if (args.Key == Windows.System.VirtualKey.Enter)
         {
-            Background = background,
-            BorderBrush = Brush(226, 230, 235),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(14),
-            Child = child
-        };
+            _currentPage = 1;
+            LoadHistory();
+        }
     }
 
-    private static UIElement CreateEmptyState(string text)
+    private void UpdatePagination(int totalPages)
     {
-        return WrapRow(
-            new TextBlock
-            {
-                Text = text,
-                FontSize = 14,
-                Foreground = Brush(101, 108, 116),
-                TextWrapping = TextWrapping.Wrap
-            },
-            Brush(248, 249, 251));
-    }
+        _paginationContainer.Children.Clear();
+        if (totalPages <= 1) return;
 
-    private static Border CreateTextBadge(string text, Brush background, Brush foreground)
-    {
-        return new Border
+        var prevBtn = CreatePaginationButton("\uE76B", _currentPage > 1, () => { _currentPage--; LoadHistory(); }, true);
+        _paginationContainer.Children.Add(prevBtn);
+
+        int startPage = Math.Max(1, _currentPage - 2);
+        int endPage = Math.Min(totalPages, startPage + 4);
+        if (endPage - startPage < 4)
         {
-            Background = background,
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(10, 6, 10, 6),
-            VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock
+            startPage = Math.Max(1, endPage - 4);
+        }
+
+        if (startPage > 1)
+        {
+            _paginationContainer.Children.Add(CreatePaginationButton("1", true, () => { _currentPage = 1; LoadHistory(); }));
+            if (startPage > 2)
             {
-                Text = text,
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = foreground
+                _paginationContainer.Children.Add(new TextBlock { Text = "...", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 4, 0) });
             }
-        };
+        }
+
+        for (int i = startPage; i <= endPage; i++)
+        {
+            int pageNum = i;
+            var btn = CreatePaginationButton(pageNum.ToString(), true, () => { _currentPage = pageNum; LoadHistory(); });
+            if (pageNum == _currentPage)
+            {
+                btn.Background = Brush(0, 32, 194);
+                btn.Foreground = Brush(255, 255, 255);
+            }
+            _paginationContainer.Children.Add(btn);
+        }
+
+        if (endPage < totalPages)
+        {
+            if (endPage < totalPages - 1)
+            {
+                _paginationContainer.Children.Add(new TextBlock { Text = "...", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 4, 0) });
+            }
+            _paginationContainer.Children.Add(CreatePaginationButton(totalPages.ToString(), true, () => { _currentPage = totalPages; LoadHistory(); }));
+        }
+
+        var nextBtn = CreatePaginationButton("\uE76C", _currentPage < totalPages, () => { _currentPage++; LoadHistory(); }, true);
+        _paginationContainer.Children.Add(nextBtn);
     }
+
+    private Button CreatePaginationButton(string content, bool isEnabled, Action onClick, bool isIcon = false)
+    {
+        var btn = new Button
+        {
+            IsEnabled = isEnabled,
+            Background = Brush(255, 255, 255),
+            BorderBrush = Brush(197, 197, 216),
+            Padding = new Thickness(isIcon ? 8 : 12, 6, isIcon ? 8 : 12, 6),
+            MinWidth = isIcon ? 32 : 36,
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+
+        if (isIcon)
+        {
+            btn.Content = new FontIcon { Glyph = content, FontSize = 12 };
+        }
+        else
+        {
+            btn.Content = new TextBlock { Text = content, FontFamily = new FontFamily("Inter"), FontSize = 14, FontWeight = FontWeights.Medium };
+        }
+
+        btn.Click += (s, e) => onClick();
+        return btn;
+    }
+
+    private record BarberFilterItem(Guid? Id, string DisplayName);
 }

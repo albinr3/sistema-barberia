@@ -41,7 +41,7 @@ public sealed class LocalTicketHistoryRepository
             FROM turns t
             LEFT JOIN barbers b ON t.assigned_barber_id = b.id
             LEFT JOIN cash_payments p ON t.id = p.turn_id
-            LEFT JOIN services s ON p.service_id = s.id
+            LEFT JOIN services s ON REPLACE(LOWER(p.service_id), '-', '') = REPLACE(LOWER(s.id), '-', '')
             WHERE t.ticket_date = $ticket_date
               AND t.state IN ($completed, $cancelled, $noshow, $voided)
             ORDER BY COALESCE(t.updated_at, t.checked_in_at) DESC
@@ -57,31 +57,15 @@ public sealed class LocalTicketHistoryRepository
 
         return ExecuteQuery(command);
     }
-
-    public IReadOnlyList<TicketHistoryRow> ListHistory(DateTimeOffset from, DateTimeOffset to, TurnState? state = null, Guid? barberId = null)
+    public int CountHistory(DateTimeOffset from, DateTimeOffset to, TurnState? state = null, Guid? barberId = null, string? searchQuery = null)
     {
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         var sql = """
-            SELECT 
-                t.ticket_number,
-                t.display_ticket_number,
-                t.customer_name,
-                t.source,
-                t.state,
-                b.display_name,
-                t.checked_in_at,
-                t.started_at,
-                p.collected_at,
-                t.completed_at,
-                t.cancelled_at,
-                s.name,
-                p.amount_cents,
-                p.receipt_number
+            SELECT COUNT(*)
             FROM turns t
             LEFT JOIN barbers b ON t.assigned_barber_id = b.id
             LEFT JOIN cash_payments p ON t.id = p.turn_id
-            LEFT JOIN services s ON p.service_id = s.id
             WHERE t.checked_in_at >= $from AND t.checked_in_at < $to
             """;
 
@@ -105,12 +89,84 @@ public sealed class LocalTicketHistoryRepository
             command.AddText("$barber_id", barberId.Value.ToString());
         }
 
-        sql += "\nORDER BY t.checked_in_at DESC;";
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            sql += "\n  AND (t.customer_name LIKE $search OR t.ticket_number LIKE $search OR CAST(t.display_ticket_number AS TEXT) LIKE $search)";
+            command.AddText("$search", $"%{searchQuery}%");
+        }
 
         command.CommandText = sql;
         
         command.AddText("$from", from.ToString("O"));
         command.AddText("$to", to.ToString("O"));
+
+        var result = command.ExecuteScalar();
+        return result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+    }
+
+
+    public IReadOnlyList<TicketHistoryRow> ListHistory(DateTimeOffset from, DateTimeOffset to, TurnState? state = null, Guid? barberId = null, string? searchQuery = null, int limit = 20, int offset = 0)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        var sql = """
+            SELECT 
+                t.ticket_number,
+                t.display_ticket_number,
+                t.customer_name,
+                t.source,
+                t.state,
+                b.display_name,
+                t.checked_in_at,
+                t.started_at,
+                p.collected_at,
+                t.completed_at,
+                t.cancelled_at,
+                s.name,
+                p.amount_cents,
+                p.receipt_number
+            FROM turns t
+            LEFT JOIN barbers b ON t.assigned_barber_id = b.id
+            LEFT JOIN cash_payments p ON t.id = p.turn_id
+            LEFT JOIN services s ON REPLACE(LOWER(p.service_id), '-', '') = REPLACE(LOWER(s.id), '-', '')
+            WHERE t.checked_in_at >= $from AND t.checked_in_at < $to
+            """;
+
+        if (state.HasValue)
+        {
+            sql += "\n  AND t.state = $state";
+            command.AddInteger("$state", (int)state.Value);
+        }
+        else
+        {
+            sql += "\n  AND t.state IN ($completed, $cancelled, $noshow, $voided)";
+            command.AddInteger("$completed", (int)TurnState.Completed);
+            command.AddInteger("$cancelled", (int)TurnState.Cancelled);
+            command.AddInteger("$noshow", (int)TurnState.NoShow);
+            command.AddInteger("$voided", (int)TurnState.Voided);
+        }
+
+        if (barberId.HasValue)
+        {
+            sql += "\n  AND t.assigned_barber_id = $barber_id";
+            command.AddText("$barber_id", barberId.Value.ToString());
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            sql += "\n  AND (t.customer_name LIKE $search OR t.ticket_number LIKE $search OR CAST(t.display_ticket_number AS TEXT) LIKE $search)";
+            command.AddText("$search", $"%{searchQuery}%");
+        }
+
+        sql += "\nORDER BY t.checked_in_at DESC";
+        sql += "\nLIMIT $limit OFFSET $offset;";
+
+        command.CommandText = sql;
+        
+        command.AddText("$from", from.ToString("O"));
+        command.AddText("$to", to.ToString("O"));
+        command.AddInteger("$limit", limit);
+        command.AddInteger("$offset", offset);
 
         return ExecuteQuery(command);
     }

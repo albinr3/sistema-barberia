@@ -71,6 +71,8 @@ public sealed partial class LocalAdminPage : Page
             _alertRows,
             snapshot.Alerts.Select(CreateAlertRow),
             "No current alerts.");
+        _alertsCard.Visibility = snapshot.Alerts.Any() ? Visibility.Visible : Visibility.Collapsed;
+
         ReplaceChildren(
             _turnRows,
             snapshot.ActiveTurns.Select(turn => CreateTurnRow(turn, snapshot.Barbers)),
@@ -629,6 +631,7 @@ public sealed partial class LocalAdminPage : Page
         _historyRows.Children.Clear();
         _alertRows.Children.Clear();
         _staffRows.Children.Clear();
+        _alertsCard.Visibility = Visibility.Visible;
         _alertRows.Children.Add(CreateEmptyState("Could not read alerts."));
         _turnRows.Children.Add(CreateEmptyState("Could not read active turns."));
         _auditRows.Children.Add(CreateEmptyState(message));

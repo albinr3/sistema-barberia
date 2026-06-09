@@ -4,88 +4,222 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Loaded="OnLoaded">
 
-    <ScrollViewer Style="{StaticResource ScreenScrollViewerStyle}">
-        <StackPanel Style="{StaticResource ScreenContentStackStyle}">
-            <Border Style="{StaticResource HeroCardBorderStyle}">
-                <Grid ColumnSpacing="18">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+    <Page.Resources>
+        <Style x:Key="TicketTableHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Inter" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF444655" />
+            <Setter Property="CharacterSpacing" Value="80" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="TicketFilterLabelTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Inter" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF444655" />
+            <Setter Property="CharacterSpacing" Value="80" />
+        </Style>
+    </Page.Resources>
 
-                    <Border Style="{StaticResource HeroIconBoxStyle}">
-                        <FontIcon
-                            FontSize="30"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Glyph="&#xE81C;" />
-                    </Border>
+    <Grid Background="#FFF9F9FC">
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="0,24,24,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="White"
+            BorderBrush="#FFE2E2E5"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="#FF1A1C1E"
+                Glyph="&#xE700;" />
+        </Button>
 
-                    <StackPanel
-                        Grid.Column="1"
-                        Spacing="5">
+        <ScrollViewer
+            Padding="48"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel
+                MaxWidth="1200"
+                HorizontalAlignment="Center"
+                Spacing="24">
+                <StackPanel Spacing="4">
+                    <TextBlock
+                        FontFamily="Inter"
+                        FontSize="32"
+                        FontWeight="Bold"
+                        Foreground="#FF1A1C1E"
+                        Text="Ticket History" />
+                    <TextBlock
+                        FontFamily="Inter"
+                        FontSize="16"
+                        Foreground="#FF444655"
+                        Text="View and manage past bookings and transactions." />
+                </StackPanel>
+
+                <Border
+                    Padding="24"
+                    Background="White"
+                    BorderBrush="#FFC5C5D8"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <StackPanel Spacing="16">
                         <TextBlock
-                            Style="{StaticResource HeroTitleTextStyle}"
-                            Text="Ticket History" />
-                        <TextBlock
-                            FontSize="15"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Archive of all completed, cancelled, voided and no-show tickets." />
-                    </StackPanel>
-                </Grid>
-            </Border>
+                            FontFamily="Inter"
+                            FontSize="20"
+                            FontWeight="SemiBold"
+                            Foreground="#FF1A1C1E"
+                            Text="Filter Records" />
 
-            <Border Style="{StaticResource PanelBorderStyle}" Padding="16">
-                <Grid ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="6">
+                            <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="SEARCH" />
+                            <TextBox x:Name="_searchTextBox" PlaceholderText="Search by customer name or ticket number" KeyDown="OnSearchKeyDown" />
+                        </StackPanel>
 
-                    <StackPanel Spacing="6" Grid.Column="0">
-                        <TextBlock Text="Status" Style="{StaticResource SmallMutedTextStyle}" />
-                        <ComboBox x:Name="_statusComboBox" HorizontalAlignment="Stretch" PlaceholderText="All statuses" SelectionChanged="OnSelectionFilterChanged">
-                            <ComboBoxItem Content="All statuses" Tag="All" />
-                            <ComboBoxItem Content="Completed" Tag="Completed" />
-                            <ComboBoxItem Content="Cancelled" Tag="Cancelled" />
-                            <ComboBoxItem Content="No show" Tag="NoShow" />
-                            <ComboBoxItem Content="Voided" Tag="Voided" />
-                        </ComboBox>
-                    </StackPanel>
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                    <StackPanel Spacing="6" Grid.Column="1">
-                        <TextBlock Text="Barber" Style="{StaticResource SmallMutedTextStyle}" />
-                        <ComboBox x:Name="_barberComboBox" HorizontalAlignment="Stretch" PlaceholderText="All barbers" DisplayMemberPath="DisplayName" SelectionChanged="OnSelectionFilterChanged" />
-                    </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="START DATE" />
+                                <DatePicker x:Name="_fromDatePicker" DateChanged="OnDateFilterChanged" />
+                            </StackPanel>
 
-                    <StackPanel Spacing="6" Grid.Column="2">
-                        <TextBlock Text="Date Range" Style="{StaticResource SmallMutedTextStyle}" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <DatePicker x:Name="_fromDatePicker" DateChanged="OnDateFilterChanged" />
-                            <TextBlock Text="-" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
-                            <DatePicker x:Name="_toDatePicker" DateChanged="OnDateFilterChanged" />
+                            <StackPanel Grid.Column="1" Spacing="6">
+                                <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="END DATE" />
+                                <DatePicker x:Name="_toDatePicker" DateChanged="OnDateFilterChanged" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Spacing="6">
+                                <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="BARBER" />
+                                <ComboBox
+                                    x:Name="_barberComboBox"
+                                    HorizontalAlignment="Stretch"
+                                    DisplayMemberPath="DisplayName"
+                                    PlaceholderText="All barbers"
+                                    SelectionChanged="OnSelectionFilterChanged" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="3" Spacing="6">
+                                <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="STATUS" />
+                                <ComboBox
+                                    x:Name="_statusComboBox"
+                                    HorizontalAlignment="Stretch"
+                                    PlaceholderText="All statuses"
+                                    SelectionChanged="OnSelectionFilterChanged">
+                                    <ComboBoxItem Content="All statuses" Tag="All" />
+                                    <ComboBoxItem Content="Completed" Tag="Completed" />
+                                    <ComboBoxItem Content="Cancelled" Tag="Cancelled" />
+                                    <ComboBoxItem Content="No show" Tag="NoShow" />
+                                    <ComboBoxItem Content="Voided" Tag="Voided" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel
+                            HorizontalAlignment="Right"
+                            Orientation="Horizontal"
+                            Spacing="12">
+                            <Button
+                                Padding="18,8"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                Click="OnClearFiltersClick"
+                                CornerRadius="8"
+                                Foreground="#FF444655">
+                                <TextBlock
+                                    FontFamily="Inter"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Text="Clear" />
+                            </Button>
+                            <Button
+                                Padding="24,8"
+                                Background="#FF0020C2"
+                                BorderBrush="#FF0020C2"
+                                Click="OnApplyFiltersClick"
+                                CornerRadius="8"
+                                Foreground="White">
+                                <TextBlock
+                                    FontFamily="Inter"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Text="Apply Filters" />
+                            </Button>
                         </StackPanel>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
 
-            <Border Style="{StaticResource PanelBorderStyle}">
-                <StackPanel Spacing="14">
-                    <StackPanel Spacing="2">
-                        <TextBlock
-                            Style="{StaticResource SectionTitleTextStyle}"
-                            Text="Results" />
-                        <TextBlock
-                            x:Name="_resultsCountText"
-                            Style="{StaticResource SmallMutedTextStyle}"
-                            Text="Showing 0 tickets" />
+                <Border
+                    Background="White"
+                    BorderBrush="#FFC5C5D8"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <StackPanel>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel MinWidth="1040">
+                                <Grid
+                                    Padding="16,12"
+                                    Background="#FFF3F3F6"
+                                    BorderBrush="#FFC5C5D8"
+                                    BorderThickness="0,0,0,1"
+                                    ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="155" />
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="135" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="76" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Style="{StaticResource TicketTableHeaderTextStyle}" Text="TICKET ID" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource TicketTableHeaderTextStyle}" Text="DATE &amp; TIME" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource TicketTableHeaderTextStyle}" Text="CUSTOMER" />
+                                    <TextBlock Grid.Column="3" Style="{StaticResource TicketTableHeaderTextStyle}" Text="BARBER" />
+                                    <TextBlock Grid.Column="4" Style="{StaticResource TicketTableHeaderTextStyle}" Text="SERVICE" />
+                                    <TextBlock Grid.Column="5" HorizontalAlignment="Right" Style="{StaticResource TicketTableHeaderTextStyle}" Text="TOTAL" />
+                                    <TextBlock Grid.Column="6" HorizontalAlignment="Center" Style="{StaticResource TicketTableHeaderTextStyle}" Text="STATUS" />
+                                    <TextBlock Grid.Column="7" HorizontalAlignment="Center" Style="{StaticResource TicketTableHeaderTextStyle}" Text="ACTION" />
+                                </Grid>
+
+                                <StackPanel x:Name="_historyRows" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <Border
+                            Padding="16,12"
+                            BorderBrush="#FFC5C5D8"
+                            BorderThickness="0,1,0,0">
+                            <Grid>
+                                <TextBlock
+                                    x:Name="_resultsCountText"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Inter"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="#FF444655"
+                                    Text="Showing 0 tickets" />
+                                
+                                <StackPanel x:Name="_paginationContainer" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
-                    <StackPanel
-                        x:Name="_historyRows"
-                        Spacing="10" />
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </Page>

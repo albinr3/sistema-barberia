@@ -26,6 +26,8 @@ public sealed partial class CashBoxPage : Page
     private Service? _selectedService;
     private ToggleButton? _selectedServiceButton;
     private decimal _additionalAmount;
+    private bool _hasLoadedTicket;
+    private string? _loadedTicketInput;
 
     public event EventHandler? ShellMenuRequested;
 
@@ -90,6 +92,19 @@ public sealed partial class CashBoxPage : Page
         }
     }
 
+    private void OnTicketInputTextChanged(object sender, TextChangedEventArgs args)
+    {
+        if (!_hasLoadedTicket)
+        {
+            return;
+        }
+
+        if (!string.Equals(NormalizeTicketInput(_ticketInput.Text), _loadedTicketInput, StringComparison.OrdinalIgnoreCase))
+        {
+            ClearTicketDetails();
+        }
+    }
+
     private void LoadCashBox()
     {
         try
@@ -127,7 +142,6 @@ public sealed partial class CashBoxPage : Page
             SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
             _ticketInput.Text = string.Empty;
             ClearTicketDetails();
-            SelectService(null, null);
             _additionalAmount = 0;
             SyncAdditionalButtons(null);
             UpdateServiceTotal();
@@ -161,6 +175,9 @@ public sealed partial class CashBoxPage : Page
             var ticket = _service.LookupTicket(_ticketInput.Text);
             _ticketCustomerText.Text = ticket.CustomerName;
             _ticketBarberText.Text = $"{ticket.BarberStationCode} - {ticket.BarberName}";
+            _hasLoadedTicket = true;
+            _loadedTicketInput = NormalizeTicketInput(_ticketInput.Text);
+            SetServiceOptionsEnabled(true);
             SetMessage($"Ticket {ticket.DisplayTicketNumber} found. Verify customer and barber before completing.", SuccessTextBrush);
         }
         catch (Exception exception)
@@ -174,6 +191,13 @@ public sealed partial class CashBoxPage : Page
     {
         _ticketCustomerText.Text = "No ticket";
         _ticketBarberText.Text = "No ticket";
+        _hasLoadedTicket = false;
+        _loadedTicketInput = null;
+        SelectService(null, null);
+        SetServiceOptionsEnabled(false);
+        _additionalAmount = 0;
+        SyncAdditionalButtons(null);
+        UpdateServiceTotal();
     }
 
     private void UpdateServiceTotal()
@@ -222,6 +246,7 @@ public sealed partial class CashBoxPage : Page
         {
             var service = _services[index];
             var serviceButton = CreateServiceButton(service);
+            serviceButton.IsEnabled = _hasLoadedTicket;
             Grid.SetColumn(serviceButton, index % ServiceOptionColumnCount);
             Grid.SetRow(serviceButton, index / ServiceOptionColumnCount);
             _serviceOptionsGrid.Children.Add(serviceButton);
@@ -280,6 +305,12 @@ public sealed partial class CashBoxPage : Page
 
     private void OnServiceOptionClick(object sender, RoutedEventArgs args)
     {
+        if (!_hasLoadedTicket)
+        {
+            ShowError("Load a ticket before selecting a service.");
+            return;
+        }
+
         if (sender is not ToggleButton button || button.Tag is not Service service)
         {
             return;
@@ -323,6 +354,19 @@ public sealed partial class CashBoxPage : Page
                 button.IsChecked = false;
             }
         }
+    }
+
+    private void SetServiceOptionsEnabled(bool isEnabled)
+    {
+        foreach (var child in _serviceOptionsGrid.Children.OfType<ToggleButton>())
+        {
+            child.IsEnabled = isEnabled;
+        }
+    }
+
+    private static string NormalizeTicketInput(string value)
+    {
+        return value.Trim();
     }
 
     private void ShowError(string message)

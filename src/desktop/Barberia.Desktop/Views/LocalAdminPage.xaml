@@ -183,7 +183,7 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Spacing="32">
-                        <Border Style="{StaticResource AdminCardStyle}">
+                        <Border x:Name="_alertsCard" Style="{StaticResource AdminCardStyle}">
                             <StackPanel Spacing="16">
                                 <Grid>
                                     <Grid.ColumnDefinitions>

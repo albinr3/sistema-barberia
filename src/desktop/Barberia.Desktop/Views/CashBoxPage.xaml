@@ -119,6 +119,7 @@
                                                     Foreground="#FF1A1C1E"
                                                     KeyDown="OnInputKeyDown"
                                                     LostFocus="OnTicketInputLostFocus"
+                                                    TextChanged="OnTicketInputTextChanged"
                                                     PlaceholderText="e.g. 1042" />
                                                 <FontIcon
                                                     Margin="14,0,0,0"
