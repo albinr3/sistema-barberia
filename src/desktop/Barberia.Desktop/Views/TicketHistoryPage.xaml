@@ -92,12 +92,12 @@
 
                             <StackPanel Spacing="6">
                                 <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="START DATE" />
-                                <DatePicker x:Name="_fromDatePicker" DateChanged="OnDateFilterChanged" />
+                                <CalendarDatePicker x:Name="_fromDatePicker" DateChanged="OnDateFilterChanged" HorizontalAlignment="Stretch" />
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Spacing="6">
                                 <TextBlock Style="{StaticResource TicketFilterLabelTextStyle}" Text="END DATE" />
-                                <DatePicker x:Name="_toDatePicker" DateChanged="OnDateFilterChanged" />
+                                <CalendarDatePicker x:Name="_toDatePicker" DateChanged="OnDateFilterChanged" HorizontalAlignment="Stretch" />
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Spacing="6">

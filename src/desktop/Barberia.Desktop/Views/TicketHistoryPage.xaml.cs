@@ -66,7 +66,7 @@ public sealed partial class TicketHistoryPage : Page
         LoadHistory();
     }
 
-    private void OnDateFilterChanged(object sender, DatePickerValueChangedEventArgs args)
+    private void OnDateFilterChanged(object sender, CalendarDatePickerDateChangedEventArgs args)
     {
         if (!_isLoaded) return;
         _currentPage = 1;
@@ -97,8 +97,8 @@ public sealed partial class TicketHistoryPage : Page
             using var connection = _connectionFactory.OpenConnection();
             var repo = new LocalTicketHistoryRepository(connection);
 
-            var from = _fromDatePicker.Date.Date;
-            var to = _toDatePicker.Date.Date.AddDays(1);
+            var from = _fromDatePicker.Date?.Date ?? DateTimeOffset.MinValue;
+            var to = _toDatePicker.Date?.Date.AddDays(1) ?? DateTimeOffset.MaxValue;
 
             TurnState? statusFilter = null;
             if (_statusComboBox.SelectedItem is ComboBoxItem item && item.Tag is string tag && tag != "All" &&
