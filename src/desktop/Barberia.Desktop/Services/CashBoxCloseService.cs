@@ -11,7 +11,6 @@ namespace Barberia.Desktop.Services;
 public sealed class CashBoxCloseService
 {
     private const string Currency = "USD";
-    private const decimal CommissionRate = 0.20m;
 
     private readonly SqliteConnectionFactory _connectionFactory;
     private readonly ICashBoxReceiptPrinter _receiptPrinter;
@@ -137,7 +136,7 @@ public sealed class CashBoxCloseService
             }
 
             var amount = servicePrice + additionalAmount;
-            var commission = decimal.Round(amount * CommissionRate, 2, MidpointRounding.AwayFromZero);
+            var commission = decimal.Round(amount * barber.CommissionRate, 2, MidpointRounding.AwayFromZero);
             var barberStationCode = barber.StationCode
                 ?? throw new InvalidOperationException("Active barber has no assigned station.");
             var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
@@ -220,7 +219,8 @@ public sealed class CashBoxCloseService
                     amount,
                     currency = Currency,
                     commission,
-                    commissionRate = CommissionRate,
+                    commissionPercentage = barber.CommissionPercentage,
+                    commissionRate = barber.CommissionRate,
                     receiptNumber,
                     receiptPrinted = true,
                     cashDrawerOpened = true

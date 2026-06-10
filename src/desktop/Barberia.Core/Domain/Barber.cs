@@ -2,6 +2,8 @@ namespace Barberia.Core.Domain;
 
 public sealed record Barber
 {
+    public const int DefaultCommissionPercentage = 65;
+
     public Barber(
         Guid id,
         string displayName,
@@ -11,7 +13,8 @@ public sealed record Barber
         DateTimeOffset? checkedInAt = null,
         int? stationNumber = null,
         string? profileImagePath = null,
-        bool isActive = true)
+        bool isActive = true,
+        int commissionPercentage = DefaultCommissionPercentage)
     {
         if (id == Guid.Empty)
         {
@@ -43,6 +46,11 @@ public sealed record Barber
             throw new ArgumentException("Active barbers require a fixed station number.", nameof(stationNumber));
         }
 
+        if (commissionPercentage is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(commissionPercentage), "Commission percentage must be between 0 and 100.");
+        }
+
         Id = id;
         DisplayName = displayName.Trim();
         State = state;
@@ -52,6 +60,7 @@ public sealed record Barber
         StationNumber = isActive ? stationNumber : null;
         ProfileImagePath = string.IsNullOrWhiteSpace(profileImagePath) ? null : profileImagePath.Trim();
         IsActive = isActive;
+        CommissionPercentage = commissionPercentage;
     }
 
     public Guid Id { get; }
@@ -75,4 +84,8 @@ public sealed record Barber
     public string? ProfileImagePath { get; }
 
     public bool IsActive { get; }
+
+    public int CommissionPercentage { get; }
+
+    public decimal CommissionRate => CommissionPercentage / 100m;
 }

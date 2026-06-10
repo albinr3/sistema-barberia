@@ -12,6 +12,30 @@ namespace Barberia.Desktop.Tests;
 public class LocalAdminServiceTests
 {
     [Fact]
+    public void SaveBarber_WithCommissionPercentage_PersistsBarberCommission()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+
+        service.SaveBarber(
+            null,
+            "Ana",
+            rotationOrder: 0,
+            stationNumber: 1,
+            profileImagePath: null,
+            isActive: true,
+            commissionPercentage: 70);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barber = Assert.Single(new LocalBarberRepository(verifyConnection).ListAll());
+        var auditEvents = new AuditEventRepository(verifyConnection).ListAll();
+
+        Assert.Equal("Ana", barber.DisplayName);
+        Assert.Equal(70, barber.CommissionPercentage);
+        Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "admin_barber_created" && auditEvent.Payload.Contains("\"CommissionPercentage\":70"));
+    }
+
+    [Fact]
     public void SaveService_WithExistingService_UpdatesService()
     {
         using var database = TestDatabase.Create();

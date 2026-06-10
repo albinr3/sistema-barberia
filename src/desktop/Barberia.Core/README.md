@@ -6,6 +6,7 @@ Responsabilidades:
 
 - Motor de asignacion de turnos.
 - Estados centrales de barbero y turno.
+- Porcentaje de comision por barbero, con valor inicial 65%.
 - Reglas de disponibilidad local, estacion fija `B-#` y cola rotativa.
 - Modelos de dominio sin dependencias de infraestructura.
 

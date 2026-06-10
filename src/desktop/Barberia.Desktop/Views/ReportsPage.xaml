@@ -424,7 +424,7 @@
                             Text="Comision" />
                         <TextBlock
                             Style="{StaticResource SmallMutedTextStyle}"
-                            Text="Usa la comision guardada; el porcentaje final sigue pendiente." />
+                            Text="Usa la comision guardada segun el porcentaje del barbero al momento del cierre." />
                     </StackPanel>
                 </Border>
             </Grid>

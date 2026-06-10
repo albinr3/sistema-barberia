@@ -33,6 +33,7 @@ public sealed class LocalDatabaseInitializer
                 checked_in_at TEXT NULL,
                 profile_image_path TEXT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1,
+                commission_percentage INTEGER NOT NULL DEFAULT 65,
                 updated_at TEXT NOT NULL
             );
 
@@ -134,6 +135,73 @@ public sealed class LocalDatabaseInitializer
 
             CREATE INDEX IF NOT EXISTS idx_sync_outbox_aggregate
                 ON sync_outbox_events(aggregate_type, aggregate_id);
+
+            CREATE TABLE IF NOT EXISTS payroll_periods (
+                id TEXT NOT NULL PRIMARY KEY,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                state INTEGER NOT NULL,
+                total_services INTEGER NOT NULL,
+                total_commission_cents INTEGER NOT NULL,
+                total_adjustments_cents INTEGER NOT NULL,
+                total_to_pay_cents INTEGER NOT NULL,
+                payment_method INTEGER NULL,
+                payment_reference TEXT NULL,
+                notes TEXT NULL,
+                generated_at TEXT NOT NULL,
+                paid_at TEXT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS payroll_lines (
+                id TEXT NOT NULL PRIMARY KEY,
+                period_id TEXT NOT NULL,
+                barber_id TEXT NOT NULL,
+                barber_name TEXT NOT NULL,
+                station_number INTEGER NULL,
+                closed_services_count INTEGER NOT NULL,
+                cash_generated_cents INTEGER NOT NULL,
+                commission_cents INTEGER NOT NULL,
+                adjustments_cents INTEGER NOT NULL,
+                total_cents INTEGER NOT NULL,
+                FOREIGN KEY (period_id) REFERENCES payroll_periods(id),
+                FOREIGN KEY (barber_id) REFERENCES barbers(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS payroll_adjustments (
+                id TEXT NOT NULL PRIMARY KEY,
+                period_id TEXT NOT NULL,
+                barber_id TEXT NOT NULL,
+                amount_cents INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (period_id) REFERENCES payroll_periods(id),
+                FOREIGN KEY (barber_id) REFERENCES barbers(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS payroll_payment_items (
+                id TEXT NOT NULL PRIMARY KEY,
+                period_id TEXT NOT NULL,
+                barber_id TEXT NOT NULL,
+                payment_id TEXT NOT NULL,
+                FOREIGN KEY (period_id) REFERENCES payroll_periods(id),
+                FOREIGN KEY (barber_id) REFERENCES barbers(id),
+                FOREIGN KEY (payment_id) REFERENCES cash_payments(id)
+            );
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_payroll_periods_range
+                ON payroll_periods(start_date, end_date);
+
+            CREATE INDEX IF NOT EXISTS idx_payroll_lines_period
+                ON payroll_lines(period_id);
+
+            CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_period
+                ON payroll_adjustments(period_id);
+
+            CREATE INDEX IF NOT EXISTS idx_payroll_payment_items_period
+                ON payroll_payment_items(period_id);
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_payroll_payment_items_payment
+                ON payroll_payment_items(payment_id);
             """;
         command.ExecuteNonQuery();
 
@@ -149,6 +217,8 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
         EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
         EnsureColumn(connection, "barbers", "station_number", "INTEGER NULL");
+        EnsureColumn(connection, "barbers", "commission_percentage", "INTEGER NOT NULL DEFAULT 65");
+        BackfillBarberCommissionPercentage(connection);
         EnsureColumn(connection, "cash_payments", "service_id", "TEXT NULL");
         EnsureColumn(connection, "cash_payments", "service_price_cents", "INTEGER NULL");
         EnsureColumn(connection, "cash_payments", "additional_cents", "INTEGER NOT NULL DEFAULT 0");
@@ -310,6 +380,17 @@ public sealed class LocalDatabaseInitializer
             CREATE UNIQUE INDEX IF NOT EXISTS idx_barbers_active_station_number
                 ON barbers(station_number)
                 WHERE is_active = 1 AND station_number IS NOT NULL;
+            """;
+        command.ExecuteNonQuery();
+    }
+
+    private static void BackfillBarberCommissionPercentage(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE barbers
+            SET commission_percentage = 65
+            WHERE commission_percentage IS NULL;
             """;
         command.ExecuteNonQuery();
     }

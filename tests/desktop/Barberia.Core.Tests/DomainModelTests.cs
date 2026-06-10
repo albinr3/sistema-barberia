@@ -108,6 +108,40 @@ public sealed class DomainModelTests
         Assert.Equal(3, barber.StationNumber);
         Assert.Equal("B-3", barber.StationCode);
         Assert.Equal("B-3 - Marcus", barber.DisplayNameWithStation);
+        Assert.Equal(Barber.DefaultCommissionPercentage, barber.CommissionPercentage);
+        Assert.Equal(0.65m, barber.CommissionRate);
+    }
+
+    [Fact]
+    public void Barber_StoresCommissionPercentage()
+    {
+        var barber = new Barber(
+            Guid.NewGuid(),
+            "Marcus",
+            BarberState.Available,
+            0,
+            1,
+            stationNumber: 3,
+            commissionPercentage: 70);
+
+        Assert.Equal(70, barber.CommissionPercentage);
+        Assert.Equal(0.70m, barber.CommissionRate);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(101)]
+    public void Barber_RejectsInvalidCommissionPercentage(int commissionPercentage)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new Barber(
+                Guid.NewGuid(),
+                "Marcus",
+                BarberState.Available,
+                0,
+                1,
+                stationNumber: 1,
+                commissionPercentage: commissionPercentage));
     }
 
     [Theory]

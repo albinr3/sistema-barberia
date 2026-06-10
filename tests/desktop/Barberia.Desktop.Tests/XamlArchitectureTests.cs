@@ -56,6 +56,22 @@ public sealed class XamlArchitectureTests
         Assert.NotEmpty(visualClasses);
     }
 
+    [Fact]
+    public void PayrollUsesFullScreenChromeAndShellMenu()
+    {
+        var mainWindowPath = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "desktop",
+            "Barberia.Desktop",
+            "MainWindow.xaml.cs");
+        var source = File.ReadAllText(mainWindowPath);
+
+        Assert.Contains("ShellModuleKey.Payroll", source, StringComparison.Ordinal);
+        Assert.Contains("page is PayrollPage payrollPage", source, StringComparison.Ordinal);
+        Assert.Contains("payrollPage.ShellMenuRequested += (_, _) => ShowShellMenu();", source, StringComparison.Ordinal);
+    }
+
     private static bool IsWinUiVisualBase(string baseType)
     {
         return baseType is "Window" or "Page" or "Microsoft.UI.Xaml.Window" or "Microsoft.UI.Xaml.Controls.Page";

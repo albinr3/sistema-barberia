@@ -10,5 +10,6 @@ public enum ShellModuleKey
     Barbers,
     Services,
     Reports,
-    TicketHistory
+    TicketHistory,
+    Payroll
 }

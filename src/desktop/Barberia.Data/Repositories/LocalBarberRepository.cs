@@ -20,9 +20,9 @@ public sealed class LocalBarberRepository
         command.Transaction = _transaction;
         command.CommandText = """
             INSERT INTO barbers (
-                id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, updated_at
+                id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage, updated_at
             ) VALUES (
-                $id, $display_name, $state, $clients_served_today, $rotation_order, $station_number, $checked_in_at, $profile_image_path, $is_active, $updated_at
+                $id, $display_name, $state, $clients_served_today, $rotation_order, $station_number, $checked_in_at, $profile_image_path, $is_active, $commission_percentage, $updated_at
             )
             ON CONFLICT(id) DO UPDATE SET
                 display_name = excluded.display_name,
@@ -33,6 +33,7 @@ public sealed class LocalBarberRepository
                 checked_in_at = excluded.checked_in_at,
                 profile_image_path = excluded.profile_image_path,
                 is_active = excluded.is_active,
+                commission_percentage = excluded.commission_percentage,
                 updated_at = excluded.updated_at;
             """;
         command.AddText("$id", barber.Id.ToString());
@@ -44,6 +45,7 @@ public sealed class LocalBarberRepository
         command.AddText("$checked_in_at", Format(barber.CheckedInAt));
         command.AddText("$profile_image_path", barber.ProfileImagePath);
         command.AddInteger("$is_active", barber.IsActive ? 1 : 0);
+        command.AddInteger("$commission_percentage", barber.CommissionPercentage);
         command.AddText("$updated_at", Format(updatedAt));
         command.ExecuteNonQuery();
     }
@@ -53,7 +55,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage
             FROM barbers
             WHERE id = $id;
             """;
@@ -68,7 +70,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage
             FROM barbers
             ORDER BY rotation_order, display_name;
             """;
@@ -225,7 +227,8 @@ public sealed class LocalBarberRepository
             reader.IsDBNull(6) ? null : DateTimeOffset.Parse(reader.GetString(6)),
             reader.IsDBNull(5) ? null : reader.GetInt32(5),
             reader.IsDBNull(7) ? null : reader.GetString(7),
-            reader.GetInt32(8) == 1);
+            reader.GetInt32(8) == 1,
+            reader.GetInt32(9));
     }
 
     private static string? Format(DateTimeOffset? value)

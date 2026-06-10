@@ -333,6 +333,16 @@
                             </StackPanel>
                         </Grid>
 
+                        <StackPanel Spacing="6">
+                            <TextBlock Style="{StaticResource BarberFormLabelTextStyle}" Text="Commission Percentage" />
+                            <TextBox
+                                x:Name="_commissionPercentageInput"
+                                MinHeight="44"
+                                MaxLength="3"
+                                PlaceholderText="65"
+                                TextWrapping="NoWrap" />
+                        </StackPanel>
+
                         <StackPanel Spacing="6" Visibility="Collapsed">
                         </StackPanel>
 

@@ -70,11 +70,13 @@ public sealed class LocalAdminService
         int rotationOrder,
         int? stationNumber,
         string? profileImagePath,
-        bool isActive)
+        bool isActive,
+        int commissionPercentage = Barber.DefaultCommissionPercentage)
     {
         var normalizedName = NormalizeDisplayName(displayName);
         var normalizedStationNumber = NormalizeStationNumber(stationNumber, isActive);
         var normalizedProfileImagePath = NormalizeProfileImagePath(profileImagePath);
+        var normalizedCommissionPercentage = NormalizeCommissionPercentage(commissionPercentage);
         if (rotationOrder < 0)
         {
             throw new InvalidOperationException("Rotation order must be zero or greater.");
@@ -114,7 +116,8 @@ public sealed class LocalAdminService
                 existing?.CheckedInAt,
                 normalizedStationNumber,
                 normalizedProfileImagePath,
-                isActive);
+                isActive,
+                normalizedCommissionPercentage);
 
             barberRepository.Upsert(barber, now);
             auditRepository.Add(new AuditEvent(
@@ -131,7 +134,8 @@ public sealed class LocalAdminService
                     previousStationCode = existing?.StationCode,
                     barber.StationCode,
                     barber.ProfileImagePath,
-                    barber.IsActive
+                    barber.IsActive,
+                    barber.CommissionPercentage
                 }),
                 deviceId));
         });
@@ -811,6 +815,16 @@ public sealed class LocalAdminService
         }
 
         return stationNumber;
+    }
+
+    private static int NormalizeCommissionPercentage(int commissionPercentage)
+    {
+        if (commissionPercentage is < 0 or > 100)
+        {
+            throw new InvalidOperationException("Commission percentage must be between 0 and 100.");
+        }
+
+        return commissionPercentage;
     }
 
     private static void EnsureStationAvailable(

@@ -305,7 +305,8 @@ public sealed partial class BarbersPage : Page
                     ParseRotationOrder(),
                     ParseStationNumber(_showInKioskCheckBox.IsChecked == true),
                     GetSelectedProfileImagePath(),
-                    _showInKioskCheckBox.IsChecked == true);
+                    _showInKioskCheckBox.IsChecked == true,
+                    ParseCommissionPercentage());
                 _editingBarberId = null;
             },
             "Saved");
@@ -477,6 +478,7 @@ public sealed partial class BarbersPage : Page
         _barberNameInput.Text = barber.DisplayName;
         _stationCodeInput.Text = barber.StationCode ?? string.Empty;
         _rotationOrderInput.Text = barber.RotationOrder.ToString();
+        _commissionPercentageInput.Text = barber.CommissionPercentage.ToString();
         SelectProfileImage(barber.ProfileImagePath);
         _showInKioskCheckBox.IsChecked = barber.IsActive;
         _deleteBarberButton.IsEnabled = true;
@@ -488,6 +490,7 @@ public sealed partial class BarbersPage : Page
         _barberNameInput.Text = string.Empty;
         _stationCodeInput.Text = FormatStationCode(_nextStationNumber);
         _rotationOrderInput.Text = _nextRotationOrder.ToString();
+        _commissionPercentageInput.Text = Barber.DefaultCommissionPercentage.ToString();
         SelectProfileImage(null);
         _showInKioskCheckBox.IsChecked = true;
         _deleteBarberButton.IsEnabled = false;
@@ -538,6 +541,17 @@ public sealed partial class BarbersPage : Page
         }
 
         return stationNumber;
+    }
+
+    private int ParseCommissionPercentage()
+    {
+        var text = _commissionPercentageInput.Text.Trim();
+        if (!int.TryParse(text, out var commissionPercentage) || commissionPercentage is < 0 or > 100)
+        {
+            throw new InvalidOperationException("Commission percentage must be between 0 and 100.");
+        }
+
+        return commissionPercentage;
     }
 
     private string? GetSelectedProfileImagePath()

@@ -110,6 +110,22 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void BarberRepository_PersistsCommissionPercentage()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Parse("2026-06-04T10:47:00Z");
+        var barberId = Guid.NewGuid();
+        var repository = new LocalBarberRepository(database.Connection);
+
+        repository.Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 1, commissionPercentage: 70), now);
+
+        var savedBarber = repository.GetById(barberId);
+
+        Assert.Equal(70, savedBarber?.CommissionPercentage);
+        Assert.Equal(0.70m, savedBarber?.CommissionRate);
+    }
+
+    [Fact]
     public void BarberRepository_RejectsDuplicateActiveStations()
     {
         using var database = TestDatabase.Create();
@@ -189,6 +205,41 @@ public sealed class SqlitePersistenceTests
                 Assert.False(barber.IsActive);
                 Assert.Null(barber.StationNumber);
             });
+    }
+
+    [Fact]
+    public void LocalDatabaseInitializer_BackfillsCommissionPercentageForExistingBarbers()
+    {
+        using var database = TestDatabase.CreateUninitialized();
+        using (var command = database.Connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE barbers (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    display_name TEXT NOT NULL,
+                    state INTEGER NOT NULL,
+                    clients_served_today INTEGER NOT NULL,
+                    rotation_order INTEGER NOT NULL,
+                    station_number INTEGER NULL,
+                    checked_in_at TEXT NULL,
+                    profile_image_path TEXT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                );
+
+                INSERT INTO barbers (id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, updated_at)
+                VALUES
+                    ('11111111-1111-1111-1111-111111111111', 'Ana', 1, 0, 0, 1, NULL, NULL, 1, '2026-06-04T11:00:00.0000000+00:00'),
+                    ('22222222-2222-2222-2222-222222222222', 'Luis', 4, 0, 1, NULL, NULL, NULL, 0, '2026-06-04T11:00:00.0000000+00:00');
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        LocalDatabaseInitializer.Initialize(database.Connection);
+
+        var barbers = new LocalBarberRepository(database.Connection).ListAll();
+
+        Assert.All(barbers, barber => Assert.Equal(65, barber.CommissionPercentage));
     }
 
     [Fact]
