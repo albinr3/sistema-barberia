@@ -89,11 +89,7 @@ public sealed class LocalTicketHistoryRepository
             command.AddText("$barber_id", barberId.Value.ToString());
         }
 
-        if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            sql += "\n  AND (t.customer_name LIKE $search OR t.ticket_number LIKE $search OR CAST(t.display_ticket_number AS TEXT) LIKE $search)";
-            command.AddText("$search", $"%{searchQuery}%");
-        }
+        sql += BuildSearchClause(command, searchQuery);
 
         command.CommandText = sql;
         
@@ -152,11 +148,7 @@ public sealed class LocalTicketHistoryRepository
             command.AddText("$barber_id", barberId.Value.ToString());
         }
 
-        if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            sql += "\n  AND (t.customer_name LIKE $search OR t.ticket_number LIKE $search OR CAST(t.display_ticket_number AS TEXT) LIKE $search)";
-            command.AddText("$search", $"%{searchQuery}%");
-        }
+        sql += BuildSearchClause(command, searchQuery);
 
         sql += "\nORDER BY t.checked_in_at DESC";
         sql += "\nLIMIT $limit OFFSET $offset;";
@@ -201,5 +193,30 @@ public sealed class LocalTicketHistoryRepository
         }
 
         return rows;
+    }
+
+    private static string BuildSearchClause(SqliteCommand command, string? searchQuery)
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            return string.Empty;
+        }
+
+        var normalized = searchQuery.Trim();
+        command.AddText("$search", $"%{normalized}%");
+
+        if (int.TryParse(normalized.TrimStart('#'), out var displayTicketNumber) && displayTicketNumber > 0)
+        {
+            command.AddInteger("$display_ticket_number_search", displayTicketNumber);
+            return "\n  AND (t.customer_name LIKE $search OR t.display_ticket_number = $display_ticket_number_search)";
+        }
+
+        if (normalized.StartsWith("W", StringComparison.OrdinalIgnoreCase))
+        {
+            command.AddText("$ticket_number_search", normalized);
+            return "\n  AND (t.customer_name LIKE $search OR t.ticket_number = $ticket_number_search)";
+        }
+
+        return "\n  AND t.customer_name LIKE $search";
     }
 }

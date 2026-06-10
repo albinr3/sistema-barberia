@@ -93,7 +93,6 @@ public sealed class CashBoxCloseService
 
         var now = DateTimeOffset.Now;
         var deviceId = Environment.MachineName;
-        var receiptNumber = CreateReceiptNumber(now);
         CashBoxDepositResult? result = null;
 
         var transaction = new LocalDataTransaction(_connectionFactory);
@@ -104,6 +103,8 @@ public sealed class CashBoxCloseService
             var paymentRepository = new CashPaymentRepository(connection, sqliteTransaction);
             var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+
+            var receiptNumber = paymentRepository.GetNextReceiptNumber();
 
             var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
                 ?? throw new InvalidOperationException("Ticket not found in local database.");
@@ -309,8 +310,4 @@ public sealed class CashBoxCloseService
         }
     }
 
-    private static string CreateReceiptNumber(DateTimeOffset timestamp)
-    {
-        return $"CB-{timestamp:yyyyMMddHHmmssfff}";
-    }
 }

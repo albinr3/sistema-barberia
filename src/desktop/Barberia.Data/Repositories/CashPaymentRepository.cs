@@ -86,4 +86,26 @@ public sealed class CashPaymentRepository
 
         return payments;
     }
+
+    public string GetNextReceiptNumber()
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT receipt_number
+            FROM cash_payments
+            WHERE receipt_number LIKE 'CB-%'
+              AND length(receipt_number) = 10
+            ORDER BY receipt_number DESC
+            LIMIT 1;
+            """;
+        var lastReceipt = command.ExecuteScalar() as string;
+
+        if (lastReceipt != null && lastReceipt.StartsWith("CB-") && int.TryParse(lastReceipt.Substring(3), out var lastNumber))
+        {
+            return $"CB-{(lastNumber + 1):D7}";
+        }
+
+        return "CB-0000001";
+    }
 }

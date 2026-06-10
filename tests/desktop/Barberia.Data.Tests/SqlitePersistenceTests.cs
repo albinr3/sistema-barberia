@@ -804,6 +804,41 @@ public sealed class SqlitePersistenceTests
             new LocalAdminReportRepository(database.Connection).Load(from, from, from));
     }
 
+    [Fact]
+    public void TicketHistoryRepository_SearchesNumericTicketByVisibleNumber()
+    {
+        using var database = TestDatabase.Create();
+        var from = DateTimeOffset.Parse("2026-06-04T00:00:00Z");
+        var turnRepository = new LocalTurnRepository(database.Connection);
+        turnRepository.Upsert(
+            CreateTurn(
+                Guid.NewGuid(),
+                "W20260604102300123",
+                TurnState.Completed,
+                TurnSource.WalkIn,
+                from.AddHours(10),
+                customerName: "Ana",
+                displayTicketNumber: 7),
+            from.AddHours(10));
+        turnRepository.Upsert(
+            CreateTurn(
+                Guid.NewGuid(),
+                "W20260604110000456",
+                TurnState.Completed,
+                TurnSource.WalkIn,
+                from.AddHours(11),
+                customerName: "Luis",
+                displayTicketNumber: 23),
+            from.AddHours(11));
+
+        var history = new LocalTicketHistoryRepository(database.Connection)
+            .ListHistory(from, from.AddDays(1), searchQuery: "23");
+
+        var row = Assert.Single(history);
+        Assert.Equal(23, row.DisplayTicketNumber);
+        Assert.Equal("W20260604110000456", row.InternalTicketNumber);
+    }
+
     private static Turn CreateTurn(
         Guid id,
         string ticketNumber,
