@@ -175,7 +175,7 @@
                                     BorderThickness="0,0,0,1"
                                     ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="90" />
                                         <ColumnDefinition Width="155" />
                                         <ColumnDefinition Width="160" />
                                         <ColumnDefinition Width="135" />

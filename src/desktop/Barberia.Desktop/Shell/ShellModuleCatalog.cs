@@ -15,6 +15,7 @@ public static class ShellModuleCatalog
         new(ShellModuleKey.Services, "Services", "Catalog", "\uE8EC", typeof(ServicesPage)),
         new(ShellModuleKey.TicketHistory, "Ticket History", "Archive", "\uE81C", typeof(TicketHistoryPage)),
         new(ShellModuleKey.Payroll, "Payroll", "Payroll", "\uE825", typeof(PayrollPage)),
-        new(ShellModuleKey.PayrollHistory, "Payroll History", "Archive", "\uE81C", typeof(PayrollHistoryPage))
+        new(ShellModuleKey.PayrollHistory, "Payroll History", "Archive", "\uE81C", typeof(PayrollHistoryPage)),
+        new(ShellModuleKey.BarberPublic, "Barber Public", "Team", "\uE716", typeof(BarberPublicPage))
     ];
 }

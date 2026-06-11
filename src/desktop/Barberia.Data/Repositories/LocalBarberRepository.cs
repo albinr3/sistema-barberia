@@ -144,7 +144,7 @@ public sealed class LocalBarberRepository
             """;
         command.AddText("$id", barberId.ToString());
         command.AddInteger("$is_active", isActive ? 1 : 0);
-        command.AddNullableInteger("$station_number", isActive ? stationNumber : null);
+        command.AddNullableInteger("$station_number", stationNumber);
         command.AddText("$updated_at", Format(updatedAt));
 
         if (command.ExecuteNonQuery() != 1)

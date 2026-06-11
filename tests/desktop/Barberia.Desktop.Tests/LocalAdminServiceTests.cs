@@ -36,6 +36,43 @@ public class LocalAdminServiceTests
     }
 
     [Fact]
+    public void DeactivateBarber_PreservesStationNumber()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+        var now = DateTimeOffset.Now;
+
+        service.SaveBarber(null, "Ana", 0, 1, null, true, 50);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
+
+        service.DeactivateBarber(barberId);
+
+        var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
+        Assert.False(savedBarber!.IsActive);
+        Assert.Equal(1, savedBarber.StationNumber);
+    }
+
+    [Fact]
+    public void ActivateBarber_RequiresStationNumber()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+
+        service.SaveBarber(null, "Ana", 0, 1, null, false, 50);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
+
+        service.ActivateBarber(barberId);
+
+        var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
+        Assert.True(savedBarber!.IsActive);
+        Assert.Equal(1, savedBarber.StationNumber);
+    }
+
+    [Fact]
     public void SaveService_WithExistingService_UpdatesService()
     {
         using var database = TestDatabase.Create();

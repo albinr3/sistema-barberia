@@ -57,7 +57,7 @@ public sealed record Barber
         ClientsServedToday = clientsServedToday;
         RotationOrder = rotationOrder;
         CheckedInAt = checkedInAt;
-        StationNumber = isActive ? stationNumber : null;
+        StationNumber = stationNumber;
         ProfileImagePath = string.IsNullOrWhiteSpace(profileImagePath) ? null : profileImagePath.Trim();
         IsActive = isActive;
         CommissionPercentage = commissionPercentage;
