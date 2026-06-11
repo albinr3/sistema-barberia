@@ -1,0 +1,71 @@
+<ContentDialog
+    x:Class="Barberia.Desktop.Views.PayrollHistoryDetailsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    CloseButtonText="Close"
+    DefaultButton="Close"
+    CornerRadius="8"
+    MaxWidth="800">
+
+    <Grid Padding="0" Margin="-24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Background="#F3F3F6" Padding="24" CornerRadius="8,8,0,0">
+            <StackPanel Spacing="4">
+                <TextBlock x:Name="_titleText" FontSize="20" FontWeight="SemiBold" Foreground="#1A1C1E" />
+                <TextBlock x:Name="_subtitleText" FontSize="14" Foreground="#444655" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Padding="24" ColumnSpacing="24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Total Services" FontSize="12" Foreground="#444655" />
+                <TextBlock x:Name="_kpiServices" FontSize="18" FontWeight="SemiBold" Foreground="#1A1C1E" />
+            </StackPanel>
+            
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="Total Commission" FontSize="12" Foreground="#444655" />
+                <TextBlock x:Name="_kpiCommission" FontSize="18" FontWeight="SemiBold" Foreground="#1A1C1E" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Total Adjustments" FontSize="12" Foreground="#444655" />
+                <TextBlock x:Name="_kpiAdjustments" FontSize="18" FontWeight="SemiBold" Foreground="#1A1C1E" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="3">
+                <TextBlock Text="Net Payout" FontSize="12" Foreground="#444655" />
+                <TextBlock x:Name="_kpiTotal" FontSize="18" FontWeight="Bold" Foreground="#001387" />
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="2" MaxHeight="400" Padding="24,0,24,24">
+            <StackPanel Spacing="24">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Barber Payouts" FontWeight="SemiBold" FontSize="16" Foreground="#1A1C1E" />
+                    <Border BorderBrush="#EEEEF0" BorderThickness="1" CornerRadius="8">
+                        <StackPanel x:Name="_linesPanel" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel x:Name="_adjustmentsSection" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Text="Included Adjustments" FontWeight="SemiBold" FontSize="16" Foreground="#1A1C1E" />
+                    <Border BorderBrush="#EEEEF0" BorderThickness="1" CornerRadius="8">
+                        <StackPanel x:Name="_adjustmentsPanel" />
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</ContentDialog>

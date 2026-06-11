@@ -4,6 +4,7 @@ using Barberia.Core.Domain;
 using Barberia.Data;
 using Barberia.Data.Models;
 using Barberia.Data.Repositories;
+using Barberia.Data.Reports;
 using Barberia.Hardware.Pos;
 
 namespace Barberia.Desktop.Services;
@@ -271,6 +272,33 @@ public sealed class CashBoxCloseService
         });
 
         return result ?? throw new InvalidOperationException("Could not close service at cash box.");
+    }
+
+    public void PrintDayReport()
+    {
+        var now = DateTimeOffset.Now;
+        var deviceId = Environment.MachineName;
+        var from = new DateTimeOffset(now.Date, now.Offset);
+        var to = from.AddDays(1);
+
+        using var connection = _connectionFactory.OpenConnection();
+        var report = new LocalAdminReportRepository(connection).Load(from, to, now);
+
+        var barberReports = report.Barbers
+            .Select(b => new BarberDayReport(b.DisplayNameWithStation, b.ServicesClosed, b.CashCollectedCents / 100m))
+            .ToList();
+
+        var job = new DayReportPrintJob(
+            report.Cash.TotalAmountCents / 100m,
+            barberReports,
+            now,
+            deviceId);
+
+        var result = _receiptPrinter.PrintDayReport(job);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Could not print day report: {result.ErrorMessage}");
+        }
     }
 
     private TurnAssignmentDecision? TryAssignNextWaitingTurn(

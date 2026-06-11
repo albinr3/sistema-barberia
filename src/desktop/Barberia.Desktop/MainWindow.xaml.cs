@@ -27,6 +27,8 @@ public sealed partial class MainWindow : Window
     {
         foreach (var module in ShellModuleCatalog.Modules)
         {
+            if (module.Key == ShellModuleKey.PayrollHistory) continue;
+
             var button = CreateNavigationButton(module);
             _moduleButtons.Add(module.Key, button);
             _navigationItems.Children.Add(button);
@@ -131,7 +133,7 @@ public sealed partial class MainWindow : Window
 
     private void ApplyModuleChrome(ShellModuleKey moduleKey)
     {
-        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay or ShellModuleKey.BarberPanel or ShellModuleKey.CashBox or ShellModuleKey.LocalAdmin or ShellModuleKey.Barbers or ShellModuleKey.Services or ShellModuleKey.TicketHistory or ShellModuleKey.Payroll;
+        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay or ShellModuleKey.BarberPanel or ShellModuleKey.CashBox or ShellModuleKey.LocalAdmin or ShellModuleKey.Barbers or ShellModuleKey.Services or ShellModuleKey.TicketHistory or ShellModuleKey.Payroll or ShellModuleKey.PayrollHistory;
         _navigationColumn.Width = usesFullScreenChrome ? new GridLength(0) : new GridLength(256);
         _sidebar.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
         _moduleHeader.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;

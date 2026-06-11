@@ -9,7 +9,7 @@ public enum ShellModuleKey
     LocalAdmin,
     Barbers,
     Services,
-    Reports,
     TicketHistory,
-    Payroll
+    Payroll,
+    PayrollHistory
 }

@@ -403,6 +403,27 @@
                                     TextWrapping="Wrap" />
                             </Grid>
                         </Border>
+
+                        <Button
+                            MinHeight="48"
+                            HorizontalAlignment="Stretch"
+                            Background="#FFF3F3F6"
+                            BorderBrush="#FFE2E2E5"
+                            BorderThickness="1"
+                            Click="OnPrintDayClick"
+                            Foreground="#FF444655">
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="8">
+                                <FontIcon FontSize="18" Glyph="&#xE749;" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Text="Print Day Report" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </StackPanel>

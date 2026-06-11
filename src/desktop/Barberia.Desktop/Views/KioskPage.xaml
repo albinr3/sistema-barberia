@@ -125,9 +125,9 @@
 
                         <StackPanel
                             x:Name="_nameInputSection"
-                            MaxWidth="720"
+                            MaxWidth="800"
                             Margin="0,0,0,40"
-                            HorizontalAlignment="Center"
+                            HorizontalAlignment="Stretch"
                             Spacing="8">
                             <TextBlock
                                 FontSize="22"

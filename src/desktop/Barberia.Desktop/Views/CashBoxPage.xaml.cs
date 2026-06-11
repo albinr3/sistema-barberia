@@ -51,6 +51,19 @@ public sealed partial class CashBoxPage : Page
         CloseService();
     }
 
+    private void OnPrintDayClick(object sender, RoutedEventArgs args)
+    {
+        try
+        {
+            _service.PrintDayReport();
+            SetMessage("Day report printed successfully.", SuccessTextBrush);
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception.Message);
+        }
+    }
+
     private void OnMenuButtonClick(object sender, RoutedEventArgs args)
     {
         ShellMenuRequested?.Invoke(this, EventArgs.Empty);

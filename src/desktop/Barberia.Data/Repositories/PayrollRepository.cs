@@ -24,6 +24,7 @@ public sealed class PayrollRepository
                    total_adjustments_cents, total_to_pay_cents, payment_method, payment_reference, 
                    notes, generated_at, paid_at
             FROM payroll_periods
+            WHERE state = 1
             ORDER BY start_date DESC;
             """;
 
@@ -275,6 +276,70 @@ public sealed class PayrollRepository
             """;
         command.AddText("$start_date", startDate.ToString("O"));
         command.AddText("$end_date", endDate.ToString("O"));
+
+        var list = new List<CashPayment>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(new CashPayment(
+                Guid.Parse(reader.GetString(0)),
+                Guid.Parse(reader.GetString(1)),
+                Guid.Parse(reader.GetString(2)),
+                reader.IsDBNull(3) ? null : Guid.Parse(reader.GetString(3)),
+                reader.GetInt64(4),
+                reader.GetString(5),
+                DateTimeOffset.Parse(reader.GetString(6)),
+                reader.GetString(7),
+                reader.IsDBNull(8) ? null : reader.GetString(8),
+                reader.GetInt32(9) == 1,
+                reader.IsDBNull(10) ? null : reader.GetInt64(10),
+                reader.IsDBNull(11) ? null : reader.GetInt64(11),
+                reader.GetInt64(12)
+            ));
+        }
+        return list;
+    }
+
+    public IReadOnlyList<CashPayment> GetPaymentsForPeriod(PayrollPeriod period, Guid barberId)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+
+        if (period.State == PayrollPeriodState.Paid)
+        {
+            command.CommandText = """
+                SELECT p.id, p.turn_id, p.barber_id, p.service_id, p.amount_cents, p.currency, p.collected_at,
+                       p.device_id, p.receipt_number, p.cash_drawer_opened, p.commission_cents,
+                       p.service_price_cents, p.additional_cents
+                FROM cash_payments p
+                JOIN payroll_payment_items i ON p.id = i.payment_id
+                WHERE i.period_id = $period_id AND i.barber_id = $barber_id
+                ORDER BY p.collected_at;
+                """;
+            command.AddText("$period_id", period.Id.ToString());
+            command.AddText("$barber_id", barberId.ToString());
+        }
+        else
+        {
+            command.CommandText = """
+                SELECT p.id, p.turn_id, p.barber_id, p.service_id, p.amount_cents, p.currency, p.collected_at,
+                       p.device_id, p.receipt_number, p.cash_drawer_opened, p.commission_cents,
+                       p.service_price_cents, p.additional_cents
+                FROM cash_payments p
+                WHERE p.collected_at >= $start_date AND p.collected_at < $end_date
+                  AND p.barber_id = $barber_id
+                  AND p.commission_cents IS NOT NULL
+                  AND p.id NOT IN (
+                      SELECT i.payment_id FROM payroll_payment_items i
+                      JOIN payroll_periods per ON i.period_id = per.id
+                      WHERE per.state = 1
+                  )
+                ORDER BY p.collected_at;
+                """;
+            command.AddText("$start_date", period.StartDate.ToString("O"));
+            command.AddText("$end_date", period.EndDate.ToString("O"));
+            command.AddText("$barber_id", barberId.ToString());
+        }
 
         var list = new List<CashPayment>();
         using var reader = command.ExecuteReader();

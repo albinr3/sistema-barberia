@@ -22,7 +22,7 @@ public sealed class PayrollServiceTests
     }
 
     [Fact]
-    public void GenerateOrRecalculate_GroupsCommissionLinesByBarber()
+    public void GeneratePreview_GroupsCommissionLinesByBarber()
     {
         using var database = TestDatabase.Create();
         var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
@@ -34,7 +34,7 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, luisId, "Luis", 2, friday.AddHours(13), 3000, null);
 
         var snapshot = new PayrollService(database.ConnectionFactory)
-            .GenerateOrRecalculate(new PayrollWeekRange(friday, friday.AddDays(7)), friday.AddDays(1));
+            .GeneratePreview(new PayrollWeekRange(friday, friday.AddDays(7)), [], friday.AddDays(1));
 
         Assert.Equal(3, snapshot.Period.TotalServices);
         Assert.Equal(4450, snapshot.Period.TotalCommissionCents);
@@ -57,7 +57,7 @@ public sealed class PayrollServiceTests
     }
 
     [Fact]
-    public void AddAdjustment_RecalculatesLineTotal()
+    public void GeneratePreview_IncludesTempAdjustments()
     {
         using var database = TestDatabase.Create();
         var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
@@ -66,8 +66,8 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        service.GenerateOrRecalculate(range, friday.AddDays(1));
-        var snapshot = service.AddAdjustment(range, anaId, -500, "Correccion", friday.AddDays(1).AddMinutes(1));
+        var adjustments = new[] { new PayrollAdjustment(Guid.NewGuid(), Guid.Empty, anaId, -500, "Correccion", friday.AddDays(1).AddMinutes(1)) };
+        var snapshot = service.GeneratePreview(range, adjustments, friday.AddDays(1).AddMinutes(2));
 
         var line = Assert.Single(snapshot.Lines);
         Assert.Equal(-500, line.AdjustmentsCents);
@@ -85,7 +85,7 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        var snapshot = service.PayPeriod(range, PayrollPaymentMethod.Transfer, "TR-1", null, friday.AddDays(7));
+        var snapshot = service.PayPeriod(range, [], PayrollPaymentMethod.Transfer, "TR-1", null, friday.AddDays(7));
 
         Assert.Equal(PayrollPeriodState.Paid, snapshot.Period.State);
         Assert.Equal(PayrollPaymentMethod.Transfer, snapshot.Period.PaymentMethod);
@@ -95,7 +95,7 @@ public sealed class PayrollServiceTests
     }
 
     [Fact]
-    public void PaidPeriod_CannotBeRecalculatedAdjustedOrPaidAgain()
+    public void PaidPeriod_CannotBeRecalculatedOrPaidAgain()
     {
         using var database = TestDatabase.Create();
         var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
@@ -104,11 +104,10 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        service.PayPeriod(range, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7));
+        service.PayPeriod(range, [], PayrollPaymentMethod.Cash, null, null, friday.AddDays(7));
 
-        Assert.Throws<InvalidOperationException>(() => service.GenerateOrRecalculate(range, friday.AddDays(7).AddMinutes(1)));
-        Assert.Throws<InvalidOperationException>(() => service.AddAdjustment(range, anaId, 500, "Late correction", friday.AddDays(7).AddMinutes(2)));
-        Assert.Throws<InvalidOperationException>(() => service.PayPeriod(range, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7).AddMinutes(3)));
+        Assert.Throws<InvalidOperationException>(() => service.GeneratePreview(range, [], friday.AddDays(7).AddMinutes(1)));
+        Assert.Throws<InvalidOperationException>(() => service.PayPeriod(range, [], PayrollPaymentMethod.Cash, null, null, friday.AddDays(7).AddMinutes(3)));
     }
 
     private static void SeedBarberTurnAndPayment(

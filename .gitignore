@@ -50,5 +50,6 @@ temp/
 
 # Codex build output
 .codex-build/
+.codex-test-output/
 .build-validation*/
 .build-validationDebug/

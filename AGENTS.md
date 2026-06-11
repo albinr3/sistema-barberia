@@ -28,6 +28,7 @@ No explores el repositorio completo si no hace falta. Evita leer archivos o dire
 
 Ignora siempre los siguientes archivos y directorios salvo instrucción explícita:
 - .codex-build/
+- .codex-test-output/
 - .vs/
 - bin/
 - obj/
@@ -47,3 +48,7 @@ Ignora siempre los siguientes archivos y directorios salvo instrucción explíci
 - src/desktop/Barberia.Desktop/Views/ggg*.html
 
 Para tareas de Fase 1, lee primero `docs/fases/phase-1-current-status.md` y NO leas el historial archivado salvo necesidad explícita.
+
+## Limpieza despues de tests
+
+Si ejecutas tests o validaciones que generen `.codex-test-output/`, borra esa carpeta al terminar antes de revisar o preparar cambios para commit.

@@ -2,19 +2,25 @@
     x:Class="Barberia.Desktop.Views.PayrollPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Loaded="OnLoaded">
+    Loaded="OnLoaded"
+    SizeChanged="OnSizeChanged">
 
     <Page.Resources>
         <SolidColorBrush x:Key="PayrollBackgroundBrush" Color="#FFF9F9FC" />
         <SolidColorBrush x:Key="PayrollSurfaceBrush" Color="#FFFFFFFF" />
         <SolidColorBrush x:Key="PayrollSurfaceContainerBrush" Color="#FFEEEEF0" />
+        <SolidColorBrush x:Key="PayrollSurfaceContainerLowBrush" Color="#FFF3F3F6" />
         <SolidColorBrush x:Key="PayrollPrimaryBrush" Color="#FF001387" />
+        <SolidColorBrush x:Key="PayrollPrimaryFixedBrush" Color="#FFDFE0FF" />
+        <SolidColorBrush x:Key="PayrollOnPrimaryFixedVariantBrush" Color="#FF152DC9" />
         <SolidColorBrush x:Key="PayrollTextBrush" Color="#FF1A1C1E" />
         <SolidColorBrush x:Key="PayrollMutedTextBrush" Color="#FF444655" />
         <SolidColorBrush x:Key="PayrollSuccessBrush" Color="#FF137333" />
         <SolidColorBrush x:Key="PayrollSuccessContainerBrush" Color="#FFE6F4EA" />
         <SolidColorBrush x:Key="PayrollWarningContainerBrush" Color="#FFFFF8E1" />
         <SolidColorBrush x:Key="PayrollWarningBrush" Color="#FF8A5A00" />
+        <SolidColorBrush x:Key="PayrollOutlineVariantBrush" Color="#FFC5C5D8" />
+        <SolidColorBrush x:Key="PayrollSecondaryBrush" Color="#FFBB001F" />
 
         <Style x:Key="PayrollCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource PayrollSurfaceBrush}" />
@@ -23,137 +29,212 @@
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="20" />
         </Style>
-
-        <Style x:Key="PayrollTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource PayrollTextBrush}" />
-        </Style>
-
-        <Style x:Key="PayrollLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource PayrollMutedTextBrush}" />
-        </Style>
     </Page.Resources>
 
     <Grid Background="{StaticResource PayrollBackgroundBrush}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled">
-            <Grid MaxWidth="1200" Padding="48,48,48,72" Background="Transparent" HorizontalAlignment="Center">
+        <ScrollViewer
+            x:Name="_screenScrollViewer"
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Enabled">
+            <Grid
+                x:Name="_contentGrid"
+                MaxWidth="1200"
+                Padding="48,48,48,72"
+                HorizontalAlignment="Center">
                 <StackPanel Spacing="32">
-                    <!-- Header Area -->
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="Nómina Semanal" FontSize="32" FontWeight="Bold" Foreground="{StaticResource PayrollTextBrush}" />
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                                <TextBlock x:Name="_periodRangeText" FontSize="16" Foreground="{StaticResource PayrollMutedTextBrush}" Text="Cargando periodo..." />
-                                <Border x:Name="_statusBadge" Padding="8,4" CornerRadius="4" Background="{StaticResource PayrollWarningContainerBrush}" VerticalAlignment="Center">
-                                    <TextBlock x:Name="_statusText" FontSize="12" FontWeight="Bold" Foreground="{StaticResource PayrollWarningBrush}" Text="DRAFT" />
+
+                    <!-- Header Section -->
+                    <Grid
+                        x:Name="_headerGrid"
+                        ColumnSpacing="16"
+                        RowSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition x:Name="_headerTextColumn" Width="*" />
+                            <ColumnDefinition x:Name="_headerActionsColumn" Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel x:Name="_headerTextPanel">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                                <Border Background="{StaticResource PayrollPrimaryFixedBrush}" CornerRadius="12" Padding="10,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Ellipse Width="6" Height="6" Fill="{StaticResource PayrollPrimaryBrush}" />
+                                        <TextBlock Text="Current Period" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollOnPrimaryFixedVariantBrush}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border x:Name="_statusBadge" Padding="10,4" CornerRadius="12" Background="{StaticResource PayrollWarningContainerBrush}" VerticalAlignment="Center">
+                                    <TextBlock x:Name="_statusText" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollWarningBrush}" Text="DRAFT" />
                                 </Border>
                             </StackPanel>
-                            <TextBlock x:Name="_messageText" Margin="0,8,0,0" FontSize="13" Foreground="{StaticResource PayrollMutedTextBrush}" TextWrapping="Wrap" />
+                            <TextBlock Text="Payroll Management" FontSize="32" FontWeight="Bold" Foreground="{StaticResource PayrollTextBrush}" Margin="0,0,0,4" />
+                        </StackPanel>
+
+                        <StackPanel
+                            x:Name="_headerActionsPanel"
+                            Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="16"
+                            VerticalAlignment="Bottom">
+                            <Button x:Name="_btnHistory" HorizontalAlignment="Stretch" Background="Transparent" BorderBrush="{StaticResource PayrollPrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="24,12" Click="OnHistoryClick">
+                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE81C;" FontSize="18" Foreground="{StaticResource PayrollPrimaryBrush}" />
+                                    <TextBlock Text="View History" Foreground="{StaticResource PayrollPrimaryBrush}" FontWeight="Medium" />
+                                </StackPanel>
+                            </Button>
+
                         </StackPanel>
                     </Grid>
 
-                    <!-- Summary Cards -->
-                    <Grid ColumnSpacing="16">
+                    <!-- KPI Cards Row -->
+                    <Grid
+                        x:Name="_kpiGrid"
+                        ColumnSpacing="24"
+                        RowSpacing="24">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                            <ColumnDefinition />
+                            <ColumnDefinition x:Name="_kpiColumn0" Width="*" />
+                            <ColumnDefinition x:Name="_kpiColumn1" Width="*" />
+                            <ColumnDefinition x:Name="_kpiColumn2" Width="*" />
+                            <ColumnDefinition x:Name="_kpiColumn3" Width="*" />
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <Border Style="{StaticResource PayrollCardStyle}">
-                            <StackPanel Spacing="14">
-                                <TextBlock Style="{StaticResource PayrollLabelStyle}" Text="Total Servicios" />
-                                <TextBlock x:Name="_totalServicesText" FontSize="36" FontWeight="Bold" Foreground="{StaticResource PayrollTextBrush}" Text="0" />
+                        <Border x:Name="_servicesCard" Style="{StaticResource PayrollCardStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,16">
+                                    <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
+                                        <FontIcon Glyph="&#xE8CA;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="Total Services" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="_totalServicesText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollTextBrush}" Text="0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="1" Style="{StaticResource PayrollCardStyle}">
-                            <StackPanel Spacing="14">
-                                <TextBlock Style="{StaticResource PayrollLabelStyle}" Text="Comisión Bruta" />
-                                <TextBlock x:Name="_totalCommissionText" FontSize="36" FontWeight="Bold" Foreground="{StaticResource PayrollTextBrush}" Text="$0.00" />
+                        <Border x:Name="_commissionCard" Grid.Column="1" Style="{StaticResource PayrollCardStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,16">
+                                    <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
+                                        <FontIcon Glyph="&#xE946;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="Total Commission" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="_totalCommissionText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollTextBrush}" Text="$0.00" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Style="{StaticResource PayrollCardStyle}">
-                            <StackPanel Spacing="14">
-                                <TextBlock Style="{StaticResource PayrollLabelStyle}" Text="Ajustes" />
-                                <TextBlock x:Name="_totalAdjustmentsText" FontSize="36" FontWeight="Bold" Foreground="{StaticResource PayrollTextBrush}" Text="$0.00" />
+                        <Border x:Name="_adjustmentsCard" Grid.Column="2" Style="{StaticResource PayrollCardStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,16">
+                                    <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
+                                        <FontIcon Glyph="&#xE710;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
+                                    </Border>
+                                    <Button x:Name="_btnAddAdjustment" Content="+" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnAddAdjustmentClick" ToolTipService.ToolTip="Agregar ajuste" />
+                                </Grid>
+                                <TextBlock Text="Ajustes Manuales" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="_totalAdjustmentsText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollTextBrush}" Text="$0.00" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="3" Style="{StaticResource PayrollCardStyle}">
-                            <StackPanel Spacing="14">
-                                <TextBlock Style="{StaticResource PayrollLabelStyle}" Text="Total a Pagar" />
-                                <TextBlock x:Name="_totalToPayText" FontSize="36" FontWeight="Bold" Foreground="{StaticResource PayrollPrimaryBrush}" Text="$0.00" />
+                        <Border x:Name="_netPayCard" Grid.Column="3" Style="{StaticResource PayrollCardStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,16">
+                                    <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
+                                        <FontIcon Glyph="&#xE838;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
+                                    </Border>
+                                    <Button x:Name="_btnRecalculate" Content="↻" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnRecalculateClick" ToolTipService.ToolTip="Recalcular Semana" />
+                                </Grid>
+                                <TextBlock Text="Net Pay (Total)" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="_totalToPayText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollPrimaryBrush}" Text="$0.00" />
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- Main Area -->
-                    <Grid ColumnSpacing="32">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*" />
-                            <ColumnDefinition Width="1*" />
-                        </Grid.ColumnDefinitions>
+                    <!-- Filters Bar -->
+                    <Border Background="{StaticResource PayrollSurfaceBrush}" BorderBrush="{StaticResource PayrollSurfaceContainerBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
+                        <Grid
+                            x:Name="_filtersGrid"
+                            ColumnSpacing="12"
+                            RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                        <!-- Left Panel: Table -->
-                        <Border Style="{StaticResource PayrollCardStyle}" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <CalendarDatePicker x:Name="_weekDatePicker" DateChanged="OnWeekDateChanged" HorizontalAlignment="Left" Width="200" PlaceholderText="Seleccionar periodo..." />
+                                <TextBlock x:Name="_periodRangeText" FontSize="16" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" VerticalAlignment="Center" Text="Cargando periodo..." />
+                            </StackPanel>
+
+                            <TextBlock x:Name="_messageText" Grid.Column="1" FontSize="14" Foreground="{StaticResource PayrollMutedTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,16,0" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Data Table -->
+                    <ScrollViewer
+                        x:Name="_tableScrollViewer"
+                        HorizontalScrollBarVisibility="Auto"
+                        HorizontalScrollMode="Enabled"
+                        VerticalScrollBarVisibility="Disabled"
+                        VerticalScrollMode="Disabled">
+                        <Border
+                            x:Name="_tableBorder"
+                            MinWidth="760"
+                            Background="{StaticResource PayrollSurfaceBrush}"
+                            BorderBrush="{StaticResource PayrollSurfaceContainerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12">
                             <StackPanel>
-                                <Grid Padding="0,0,0,16">
-                                    <TextBlock Style="{StaticResource PayrollTitleStyle}" Text="Detalle por Barbero" />
-                                </Grid>
-                                <Grid Padding="12" Background="#FFF3F3F6" CornerRadius="6">
+                                <Grid Background="{StaticResource PayrollSurfaceContainerLowBrush}" Padding="16,12" BorderBrush="{StaticResource PayrollSurfaceContainerBrush}" BorderThickness="0,0,0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="2*" />
                                         <ColumnDefinition Width="1*" />
                                         <ColumnDefinition Width="1*" />
-                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="1.5*" />
                                         <ColumnDefinition Width="1*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource PayrollLabelStyle}" Text="Barbero" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource PayrollLabelStyle}" Text="Servicios" TextAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Style="{StaticResource PayrollLabelStyle}" Text="Comisión" TextAlignment="Right" />
-                                    <TextBlock Grid.Column="3" Style="{StaticResource PayrollLabelStyle}" Text="Ajustes" TextAlignment="Right" />
-                                    <TextBlock Grid.Column="4" Style="{StaticResource PayrollLabelStyle}" Text="Total" TextAlignment="Right" />
+                                    <TextBlock Text="STAFF MEMBER" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" />
+                                    <TextBlock Grid.Column="1" Text="STATION" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="SERVICES" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="3" Text="SALES" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="4" Text="COMM. $" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="5" Text="NET PAY" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="6" Text="ACTIONS" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Center" />
                                 </Grid>
-                                <StackPanel x:Name="_linesPanel" Spacing="8" Margin="0,12,0,0" />
+
+                                <StackPanel x:Name="_linesPanel" />
+
                             </StackPanel>
                         </Border>
+                    </ScrollViewer>
 
-                        <!-- Right Panel: Actions -->
-                        <StackPanel Grid.Column="1" Spacing="16">
-                            <Border Style="{StaticResource PayrollCardStyle}">
-                                <StackPanel Spacing="16">
-                                    <TextBlock Style="{StaticResource PayrollTitleStyle}" Text="Acciones" />
-                                    <TextBlock x:Name="_lblReferenceWeek" Text="Semana de referencia:" Style="{StaticResource PayrollLabelStyle}" TextWrapping="Wrap" />
-                                    <CalendarDatePicker x:Name="_weekDatePicker" DateChanged="OnWeekDateChanged" HorizontalAlignment="Stretch" />
-                                    <Button x:Name="_btnRecalculate" Content="Generar / Recalcular Semana" HorizontalAlignment="Stretch" Click="OnRecalculateClick" />
-                                    <Button x:Name="_btnAddAdjustment" Content="Agregar Ajuste Manual" HorizontalAlignment="Stretch" Click="OnAddAdjustmentClick" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource PayrollCardStyle}" x:Name="_paymentPanel">
-                                <StackPanel Spacing="16">
-                                    <TextBlock Style="{StaticResource PayrollTitleStyle}" Text="Pagar Nómina" />
-                                    <TextBlock Text="Método de pago:" Style="{StaticResource PayrollLabelStyle}" />
-                                    <ComboBox x:Name="_comboPaymentMethod" HorizontalAlignment="Stretch">
-                                        <ComboBoxItem Content="Efectivo" Tag="Cash" IsSelected="True" />
-                                        <ComboBoxItem Content="Transferencia" Tag="Transfer" />
-                                        <ComboBoxItem Content="Otro" Tag="Other" />
-                                    </ComboBox>
-                                    <TextBlock Text="Referencia de la Nómina:" Style="{StaticResource PayrollLabelStyle}" />
-                                    <TextBox x:Name="_txtReference" HorizontalAlignment="Stretch" IsReadOnly="True" />
-                                    <TextBlock Text="Nota (opcional):" Style="{StaticResource PayrollLabelStyle}" />
-                                    <TextBox x:Name="_txtNotes" HorizontalAlignment="Stretch" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
-                                    <Button x:Name="_btnPay" Content="Registrar Pago" Background="{StaticResource PayrollPrimaryBrush}" Foreground="White" HorizontalAlignment="Stretch" Click="OnPayClick" Margin="0,8,0,0" />
-                                </StackPanel>
-                            </Border>
+                    <!-- Action Bar Bottom -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="16" Margin="0,16,0,0">
+                        <StackPanel VerticalAlignment="Center" Spacing="4">
+                            <TextBlock Text="Referencia de nómina" FontSize="12" Foreground="{StaticResource PayrollMutedTextBrush}" FontWeight="Medium" />
+                            <TextBox x:Name="_referenceTextBox" Width="200" IsEnabled="False" Text="N/A" />
                         </StackPanel>
-                    </Grid>
+                        <Button x:Name="_btnPay" Background="{StaticResource PayrollPrimaryBrush}" BorderThickness="0" CornerRadius="8" Padding="32,16" VerticalAlignment="Bottom" Click="OnPayClick">
+                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8D7;" FontSize="18" Foreground="White" />
+                                <TextBlock Text="Pay Payroll" Foreground="White" FontWeight="SemiBold" FontSize="16" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <Grid Height="48" />
                 </StackPanel>
             </Grid>
         </ScrollViewer>

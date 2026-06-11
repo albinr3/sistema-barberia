@@ -5,16 +5,23 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Shapes;
 using Windows.UI.Text;
 
 namespace Barberia.Desktop.Views;
 
 public sealed partial class PayrollPage : Page
 {
+    private const double WideContentMaxWidth = 1200;
+    private const double MediumLayoutThreshold = 1000;
+    private const double NarrowLayoutThreshold = 720;
+    private const double PayrollTableMinWidth = 760;
+
     private readonly PayrollService _payrollService;
     private PayrollWeekRange _currentRange = new(DateTimeOffset.MinValue, DateTimeOffset.MinValue);
     private PayrollSnapshot? _snapshot;
     private bool _isInitializing;
+    private readonly List<PayrollAdjustment> _tempAdjustments = new();
 
     public event EventHandler? ShellMenuRequested;
 
@@ -26,10 +33,16 @@ public sealed partial class PayrollPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyResponsiveLayout(ActualWidth);
         _isInitializing = true;
         _weekDatePicker.Date = DateTimeOffset.Now;
         _isInitializing = false;
         LoadWeek(DateTimeOffset.Now);
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        ApplyResponsiveLayout(args.NewSize.Width);
     }
 
     private void OnMenuButtonClick(object sender, RoutedEventArgs e)
@@ -37,11 +50,19 @@ public sealed partial class PayrollPage : Page
         ShellMenuRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private void OnHistoryClick(object sender, RoutedEventArgs e)
+    {
+        if (App.MainWindowInstance is MainWindow mainWindow)
+        {
+            mainWindow.NavigateTo(Shell.ShellModuleKey.PayrollHistory);
+        }
+    }
+
     private void OnRecalculateClick(object sender, RoutedEventArgs e)
     {
         TryRun(() =>
         {
-            _snapshot = _payrollService.GenerateOrRecalculate(_currentRange, DateTimeOffset.Now);
+            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, DateTimeOffset.Now);
             RenderSnapshot("Semana recalculada.");
         });
     }
@@ -124,12 +145,17 @@ public sealed partial class PayrollPage : Page
                 throw new InvalidOperationException("El monto del ajuste no es valido.");
             }
 
-            _snapshot = _payrollService.AddAdjustment(
-                _currentRange,
+            var adjustment = new PayrollAdjustment(
+                Guid.NewGuid(),
+                Guid.Empty,
                 barberId,
                 Money.ToCents(amount),
-                reasonBox.Text,
+                reasonBox.Text.Trim(),
                 DateTimeOffset.Now);
+
+            _tempAdjustments.Add(adjustment);
+
+            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, DateTimeOffset.Now);
             RenderSnapshot("Ajuste agregado.");
         });
     }
@@ -148,11 +174,13 @@ public sealed partial class PayrollPage : Page
             return;
         }
 
+        var reference = $"NOM-{_snapshot.Period.StartDate:yyMMdd}-{_snapshot.Period.Id.ToString().Substring(0, 4).ToUpper()}";
+
         var confirmation = new ContentDialog
         {
-            Title = "Registrar pago de nomina",
-            Content = $"Se marcara como pagada la semana por {FormatMoney(_snapshot.Period.TotalToPayCents)}.",
-            PrimaryButtonText = "Registrar pago",
+            Title = "Process All Payments",
+            Content = $"Se marcará como pagada la semana por {FormatMoney(_snapshot.Period.TotalToPayCents)}.\nReferencia: {reference}",
+            PrimaryButtonText = "Registrar pago (Efectivo)",
             CloseButtonText = "Cancelar",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot
@@ -163,24 +191,55 @@ public sealed partial class PayrollPage : Page
             return;
         }
 
+        bool success = false;
         TryRun(() =>
         {
             _snapshot = _payrollService.PayPeriod(
                 _currentRange,
-                GetSelectedPaymentMethod(),
-                _txtReference.Text,
-                _txtNotes.Text,
+                _tempAdjustments,
+                PayrollPaymentMethod.Cash,
+                reference,
+                null,
                 DateTimeOffset.Now);
             RenderSnapshot("Semana marcada como pagada.");
+            success = true;
         });
+
+        if (success)
+        {
+            var successDialog = new ContentDialog
+            {
+                Title = "Pago exitoso",
+                Content = "La nómina ha sido pagada y registrada correctamente.",
+                CloseButtonText = "Aceptar",
+                XamlRoot = XamlRoot
+            };
+            await successDialog.ShowAsync();
+        }
+    }
+
+    private async void OnViewDetailsClick(PayrollLine line)
+    {
+        if (_snapshot == null) return;
+
+        try
+        {
+            var breakdown = _payrollService.GetBarberDailyBreakdown(_snapshot.Period.Id, line.BarberId);
+            var dialog = new PayrollDetailsDialog(_snapshot, line, breakdown)
+            {
+                XamlRoot = XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error al cargar detalle: {ex.Message}", true);
+        }
     }
 
     private void OnWeekDateChanged(object sender, CalendarDatePickerDateChangedEventArgs args)
     {
-        if (_isInitializing)
-        {
-            return;
-        }
+        if (_isInitializing) return;
 
         if (args.NewDate.HasValue)
         {
@@ -193,7 +252,8 @@ public sealed partial class PayrollPage : Page
         TryRun(() =>
         {
             _currentRange = _payrollService.GetWeekRange(reference);
-            _snapshot = _payrollService.LoadOrGenerate(reference);
+            _tempAdjustments.Clear();
+            _snapshot = _payrollService.LoadOrGenerate(reference, _tempAdjustments);
             RenderSnapshot("Semana cargada.");
         });
     }
@@ -206,12 +266,11 @@ public sealed partial class PayrollPage : Page
         }
 
         var period = _snapshot.Period;
-        var startFormatted = period.StartDate.ToString("dd/MM/yyyy");
-        var endFormatted = period.EndDate.AddDays(-1).ToString("dd/MM/yyyy");
+        var startFormatted = period.StartDate.ToString("ddd, MMM d");
+        var endFormatted = period.EndDate.AddDays(-1).ToString("ddd, MMM d, yyyy");
 
-        _periodRangeText.Text = $"Del {startFormatted} al {endFormatted}";
-        _lblReferenceWeek.Text = $"Semana de referencia (del {startFormatted} al {endFormatted}):";
-        
+        _periodRangeText.Text = $"{startFormatted} - {endFormatted}";
+
         _statusText.Text = period.State == PayrollPeriodState.Paid ? "PAID" : "DRAFT";
         _statusBadge.Background = period.State == PayrollPeriodState.Paid
             ? Brush(230, 244, 234)
@@ -240,7 +299,7 @@ public sealed partial class PayrollPage : Page
         {
             foreach (var line in _snapshot.Lines)
             {
-                _linesPanel.Children.Add(CreateLineRow(line));
+                _linesPanel.Children.Add(CreateLineRow(line, period.State == PayrollPeriodState.Paid));
             }
         }
 
@@ -248,75 +307,169 @@ public sealed partial class PayrollPage : Page
         _btnRecalculate.IsEnabled = !isPaid;
         _btnAddAdjustment.IsEnabled = !isPaid;
         _btnPay.IsEnabled = !isPaid;
-        _comboPaymentMethod.IsEnabled = !isPaid;
-        
-        if (isPaid)
-        {
-            _txtReference.Text = period.PaymentReference ?? string.Empty;
-        }
-        else
-        {
-            _txtReference.Text = $"NOM-{period.StartDate:yyMMdd}-{period.Id.ToString().Substring(0, 4).ToUpper()}";
-        }
 
-        _txtNotes.IsEnabled = !isPaid;
+        var reference = $"NOM-{period.StartDate:yyMMdd}-{period.Id.ToString().Substring(0, 4).ToUpper()}";
+        if (_referenceTextBox != null)
+        {
+            _referenceTextBox.Text = reference;
+        }
 
         ShowMessage(message, isError: false);
     }
 
-    private static UIElement CreateLineRow(PayrollLine line)
+    private UIElement CreateLineRow(PayrollLine line, bool isPaid)
     {
         var grid = new Grid
         {
-            Padding = new Thickness(12, 10, 12, 10),
+            Padding = new Thickness(16, 12, 16, 12),
             Background = Brush(255, 255, 255),
             BorderBrush = Brush(238, 238, 240),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            ColumnSpacing = 10
+            BorderThickness = new Thickness(0, 0, 0, 1)
         };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition());
-        grid.ColumnDefinitions.Add(new ColumnDefinition());
-        grid.ColumnDefinitions.Add(new ColumnDefinition());
-        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        AddCell(grid, $"{line.BarberName}{(line.StationNumber is null ? string.Empty : $" (B-{line.StationNumber})")}", 0, TextAlignment.Left, FontWeights.SemiBold);
-        AddCell(grid, line.ClosedServicesCount.ToString(), 1, TextAlignment.Center, FontWeights.Normal);
-        AddCell(grid, FormatMoney(line.CommissionCents), 2, TextAlignment.Right, FontWeights.Normal);
-        AddCell(grid, FormatMoney(line.AdjustmentsCents), 3, TextAlignment.Right, FontWeights.Normal);
-        AddCell(grid, FormatMoney(line.TotalCents), 4, TextAlignment.Right, FontWeights.SemiBold);
+        var staffPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var avatar = new Ellipse { Width = 32, Height = 32, Fill = Brush(223, 224, 255) }; // primary-fixed
+        var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        textPanel.Children.Add(new TextBlock { Text = line.BarberName, FontWeight = FontWeights.SemiBold, FontSize = 14, Foreground = Brush(26, 28, 30), TextWrapping = TextWrapping.WrapWholeWords });
+        staffPanel.Children.Add(avatar);
+        staffPanel.Children.Add(textPanel);
+        Grid.SetColumn(staffPanel, 0);
+        grid.Children.Add(staffPanel);
+
+        var stationBorder = new Border { Background = Brush(238, 238, 240), CornerRadius = new CornerRadius(4), Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
+        stationBorder.Child = new TextBlock { Text = line.StationNumber is null ? "N/A" : $"B-{line.StationNumber}", FontSize = 12, FontWeight = FontWeights.Medium, Foreground = Brush(26, 28, 30) };
+        Grid.SetColumn(stationBorder, 1);
+        grid.Children.Add(stationBorder);
+
+        AddCell(grid, line.ClosedServicesCount.ToString(), 2, TextAlignment.Right, FontWeights.Normal, Brush(26, 28, 30));
+        AddCell(grid, FormatMoney(line.CashGeneratedCents), 3, TextAlignment.Right, FontWeights.Normal, Brush(26, 28, 30));
+        AddCell(grid, FormatMoney(line.CommissionCents), 4, TextAlignment.Right, FontWeights.Medium, Brush(26, 28, 30));
+        AddCell(grid, FormatMoney(line.TotalCents), 5, TextAlignment.Right, FontWeights.Bold, Brush(26, 28, 30));
+
+        var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var btnView = new Button { Content = new FontIcon { Glyph = "\uE890", FontSize = 16 }, Background = Brush(243, 243, 246), BorderThickness = new Thickness(0) };
+        ToolTipService.SetToolTip(btnView, "View Details");
+        btnView.Click += (s, e) => OnViewDetailsClick(line);
+        actionsPanel.Children.Add(btnView);
+
+        Grid.SetColumn(actionsPanel, 6);
+        grid.Children.Add(actionsPanel);
 
         return grid;
     }
 
-    private static void AddCell(Grid grid, string text, int column, TextAlignment alignment, FontWeight fontWeight)
+    private void ApplyResponsiveLayout(double width)
+    {
+        var effectiveWidth = width > 0 ? width : WideContentMaxWidth;
+        var useMediumLayout = effectiveWidth < MediumLayoutThreshold;
+        var useNarrowLayout = effectiveWidth < NarrowLayoutThreshold;
+        var horizontalPadding = useNarrowLayout ? 20 : useMediumLayout ? 32 : 48;
+        var topPadding = useNarrowLayout ? 72 : 48;
+        var contentWidth = Math.Min(WideContentMaxWidth, effectiveWidth);
+
+        _contentGrid.Width = contentWidth;
+        _contentGrid.Padding = new Thickness(horizontalPadding, topPadding, horizontalPadding, 72);
+
+        ApplyHeaderLayout(useMediumLayout, useNarrowLayout);
+        ApplyKpiLayout(useMediumLayout, useNarrowLayout);
+        ApplyFiltersLayout(useNarrowLayout);
+
+        var tableWidth = Math.Max(PayrollTableMinWidth, contentWidth - (horizontalPadding * 2));
+        _tableBorder.Width = tableWidth;
+    }
+
+    private void ApplyHeaderLayout(bool useMediumLayout, bool useNarrowLayout)
+    {
+        _headerActionsColumn.Width = useMediumLayout ? new GridLength(0) : GridLength.Auto;
+        _headerActionsPanel.Orientation = useNarrowLayout ? Orientation.Vertical : Orientation.Horizontal;
+        _headerActionsPanel.HorizontalAlignment = useMediumLayout ? HorizontalAlignment.Stretch : HorizontalAlignment.Right;
+        _headerActionsPanel.VerticalAlignment = useMediumLayout ? VerticalAlignment.Top : VerticalAlignment.Bottom;
+
+        Grid.SetColumnSpan(_headerTextPanel, useMediumLayout ? 2 : 1);
+        Grid.SetColumn(_headerActionsPanel, useMediumLayout ? 0 : 1);
+        Grid.SetRow(_headerActionsPanel, useMediumLayout ? 1 : 0);
+        Grid.SetColumnSpan(_headerActionsPanel, useMediumLayout ? 2 : 1);
+    }
+
+    private void ApplyKpiLayout(bool useMediumLayout, bool useNarrowLayout)
+    {
+        _kpiGrid.ColumnSpacing = useNarrowLayout ? 0 : useMediumLayout ? 16 : 24;
+        _kpiGrid.RowSpacing = useMediumLayout ? 16 : 24;
+
+        if (useNarrowLayout)
+        {
+            SetKpiColumns(1);
+            SetKpiPosition(_servicesCard, 0, 0);
+            SetKpiPosition(_commissionCard, 1, 0);
+            SetKpiPosition(_adjustmentsCard, 2, 0);
+            SetKpiPosition(_netPayCard, 3, 0);
+            return;
+        }
+
+        if (useMediumLayout)
+        {
+            SetKpiColumns(2);
+            SetKpiPosition(_servicesCard, 0, 0);
+            SetKpiPosition(_commissionCard, 0, 1);
+            SetKpiPosition(_adjustmentsCard, 1, 0);
+            SetKpiPosition(_netPayCard, 1, 1);
+            return;
+        }
+
+        SetKpiColumns(4);
+        SetKpiPosition(_servicesCard, 0, 0);
+        SetKpiPosition(_commissionCard, 0, 1);
+        SetKpiPosition(_adjustmentsCard, 0, 2);
+        SetKpiPosition(_netPayCard, 0, 3);
+    }
+
+    private void ApplyFiltersLayout(bool useNarrowLayout)
+    {
+        _filtersGrid.ColumnSpacing = useNarrowLayout ? 0 : 12;
+        _weekDatePicker.Width = useNarrowLayout ? double.NaN : 200;
+        _weekDatePicker.HorizontalAlignment = useNarrowLayout ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+        _messageText.HorizontalAlignment = useNarrowLayout ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        _messageText.Margin = useNarrowLayout ? new Thickness(0) : new Thickness(0, 0, 16, 0);
+
+        Grid.SetColumn(_messageText, useNarrowLayout ? 0 : 1);
+        Grid.SetRow(_messageText, useNarrowLayout ? 1 : 0);
+    }
+
+    private void SetKpiColumns(int visibleColumns)
+    {
+        _kpiColumn0.Width = new GridLength(1, GridUnitType.Star);
+        _kpiColumn1.Width = visibleColumns >= 2 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        _kpiColumn2.Width = visibleColumns >= 4 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        _kpiColumn3.Width = visibleColumns >= 4 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+    }
+
+    private static void SetKpiPosition(FrameworkElement element, int row, int column)
+    {
+        Grid.SetRow(element, row);
+        Grid.SetColumn(element, column);
+    }
+
+    private static void AddCell(Grid grid, string text, int column, TextAlignment alignment, FontWeight fontWeight, SolidColorBrush foreground)
     {
         var cell = new TextBlock
         {
             Text = text,
             FontSize = 14,
-            Foreground = Brush(26, 28, 30),
+            Foreground = foreground,
             TextAlignment = alignment,
             FontWeight = fontWeight,
+            VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap
         };
         Grid.SetColumn(cell, column);
         grid.Children.Add(cell);
-    }
-
-    private PayrollPaymentMethod GetSelectedPaymentMethod()
-    {
-        if (_comboPaymentMethod.SelectedItem is ComboBoxItem item && item.Tag is string tag)
-        {
-            return tag switch
-            {
-                "Transfer" => PayrollPaymentMethod.Transfer,
-                "Other" => PayrollPaymentMethod.Other,
-                _ => PayrollPaymentMethod.Cash
-            };
-        }
-
-        return PayrollPaymentMethod.Cash;
     }
 
     private void TryRun(Action action)

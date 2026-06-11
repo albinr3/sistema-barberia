@@ -607,7 +607,7 @@ public sealed partial class LocalAdminPage : Page
             action();
             LoadAdmin();
         }
-        catch (Exception exception)
+        catch (Exception)
         {
             // Action blocked
         }

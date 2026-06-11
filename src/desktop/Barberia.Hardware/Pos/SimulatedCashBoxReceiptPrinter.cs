@@ -65,4 +65,16 @@ public sealed class SimulatedCashBoxReceiptPrinter : ICashBoxReceiptPrinter
 
         return _result;
     }
+
+    public HardwareOperationResult PrintDayReport(DayReportPrintJob job)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        
+        if (string.IsNullOrWhiteSpace(job.DeviceId))
+        {
+            return HardwareOperationResult.Failure("Device id is required to print the day report.");
+        }
+
+        return _result;
+    }
 }
