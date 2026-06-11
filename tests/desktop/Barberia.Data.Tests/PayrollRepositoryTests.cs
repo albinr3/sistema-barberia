@@ -39,7 +39,7 @@ public sealed class PayrollRepositoryTests
         var period = CreatePeriod(friday, friday.AddDays(7), totalServices: 1, totalCommission: 1600);
 
         repository.SavePeriod(period, [
-            new PayrollLine(Guid.NewGuid(), period.Id, barberId, "Ana", 1, 1, 2500, 1600, 0, 1600)
+            new PayrollLine(Guid.NewGuid(), period.Id, barberId, "Ana", null, 1, 1, 2500, 1600, 0, 1600)
         ]);
         repository.MarkAsPaid(period.Id, PayrollPaymentMethod.Cash, "REF-1", null, friday.AddDays(7), "test");
 
@@ -62,7 +62,7 @@ public sealed class PayrollRepositoryTests
         var period = CreatePeriod(friday, friday.AddDays(7), totalServices: 1, totalCommission: 1600);
 
         repository.SavePeriod(period, [
-            new PayrollLine(Guid.NewGuid(), period.Id, barberId, "Ana", 1, 1, 2500, 1600, 0, 1600)
+            new PayrollLine(Guid.NewGuid(), period.Id, barberId, "Ana", null, 1, 1, 2500, 1600, 0, 1600)
         ]);
         repository.MarkAsPaid(period.Id, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7), "test");
 

@@ -28,8 +28,8 @@
             Canvas.ZIndex="1"
             Width="48"
             Height="48"
-            Margin="0,24,24,0"
-            HorizontalAlignment="Right"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Background="White"
             BorderBrush="#FFE2E2E5"
@@ -42,7 +42,7 @@
         </Button>
 
         <ScrollViewer
-            Padding="48"
+            Padding="48,96,48,48"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <StackPanel
@@ -181,6 +181,7 @@
                                         <ColumnDefinition Width="135" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="90" />
                                         <ColumnDefinition Width="120" />
                                         <ColumnDefinition Width="76" />
                                     </Grid.ColumnDefinitions>
@@ -191,8 +192,9 @@
                                     <TextBlock Grid.Column="3" Style="{StaticResource TicketTableHeaderTextStyle}" Text="BARBER" />
                                     <TextBlock Grid.Column="4" Style="{StaticResource TicketTableHeaderTextStyle}" Text="SERVICE" />
                                     <TextBlock Grid.Column="5" HorizontalAlignment="Right" Style="{StaticResource TicketTableHeaderTextStyle}" Text="TOTAL" />
-                                    <TextBlock Grid.Column="6" HorizontalAlignment="Center" Style="{StaticResource TicketTableHeaderTextStyle}" Text="STATUS" />
-                                    <TextBlock Grid.Column="7" HorizontalAlignment="Center" Style="{StaticResource TicketTableHeaderTextStyle}" Text="ACTION" />
+                                    <TextBlock Grid.Column="6" HorizontalAlignment="Right" Style="{StaticResource TicketTableHeaderTextStyle}" Text="METHOD" />
+                                    <TextBlock Grid.Column="7" HorizontalAlignment="Center" Style="{StaticResource TicketTableHeaderTextStyle}" Text="STATUS" />
+                                    <TextBlock Grid.Column="8" HorizontalAlignment="Center" Style="{StaticResource TicketTableHeaderTextStyle}" Text="ACTION" />
                                 </Grid>
 
                                 <StackPanel x:Name="_historyRows" />

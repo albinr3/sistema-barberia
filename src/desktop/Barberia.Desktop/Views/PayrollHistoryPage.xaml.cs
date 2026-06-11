@@ -44,7 +44,7 @@ public sealed partial class PayrollHistoryPage : Page
             {
                 _historyLinesPanel.Children.Add(new TextBlock
                 {
-                    Text = "No hay nominas procesadas.",
+                    Text = "No processed payroll periods found.",
                     Margin = new Thickness(24),
                     Foreground = Brush(68, 70, 85)
                 });
@@ -61,7 +61,7 @@ public sealed partial class PayrollHistoryPage : Page
             _historyLinesPanel.Children.Clear();
             _historyLinesPanel.Children.Add(new TextBlock
             {
-                Text = "No se pudo cargar el historial de nomina.",
+                Text = "Failed to load payroll history.",
                 Margin = new Thickness(24),
                 Foreground = Brush(186, 26, 26)
             });

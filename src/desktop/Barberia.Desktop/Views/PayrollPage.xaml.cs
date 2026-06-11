@@ -1,11 +1,19 @@
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
+using Barberia.Desktop.Shell;
 using Microsoft.UI;
 using Microsoft.UI.Text;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Windows.Graphics.Imaging;
 using Windows.UI.Text;
 
 namespace Barberia.Desktop.Views;
@@ -63,7 +71,7 @@ public sealed partial class PayrollPage : Page
         TryRun(() =>
         {
             _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, DateTimeOffset.Now);
-            RenderSnapshot("Semana recalculada.");
+            RenderSnapshot("Week recalculated.");
         });
     }
 
@@ -71,21 +79,21 @@ public sealed partial class PayrollPage : Page
     {
         if (_snapshot?.Period.State == PayrollPeriodState.Paid)
         {
-            ShowMessage("No se pueden agregar ajustes a una semana pagada.", isError: true);
+            ShowMessage("Cannot add adjustments to a paid week.", isError: true);
             return;
         }
 
         var barbers = _payrollService.ListBarbers();
         if (barbers.Count == 0)
         {
-            ShowMessage("No hay barberos registrados para asignar el ajuste.", isError: true);
+            ShowMessage("No barbers registered to assign the adjustment.", isError: true);
             return;
         }
 
         var barberComboBox = new ComboBox
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            PlaceholderText = "Selecciona un barbero"
+            PlaceholderText = "Select a barber"
         };
         foreach (var barber in barbers)
         {
@@ -95,14 +103,14 @@ public sealed partial class PayrollPage : Page
 
         var amountBox = new TextBox
         {
-            Header = "Monto (+/-)",
-            PlaceholderText = "Ej. 10.00 o -5.00",
+            Header = "Amount (+/-)",
+            PlaceholderText = "e.g. 10.00 or -5.00",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var reasonBox = new TextBox
         {
-            Header = "Motivo",
-            PlaceholderText = "Motivo obligatorio",
+            Header = "Reason",
+            PlaceholderText = "Reason required",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
@@ -119,10 +127,10 @@ public sealed partial class PayrollPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "Agregar ajuste manual",
+            Title = "Add manual adjustment",
             Content = content,
-            PrimaryButtonText = "Agregar",
-            CloseButtonText = "Cancelar",
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot
         };
@@ -137,12 +145,12 @@ public sealed partial class PayrollPage : Page
         {
             if (barberComboBox.SelectedItem is not ComboBoxItem item || item.Tag is not Guid barberId)
             {
-                throw new InvalidOperationException("Selecciona un barbero.");
+                throw new InvalidOperationException("Please select a barber.");
             }
 
             if (!decimal.TryParse(amountBox.Text, out var amount))
             {
-                throw new InvalidOperationException("El monto del ajuste no es valido.");
+                throw new InvalidOperationException("The adjustment amount is invalid.");
             }
 
             var adjustment = new PayrollAdjustment(
@@ -156,7 +164,7 @@ public sealed partial class PayrollPage : Page
             _tempAdjustments.Add(adjustment);
 
             _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, DateTimeOffset.Now);
-            RenderSnapshot("Ajuste agregado.");
+            RenderSnapshot("Adjustment added.");
         });
     }
 
@@ -164,13 +172,13 @@ public sealed partial class PayrollPage : Page
     {
         if (_snapshot is null)
         {
-            ShowMessage("Genera la semana antes de pagar.", isError: true);
+            ShowMessage("Generate the week before paying.", isError: true);
             return;
         }
 
         if (_snapshot.Period.State == PayrollPeriodState.Paid)
         {
-            ShowMessage("Esta semana ya fue pagada.", isError: true);
+            ShowMessage("This week was already paid.", isError: true);
             return;
         }
 
@@ -179,9 +187,9 @@ public sealed partial class PayrollPage : Page
         var confirmation = new ContentDialog
         {
             Title = "Process All Payments",
-            Content = $"Se marcará como pagada la semana por {FormatMoney(_snapshot.Period.TotalToPayCents)}.\nReferencia: {reference}",
-            PrimaryButtonText = "Registrar pago (Efectivo)",
-            CloseButtonText = "Cancelar",
+            Content = $"The week will be marked as paid for {FormatMoney(_snapshot.Period.TotalToPayCents)}.\nReference: {reference}",
+            PrimaryButtonText = "Register payment (Cash)",
+            CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot
         };
@@ -201,7 +209,7 @@ public sealed partial class PayrollPage : Page
                 reference,
                 null,
                 DateTimeOffset.Now);
-            RenderSnapshot("Semana marcada como pagada.");
+            RenderSnapshot("Week marked as paid.");
             success = true;
         });
 
@@ -209,9 +217,9 @@ public sealed partial class PayrollPage : Page
         {
             var successDialog = new ContentDialog
             {
-                Title = "Pago exitoso",
-                Content = "La nómina ha sido pagada y registrada correctamente.",
-                CloseButtonText = "Aceptar",
+                Title = "Payment successful",
+                Content = "The payroll has been paid and registered successfully.",
+                CloseButtonText = "OK",
                 XamlRoot = XamlRoot
             };
             await successDialog.ShowAsync();
@@ -233,7 +241,7 @@ public sealed partial class PayrollPage : Page
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error al cargar detalle: {ex.Message}", true);
+            ShowMessage($"Error loading details: {ex.Message}", true);
         }
     }
 
@@ -254,7 +262,7 @@ public sealed partial class PayrollPage : Page
             _currentRange = _payrollService.GetWeekRange(reference);
             _tempAdjustments.Clear();
             _snapshot = _payrollService.LoadOrGenerate(reference, _tempAdjustments);
-            RenderSnapshot("Semana cargada.");
+            RenderSnapshot("Week loaded.");
         });
     }
 
@@ -289,7 +297,7 @@ public sealed partial class PayrollPage : Page
         {
             _linesPanel.Children.Add(new TextBlock
             {
-                Text = "No hay comisiones para esta semana.",
+                Text = "No commissions for this week.",
                 FontSize = 14,
                 Foreground = Brush(68, 70, 85),
                 Margin = new Thickness(12)
@@ -335,7 +343,7 @@ public sealed partial class PayrollPage : Page
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var staffPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        var avatar = new Ellipse { Width = 32, Height = 32, Fill = Brush(223, 224, 255) }; // primary-fixed
+        var avatar = CreateProfileAvatar(line.BarberName, line.BarberImagePath, 32);
         var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         textPanel.Children.Add(new TextBlock { Text = line.BarberName, FontWeight = FontWeights.SemiBold, FontSize = 14, Foreground = Brush(26, 28, 30), TextWrapping = TextWrapping.WrapWholeWords });
         staffPanel.Children.Add(avatar);
@@ -349,7 +357,7 @@ public sealed partial class PayrollPage : Page
         grid.Children.Add(stationBorder);
 
         AddCell(grid, line.ClosedServicesCount.ToString(), 2, TextAlignment.Right, FontWeights.Normal, Brush(26, 28, 30));
-        AddCell(grid, FormatMoney(line.CashGeneratedCents), 3, TextAlignment.Right, FontWeights.Normal, Brush(26, 28, 30));
+        AddCell(grid, FormatMoney(line.SalesGeneratedCents), 3, TextAlignment.Right, FontWeights.Normal, Brush(26, 28, 30));
         AddCell(grid, FormatMoney(line.CommissionCents), 4, TextAlignment.Right, FontWeights.Medium, Brush(26, 28, 30));
         AddCell(grid, FormatMoney(line.TotalCents), 5, TextAlignment.Right, FontWeights.Bold, Brush(26, 28, 30));
 
@@ -498,5 +506,85 @@ public sealed partial class PayrollPage : Page
     private static SolidColorBrush Brush(byte red, byte green, byte blue)
     {
         return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
+    }
+
+    private static Grid CreateProfileAvatar(string displayName, string? relativeImagePath, double size)
+    {
+        var avatar = new Grid
+        {
+            Width = size,
+            Height = size,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        avatar.Children.Add(new Ellipse
+        {
+            Fill = Brush(243, 243, 246),
+            Stroke = Brush(226, 230, 235),
+            StrokeThickness = 1
+        });
+
+        avatar.Children.Add(new TextBlock
+        {
+            Text = GetInitials(displayName),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = size >= 50 ? 18 : (size >= 32 ? 14 : 10),
+            FontWeight = FontWeights.Bold,
+            Foreground = Brush(0, 19, 135)
+        });
+
+        var imagePath = ProfileImageCatalog.ResolveImagePath(relativeImagePath);
+        if (imagePath is not null)
+        {
+            var imageBrush = new ImageBrush
+            {
+                Stretch = Stretch.UniformToFill
+            };
+            var imageCircle = new Ellipse
+            {
+                Fill = imageBrush,
+                Stroke = Brush(255, 255, 255),
+                StrokeThickness = 1,
+                Visibility = Visibility.Collapsed
+            };
+            avatar.Children.Add(imageCircle);
+            _ = LoadProfileImageAsync(imageBrush, imageCircle, imagePath);
+        }
+
+        return avatar;
+    }
+
+    private static string GetInitials(string displayName)
+    {
+        var parts = displayName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0]));
+
+        var initials = string.Concat(parts);
+        return string.IsNullOrWhiteSpace(initials) ? "?" : initials;
+    }
+
+    private static async Task LoadProfileImageAsync(ImageBrush imageBrush, UIElement imageElement, string fullPath)
+    {
+        try
+        {
+            await using var fileStream = File.OpenRead(fullPath);
+            using var imageStream = fileStream.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(imageStream);
+            var bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            var source = new SoftwareBitmapSource();
+            await source.SetBitmapAsync(bitmap);
+            imageBrush.ImageSource = source;
+            imageElement.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            imageBrush.ImageSource = null;
+            imageElement.Visibility = Visibility.Collapsed;
+        }
     }
 }

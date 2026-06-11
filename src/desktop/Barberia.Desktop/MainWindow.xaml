@@ -24,26 +24,18 @@
                 </Grid.RowDefinitions>
 
                 <Grid Margin="8,0,8,32">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-
-                    <Border
-                        Width="40"
-                        Height="40"
-                        Background="#FF001387"
-                        CornerRadius="4">
-                        <FontIcon
-                            FontSize="18"
-                            Foreground="#FFFFFFFF"
-                            Glyph="&#xE8C6;" />
-                    </Border>
-
+                    <Image
+                        x:Name="_brandLogo"
+                        MaxWidth="224"
+                        Height="72"
+                        HorizontalAlignment="Left"
+                        Stretch="Uniform" />
                     <StackPanel
-                        Grid.Column="1"
-                        Margin="12,0,0,0"
-                        VerticalAlignment="Center">
+                        x:Name="_brandFallbackText"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
                         <TextBlock
                             FontSize="20"
                             FontWeight="Bold"

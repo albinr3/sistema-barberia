@@ -44,14 +44,14 @@ public sealed class PayrollServiceTests
             {
                 Assert.Equal(anaId, line.BarberId);
                 Assert.Equal(2, line.ClosedServicesCount);
-                Assert.Equal(4000, line.CashGeneratedCents);
+                Assert.Equal(4000, line.SalesGeneratedCents);
                 Assert.Equal(2500, line.CommissionCents);
             },
             line =>
             {
                 Assert.Equal(luisId, line.BarberId);
                 Assert.Equal(1, line.ClosedServicesCount);
-                Assert.Equal(3000, line.CashGeneratedCents);
+                Assert.Equal(3000, line.SalesGeneratedCents);
                 Assert.Equal(1950, line.CommissionCents);
             });
     }

@@ -88,6 +88,22 @@ public sealed partial class CashBoxPage : Page
         UpdateServiceTotal();
     }
 
+    private void OnPaymentMethodSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_paymentMethodComboBox?.SelectedItem is ComboBoxItem item && item.Tag?.ToString() == "1")
+        {
+            if (_paymentReferenceInput != null) _paymentReferenceInput.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            if (_paymentReferenceInput != null)
+            {
+                _paymentReferenceInput.Visibility = Visibility.Collapsed;
+                _paymentReferenceInput.Text = string.Empty;
+            }
+        }
+    }
+
     private void OnInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
     {
         if (args.Key == Windows.System.VirtualKey.Enter)
@@ -144,9 +160,17 @@ public sealed partial class CashBoxPage : Page
             return;
         }
 
+        var paymentMethod = CustomerPaymentMethod.Cash;
+        if (_paymentMethodComboBox?.SelectedItem is ComboBoxItem item && item.Tag?.ToString() == "1")
+        {
+            paymentMethod = CustomerPaymentMethod.Zelle;
+        }
+        var reference = _paymentReferenceInput?.Text;
+        if (string.IsNullOrWhiteSpace(reference)) reference = null;
+
         try
         {
-            var result = _service.CloseService(_ticketInput.Text, selectedService.Id, _additionalAmount);
+            var result = _service.CloseService(_ticketInput.Text, selectedService.Id, _additionalAmount, paymentMethod, reference);
 
             _serviceReceiptText.Text = result.AdditionalAmount > 0
                 ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
@@ -157,6 +181,7 @@ public sealed partial class CashBoxPage : Page
             ClearTicketDetails();
             _additionalAmount = 0;
             SyncAdditionalButtons(null);
+            if (_paymentMethodComboBox != null) _paymentMethodComboBox.SelectedIndex = 0;
             UpdateServiceTotal();
             LoadCashBox();
         }
@@ -178,6 +203,7 @@ public sealed partial class CashBoxPage : Page
         _cashTotalText.Text = "$0.00";
         SelectService(null, null);
         ClearTicketDetails();
+        if (_paymentMethodComboBox != null) _paymentMethodComboBox.SelectedIndex = 0;
         SetMessage("Waiting for ticket and service.", NeutralTextBrush);
     }
 

@@ -63,7 +63,8 @@ public sealed partial class LocalAdminPage : Page
         _activeTurnsText.Text = snapshot.ActiveTurns.Count.ToString();
         _checkInsText.Text = snapshot.Operations.CheckIns.ToString();
         _availableBarbersText.Text = $"{availableCount}/{activeCount}";
-        _cashText.Text = FormatMoney(snapshot.Cash.TotalAmountCents, snapshot.Cash.Currency);
+        _salesTotalText.Text = FormatMoney(snapshot.Cash.TotalSalesCents, snapshot.Cash.Currency);
+        _salesBreakdownText.Text = $"Cash: {FormatMoney(snapshot.Cash.CashSalesCents, snapshot.Cash.Currency)} | Zelle: {FormatMoney(snapshot.Cash.ZelleSalesCents, snapshot.Cash.Currency)}";
         _lastRefreshText.Text = $"Updated: {snapshot.GeneratedAt:hh:mm tt}";
         _waitingCountText.Text = $"{snapshot.ActiveTurns.Count(turn => turn.State == TurnState.Waiting)} Waiting";
         UpdateReassignmentControls(snapshot);
@@ -584,7 +585,8 @@ public sealed partial class LocalAdminPage : Page
 
         if (historyRow.Amount.HasValue)
         {
-            rightStack.Children.Add(new TextBlock
+            var amountStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
+            amountStack.Children.Add(new TextBlock
             {
                 Text = $"${historyRow.Amount.Value:0.00}",
                 FontSize = 18,
@@ -592,6 +594,19 @@ public sealed partial class LocalAdminPage : Page
                 Foreground = Brush(19, 115, 51),
                 HorizontalAlignment = HorizontalAlignment.Right
             });
+
+            if (historyRow.PaymentMethod.HasValue)
+            {
+                amountStack.Children.Add(new TextBlock
+                {
+                    Text = historyRow.PaymentMethod.Value.ToString(),
+                    FontSize = 12,
+                    Foreground = Brush(117, 118, 135),
+                    HorizontalAlignment = HorizontalAlignment.Right
+                });
+            }
+
+            rightStack.Children.Add(amountStack);
         }
 
         Grid.SetColumn(rightStack, 2);
@@ -618,7 +633,8 @@ public sealed partial class LocalAdminPage : Page
         _activeTurnsText.Text = "0";
         _checkInsText.Text = "0";
         _availableBarbersText.Text = "0/0";
-        _cashText.Text = "$0";
+        _salesTotalText.Text = "$0";
+        _salesBreakdownText.Text = "Cash: $0 | Zelle: $0";
         _lastRefreshText.Text = "No local snapshot loaded";
         _waitingCountText.Text = "0 Waiting";
         _reassignTicketComboBox.ItemsSource = null;

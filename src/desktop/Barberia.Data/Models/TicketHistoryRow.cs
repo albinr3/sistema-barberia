@@ -9,6 +9,7 @@ public sealed record TicketHistoryRow(
     TurnSource Source,
     TurnState FinalState,
     string? AssignedBarberName,
+    string? AssignedBarberImagePath,
     DateTimeOffset CheckedInAt,
     DateTimeOffset? StartedAt,
     DateTimeOffset? ChargedAt,
@@ -17,4 +18,6 @@ public sealed record TicketHistoryRow(
     string? ServiceName,
     decimal? Amount,
     string? ReceiptNumber,
+    CustomerPaymentMethod? PaymentMethod,
+    string? PaymentReference,
     string? PaymentResultText);

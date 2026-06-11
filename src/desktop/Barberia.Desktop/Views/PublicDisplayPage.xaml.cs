@@ -46,8 +46,8 @@ public sealed partial class PublicDisplayPage : Page
         {
             Width = 36,
             Height = 36,
-            Margin = new Thickness(0, 16, 16, 0),
-            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(16, 16, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             Padding = new Thickness(0),
             Background = Brush(255, 255, 255),

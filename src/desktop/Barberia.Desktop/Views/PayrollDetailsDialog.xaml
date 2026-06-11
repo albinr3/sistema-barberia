@@ -8,7 +8,7 @@
     Background="#FFFFFFFF"
     CornerRadius="12"
     MaxWidth="800"
-    CloseButtonText="Cerrar">
+    CloseButtonText="Close">
 
     <ContentDialog.Resources>
         <x:Double x:Key="ContentDialogMaxWidth">800</x:Double>

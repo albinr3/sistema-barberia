@@ -41,7 +41,7 @@
             <Grid
                 x:Name="_contentGrid"
                 MaxWidth="1200"
-                Padding="48,48,48,72"
+                Padding="48,96,48,72"
                 HorizontalAlignment="Center">
                 <StackPanel Spacing="32">
 
@@ -135,9 +135,9 @@
                                     <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
                                         <FontIcon Glyph="&#xE710;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
                                     </Border>
-                                    <Button x:Name="_btnAddAdjustment" Content="+" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnAddAdjustmentClick" ToolTipService.ToolTip="Agregar ajuste" />
+                                    <Button x:Name="_btnAddAdjustment" Content="+" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnAddAdjustmentClick" ToolTipService.ToolTip="Add adjustment" />
                                 </Grid>
-                                <TextBlock Text="Ajustes Manuales" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
+                                <TextBlock Text="Manual Adjustments" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
                                 <TextBlock x:Name="_totalAdjustmentsText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollTextBrush}" Text="$0.00" />
                             </StackPanel>
                         </Border>
@@ -148,7 +148,7 @@
                                     <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
                                         <FontIcon Glyph="&#xE838;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
                                     </Border>
-                                    <Button x:Name="_btnRecalculate" Content="↻" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnRecalculateClick" ToolTipService.ToolTip="Recalcular Semana" />
+                                    <Button x:Name="_btnRecalculate" Content="↻" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnRecalculateClick" ToolTipService.ToolTip="Recalculate Week" />
                                 </Grid>
                                 <TextBlock Text="Net Pay (Total)" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
                                 <TextBlock x:Name="_totalToPayText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollPrimaryBrush}" Text="$0.00" />
@@ -172,8 +172,8 @@
                             </Grid.RowDefinitions>
 
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <CalendarDatePicker x:Name="_weekDatePicker" DateChanged="OnWeekDateChanged" HorizontalAlignment="Left" Width="200" PlaceholderText="Seleccionar periodo..." />
-                                <TextBlock x:Name="_periodRangeText" FontSize="16" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" VerticalAlignment="Center" Text="Cargando periodo..." />
+                                <CalendarDatePicker x:Name="_weekDatePicker" DateChanged="OnWeekDateChanged" HorizontalAlignment="Left" Width="200" PlaceholderText="Select period..." />
+                                <TextBlock x:Name="_periodRangeText" FontSize="16" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" VerticalAlignment="Center" Text="Loading period..." />
                             </StackPanel>
 
                             <TextBlock x:Name="_messageText" Grid.Column="1" FontSize="14" Foreground="{StaticResource PayrollMutedTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,16,0" />
@@ -223,7 +223,7 @@
                     <!-- Action Bar Bottom -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="16" Margin="0,16,0,0">
                         <StackPanel VerticalAlignment="Center" Spacing="4">
-                            <TextBlock Text="Referencia de nómina" FontSize="12" Foreground="{StaticResource PayrollMutedTextBrush}" FontWeight="Medium" />
+                            <TextBlock Text="Payroll Reference" FontSize="12" Foreground="{StaticResource PayrollMutedTextBrush}" FontWeight="Medium" />
                             <TextBox x:Name="_referenceTextBox" Width="200" IsEnabled="False" Text="N/A" />
                         </StackPanel>
                         <Button x:Name="_btnPay" Background="{StaticResource PayrollPrimaryBrush}" BorderThickness="0" CornerRadius="8" Padding="32,16" VerticalAlignment="Bottom" Click="OnPayClick">
@@ -239,8 +239,8 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- Top Right Menu Button -->
-        <Button Canvas.ZIndex="1" Width="48" Height="48" Margin="0,24,24,0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="{StaticResource PayrollSurfaceBrush}" BorderBrush="{StaticResource PayrollSurfaceContainerBrush}" Click="OnMenuButtonClick" ToolTipService.ToolTip="Show menu">
+        <!-- Top Left Menu Button -->
+        <Button Canvas.ZIndex="1" Width="48" Height="48" Margin="24,24,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Background="{StaticResource PayrollSurfaceBrush}" BorderBrush="{StaticResource PayrollSurfaceContainerBrush}" Click="OnMenuButtonClick" ToolTipService.ToolTip="Show menu">
             <FontIcon FontSize="20" Foreground="{StaticResource PayrollTextBrush}" Glyph="&#xE700;" />
         </Button>
     </Grid>

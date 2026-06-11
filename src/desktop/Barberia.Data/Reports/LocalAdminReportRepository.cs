@@ -91,8 +91,12 @@ public sealed class LocalAdminReportRepository
         using var command = CreateCommand();
         command.CommandText = """
             SELECT
-                COUNT(*) AS payment_count,
+                COUNT(*) AS total_payment_count,
                 COALESCE(SUM(amount_cents), 0) AS total_amount_cents,
+                COALESCE(SUM(CASE WHEN payment_method = 0 THEN amount_cents ELSE 0 END), 0) AS cash_amount_cents,
+                COALESCE(SUM(CASE WHEN payment_method = 1 THEN amount_cents ELSE 0 END), 0) AS zelle_amount_cents,
+                COALESCE(SUM(CASE WHEN payment_method = 0 THEN 1 ELSE 0 END), 0) AS cash_payment_count,
+                COALESCE(SUM(CASE WHEN payment_method = 1 THEN 1 ELSE 0 END), 0) AS zelle_payment_count,
                 COALESCE(SUM(CASE WHEN commission_cents IS NULL THEN 0 ELSE commission_cents END), 0) AS commission_cents,
                 COALESCE(SUM(CASE WHEN commission_cents IS NULL THEN 1 ELSE 0 END), 0) AS payments_missing_commission,
                 COALESCE(SUM(CASE WHEN cash_drawer_opened = 1 THEN 1 ELSE 0 END), 0) AS drawer_open_count,
@@ -107,16 +111,20 @@ public sealed class LocalAdminReportRepository
         using var reader = command.ExecuteReader();
         if (!reader.Read())
         {
-            return new CashReportSummary(0, 0, 0, 0, 0, DefaultCurrency);
+            return new CashReportSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, DefaultCurrency);
         }
 
         return new CashReportSummary(
             reader.GetInt32(0),
             reader.GetInt64(1),
             reader.GetInt64(2),
-            reader.GetInt32(3),
+            reader.GetInt64(3),
             reader.GetInt32(4),
-            reader.GetString(5));
+            reader.GetInt32(5),
+            reader.GetInt64(6),
+            reader.GetInt32(7),
+            reader.GetInt32(8),
+            reader.GetString(9));
     }
 
     private IReadOnlyList<BarberReportRow> LoadBarbers(DateTimeOffset fromInclusive, DateTimeOffset toExclusive)
@@ -168,9 +176,9 @@ public sealed class LocalAdminReportRepository
                 p.id,
                 p.turn_id,
                 COALESCE(t.display_ticket_number, 0) AS display_ticket_number,
-                COALESCE(t.ticket_number, 'Sin ticket') AS internal_ticket_number,
+                COALESCE(t.ticket_number, 'No ticket') AS internal_ticket_number,
                 p.barber_id,
-                COALESCE(b.display_name, 'Barbero local') AS barber_name,
+                COALESCE(b.display_name, 'Local barber') AS barber_name,
                 b.station_number,
                 s.name AS service_name,
                 p.service_price_cents,
@@ -181,7 +189,9 @@ public sealed class LocalAdminReportRepository
                 p.device_id,
                 p.receipt_number,
                 p.cash_drawer_opened,
-                p.commission_cents
+                p.commission_cents,
+                p.payment_method,
+                p.payment_reference
             FROM cash_payments p
             LEFT JOIN turns t ON t.id = p.turn_id
             LEFT JOIN barbers b ON b.id = p.barber_id
@@ -214,7 +224,9 @@ public sealed class LocalAdminReportRepository
                 reader.GetString(13),
                 reader.IsDBNull(14) ? null : reader.GetString(14),
                 reader.GetInt32(15) == 1,
-                reader.IsDBNull(16) ? null : reader.GetInt64(16)));
+                reader.IsDBNull(16) ? null : reader.GetInt64(16),
+                (Barberia.Data.Models.CustomerPaymentMethod)reader.GetInt32(17),
+                reader.IsDBNull(18) ? null : reader.GetString(18)));
         }
 
         return rows;

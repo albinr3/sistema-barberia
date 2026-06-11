@@ -78,11 +78,12 @@ public sealed class PayrollRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, period_id, barber_id, barber_name, station_number, closed_services_count, 
-                   cash_generated_cents, commission_cents, adjustments_cents, total_cents
-            FROM payroll_lines
-            WHERE period_id = $period_id
-            ORDER BY barber_name;
+            SELECT l.id, l.period_id, l.barber_id, l.barber_name, l.station_number, l.closed_services_count, 
+                   l.cash_generated_cents, l.commission_cents, l.adjustments_cents, l.total_cents, b.profile_image_path
+            FROM payroll_lines l
+            LEFT JOIN barbers b ON l.barber_id = b.id
+            WHERE l.period_id = $period_id
+            ORDER BY l.barber_name;
             """;
         command.AddText("$period_id", periodId.ToString());
 
@@ -95,6 +96,7 @@ public sealed class PayrollRepository
                 Guid.Parse(reader.GetString(1)),
                 Guid.Parse(reader.GetString(2)),
                 reader.GetString(3),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
                 reader.IsDBNull(4) ? null : reader.GetInt32(4),
                 reader.GetInt32(5),
                 reader.GetInt64(6),
@@ -223,7 +225,7 @@ public sealed class PayrollRepository
         command.AddText("$paid_at", period.PaidAt?.ToString("O"));
         command.ExecuteNonQuery();
 
-        // Eliminar lineas previas si es update de Draft
+        // Delete previous lines if it is a Draft update
         using var deleteLinesCmd = _connection.CreateCommand();
         deleteLinesCmd.Transaction = _transaction;
         deleteLinesCmd.CommandText = "DELETE FROM payroll_lines WHERE period_id = $period_id";
@@ -249,7 +251,7 @@ public sealed class PayrollRepository
             lineCmd.AddText("$barber_name", line.BarberName);
             if (line.StationNumber.HasValue) lineCmd.AddInteger("$station_number", line.StationNumber.Value); else lineCmd.Parameters.AddWithValue("$station_number", DBNull.Value);
             lineCmd.AddInteger("$closed_services_count", line.ClosedServicesCount);
-            lineCmd.AddInteger("$cash_generated_cents", line.CashGeneratedCents);
+            lineCmd.AddInteger("$cash_generated_cents", line.SalesGeneratedCents);
             lineCmd.AddInteger("$commission_cents", line.CommissionCents);
             lineCmd.AddInteger("$adjustments_cents", line.AdjustmentsCents);
             lineCmd.AddInteger("$total_cents", line.TotalCents);
@@ -264,7 +266,7 @@ public sealed class PayrollRepository
         command.CommandText = """
             SELECT p.id, p.turn_id, p.barber_id, p.service_id, p.amount_cents, p.currency, p.collected_at,
                    p.device_id, p.receipt_number, p.cash_drawer_opened, p.commission_cents,
-                   p.service_price_cents, p.additional_cents
+                   p.service_price_cents, p.additional_cents, p.payment_method, p.payment_reference
             FROM cash_payments p
             WHERE p.collected_at >= $start_date AND p.collected_at < $end_date
               AND p.commission_cents IS NOT NULL
@@ -294,7 +296,9 @@ public sealed class PayrollRepository
                 reader.GetInt32(9) == 1,
                 reader.IsDBNull(10) ? null : reader.GetInt64(10),
                 reader.IsDBNull(11) ? null : reader.GetInt64(11),
-                reader.GetInt64(12)
+                reader.GetInt64(12),
+                (CustomerPaymentMethod)reader.GetInt32(13),
+                reader.IsDBNull(14) ? null : reader.GetString(14)
             ));
         }
         return list;
@@ -310,7 +314,7 @@ public sealed class PayrollRepository
             command.CommandText = """
                 SELECT p.id, p.turn_id, p.barber_id, p.service_id, p.amount_cents, p.currency, p.collected_at,
                        p.device_id, p.receipt_number, p.cash_drawer_opened, p.commission_cents,
-                       p.service_price_cents, p.additional_cents
+                       p.service_price_cents, p.additional_cents, p.payment_method, p.payment_reference
                 FROM cash_payments p
                 JOIN payroll_payment_items i ON p.id = i.payment_id
                 WHERE i.period_id = $period_id AND i.barber_id = $barber_id
@@ -324,7 +328,7 @@ public sealed class PayrollRepository
             command.CommandText = """
                 SELECT p.id, p.turn_id, p.barber_id, p.service_id, p.amount_cents, p.currency, p.collected_at,
                        p.device_id, p.receipt_number, p.cash_drawer_opened, p.commission_cents,
-                       p.service_price_cents, p.additional_cents
+                       p.service_price_cents, p.additional_cents, p.payment_method, p.payment_reference
                 FROM cash_payments p
                 WHERE p.collected_at >= $start_date AND p.collected_at < $end_date
                   AND p.barber_id = $barber_id
@@ -358,7 +362,9 @@ public sealed class PayrollRepository
                 reader.GetInt32(9) == 1,
                 reader.IsDBNull(10) ? null : reader.GetInt64(10),
                 reader.IsDBNull(11) ? null : reader.GetInt64(11),
-                reader.GetInt64(12)
+                reader.GetInt64(12),
+                (CustomerPaymentMethod)reader.GetInt32(13),
+                reader.IsDBNull(14) ? null : reader.GetString(14)
             ));
         }
         return list;

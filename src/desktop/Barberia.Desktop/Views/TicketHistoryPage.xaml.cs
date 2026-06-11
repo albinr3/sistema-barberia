@@ -3,13 +3,22 @@ using Barberia.Data;
 using Barberia.Data.Models;
 using Barberia.Data.Repositories;
 using Barberia.Desktop.Services;
+using Barberia.Desktop.Shell;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Windows.Graphics.Imaging;
 using Windows.UI.Text;
 
 namespace Barberia.Desktop.Views;
@@ -168,17 +177,19 @@ public sealed partial class TicketHistoryPage : Page
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
         grid.ColumnDefinitions.Add(new ColumnDefinition());
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(76) });
 
         AddCell(grid, CreateText(historyRow.DisplayTicketNumber.ToString(), 14, FontWeights.SemiBold, Brush(0, 19, 135)), 0);
         AddCell(grid, CreateDateCell(historyRow.CheckedInAt), 1);
         AddCell(grid, CreateText(customerName, 14, FontWeights.Normal, Brush(26, 28, 30)), 2);
-        AddCell(grid, CreateBarberCell(barberName), 3);
+        AddCell(grid, CreateBarberCell(barberName, historyRow.AssignedBarberImagePath), 3);
         AddCell(grid, CreateText(serviceName, 14, FontWeights.Normal, Brush(68, 70, 85)), 4);
         AddCell(grid, CreateText(FormatAmount(historyRow.Amount), 15, FontWeights.SemiBold, Brush(26, 28, 30), HorizontalAlignment.Right), 5);
-        AddCell(grid, CreateTextBadge(FormatTurnState(historyRow.FinalState), GetTurnBackground(historyRow.FinalState), GetTurnForeground(historyRow.FinalState)), 6);
-        AddCell(grid, CreateActionIcon(), 7);
+        AddCell(grid, CreateText(historyRow.PaymentMethod?.ToString() ?? "-", 14, FontWeights.Normal, Brush(68, 70, 85), HorizontalAlignment.Right), 6);
+        AddCell(grid, CreateTextBadge(FormatTurnState(historyRow.FinalState), GetTurnBackground(historyRow.FinalState), GetTurnForeground(historyRow.FinalState)), 7);
+        AddCell(grid, CreateActionIcon(), 8);
 
         var row = new Border
         {
@@ -275,7 +286,7 @@ public sealed partial class TicketHistoryPage : Page
         };
     }
 
-    private static FrameworkElement CreateBarberCell(string barberName)
+    private static FrameworkElement CreateBarberCell(string barberName, string? imagePath)
     {
         return new StackPanel
         {
@@ -284,19 +295,7 @@ public sealed partial class TicketHistoryPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             Children =
             {
-                new Border
-                {
-                    Width = 24,
-                    Height = 24,
-                    CornerRadius = new CornerRadius(12),
-                    Background = Brush(226, 226, 229),
-                    Child = new FontIcon
-                    {
-                        Glyph = "\uE77B",
-                        FontSize = 12,
-                        Foreground = Brush(68, 70, 85)
-                    }
-                },
+                CreateProfileAvatar(barberName, imagePath, 24),
                 CreateText(barberName, 14, FontWeights.Normal, Brush(26, 28, 30))
             }
         };
@@ -588,6 +587,86 @@ public sealed partial class TicketHistoryPage : Page
 
         btn.Click += (s, e) => onClick();
         return btn;
+    }
+
+    private static Grid CreateProfileAvatar(string displayName, string? relativeImagePath, double size)
+    {
+        var avatar = new Grid
+        {
+            Width = size,
+            Height = size,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        avatar.Children.Add(new Ellipse
+        {
+            Fill = Brush(243, 243, 246),
+            Stroke = Brush(226, 230, 235),
+            StrokeThickness = 1
+        });
+
+        avatar.Children.Add(new TextBlock
+        {
+            Text = GetInitials(displayName),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = size >= 50 ? 18 : (size >= 32 ? 14 : 10),
+            FontWeight = FontWeights.Bold,
+            Foreground = Brush(0, 19, 135)
+        });
+
+        var imagePath = ProfileImageCatalog.ResolveImagePath(relativeImagePath);
+        if (imagePath is not null)
+        {
+            var imageBrush = new ImageBrush
+            {
+                Stretch = Stretch.UniformToFill
+            };
+            var imageCircle = new Ellipse
+            {
+                Fill = imageBrush,
+                Stroke = Brush(255, 255, 255),
+                StrokeThickness = 1,
+                Visibility = Visibility.Collapsed
+            };
+            avatar.Children.Add(imageCircle);
+            _ = LoadProfileImageAsync(imageBrush, imageCircle, imagePath);
+        }
+
+        return avatar;
+    }
+
+    private static string GetInitials(string displayName)
+    {
+        var parts = displayName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0]));
+
+        var initials = string.Concat(parts);
+        return string.IsNullOrWhiteSpace(initials) ? "?" : initials;
+    }
+
+    private static async Task LoadProfileImageAsync(ImageBrush imageBrush, UIElement imageElement, string fullPath)
+    {
+        try
+        {
+            await using var fileStream = File.OpenRead(fullPath);
+            using var imageStream = fileStream.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(imageStream);
+            var bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            var source = new SoftwareBitmapSource();
+            await source.SetBitmapAsync(bitmap);
+            imageBrush.ImageSource = source;
+            imageElement.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            imageBrush.ImageSource = null;
+            imageElement.Visibility = Visibility.Collapsed;
+        }
     }
 
     private record BarberFilterItem(Guid? Id, string DisplayName);

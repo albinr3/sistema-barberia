@@ -40,7 +40,7 @@
                 Glyph="&#xE700;" />
         </Button>
         <ScrollViewer
-            Padding="48"
+            Padding="48,96,48,48"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <StackPanel

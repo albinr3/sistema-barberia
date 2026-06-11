@@ -5,6 +5,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Barberia.Desktop;
 
@@ -19,8 +20,21 @@ public sealed partial class MainWindow : Window
         _modules = ShellModuleCatalog.Modules.ToDictionary(module => module.Key);
 
         InitializeComponent();
+        LoadBrandLogo();
         CreateNavigationButtons();
         SelectInitialModule();
+    }
+
+    private void LoadBrandLogo()
+    {
+        var logoPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "logo (2).png");
+        if (!System.IO.File.Exists(logoPath))
+        {
+            _brandFallbackText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        _brandLogo.Source = new BitmapImage(new Uri(logoPath));
     }
 
     private void CreateNavigationButtons()

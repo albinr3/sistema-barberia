@@ -84,6 +84,8 @@ public sealed class LocalDatabaseInitializer
                 commission_cents INTEGER NULL,
                 service_price_cents INTEGER NULL,
                 additional_cents INTEGER NOT NULL DEFAULT 0,
+                payment_method INTEGER NOT NULL DEFAULT 0,
+                payment_reference TEXT NULL,
                 FOREIGN KEY (turn_id) REFERENCES turns(id),
                 FOREIGN KEY (barber_id) REFERENCES barbers(id),
                 FOREIGN KEY (service_id) REFERENCES services(id)
@@ -222,6 +224,8 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "cash_payments", "service_id", "TEXT NULL");
         EnsureColumn(connection, "cash_payments", "service_price_cents", "INTEGER NULL");
         EnsureColumn(connection, "cash_payments", "additional_cents", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "cash_payments", "payment_method", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "cash_payments", "payment_reference", "TEXT NULL");
         NormalizeBarberStations(connection);
         EnsureActiveStationIndex(connection);
     }

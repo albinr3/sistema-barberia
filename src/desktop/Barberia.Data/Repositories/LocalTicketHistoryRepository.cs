@@ -37,7 +37,10 @@ public sealed class LocalTicketHistoryRepository
                 t.cancelled_at,
                 s.name,
                 p.amount_cents,
-                p.receipt_number
+                p.receipt_number,
+                b.profile_image_path,
+                p.payment_method,
+                p.payment_reference
             FROM turns t
             LEFT JOIN barbers b ON t.assigned_barber_id = b.id
             LEFT JOIN cash_payments p ON t.id = p.turn_id
@@ -120,7 +123,10 @@ public sealed class LocalTicketHistoryRepository
                 t.cancelled_at,
                 s.name,
                 p.amount_cents,
-                p.receipt_number
+                p.receipt_number,
+                b.profile_image_path,
+                p.payment_method,
+                p.payment_reference
             FROM turns t
             LEFT JOIN barbers b ON t.assigned_barber_id = b.id
             LEFT JOIN cash_payments p ON t.id = p.turn_id
@@ -171,7 +177,27 @@ public sealed class LocalTicketHistoryRepository
         {
             var amountCents = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12);
             decimal? amount = amountCents.HasValue ? amountCents.Value / 100m : null;
-            string? paymentResultText = amount.HasValue ? $"Paid {amount.Value:C} in cash" : null;
+            
+            CustomerPaymentMethod? paymentMethod = null;
+            if (!reader.IsDBNull(15))
+            {
+                paymentMethod = (CustomerPaymentMethod)reader.GetInt32(15);
+            }
+            
+            string? paymentReference = reader.IsDBNull(16) ? null : reader.GetString(16);
+
+            string? paymentResultText = null;
+            if (amount.HasValue)
+            {
+                if (paymentMethod == CustomerPaymentMethod.Zelle)
+                {
+                    paymentResultText = $"Paid {amount.Value:C} by Zelle" + (string.IsNullOrWhiteSpace(paymentReference) ? "" : $" (Ref: {paymentReference})");
+                }
+                else
+                {
+                    paymentResultText = $"Paid {amount.Value:C} in cash";
+                }
+            }
             
             rows.Add(new TicketHistoryRow(
                 reader.GetString(0),
@@ -180,6 +206,7 @@ public sealed class LocalTicketHistoryRepository
                 (TurnSource)reader.GetInt32(3),
                 (TurnState)reader.GetInt32(4),
                 reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(14) ? null : reader.GetString(14),
                 DateTimeOffset.Parse(reader.GetString(6)),
                 reader.IsDBNull(7) ? null : DateTimeOffset.Parse(reader.GetString(7)),
                 reader.IsDBNull(8) ? null : DateTimeOffset.Parse(reader.GetString(8)),
@@ -188,6 +215,8 @@ public sealed class LocalTicketHistoryRepository
                 reader.IsDBNull(11) ? null : reader.GetString(11),
                 amount,
                 reader.IsDBNull(13) ? null : reader.GetString(13),
+                paymentMethod,
+                paymentReference,
                 paymentResultText
             ));
         }

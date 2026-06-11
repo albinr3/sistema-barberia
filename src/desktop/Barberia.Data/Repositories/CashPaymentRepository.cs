@@ -27,11 +27,11 @@ public sealed class CashPaymentRepository
             INSERT INTO cash_payments (
                 id, turn_id, barber_id, service_id, amount_cents, currency, collected_at,
                 device_id, receipt_number, cash_drawer_opened, commission_cents,
-                service_price_cents, additional_cents
+                service_price_cents, additional_cents, payment_method, payment_reference
             ) VALUES (
                 $id, $turn_id, $barber_id, $service_id, $amount_cents, $currency, $collected_at,
                 $device_id, $receipt_number, $cash_drawer_opened, $commission_cents,
-                $service_price_cents, $additional_cents
+                $service_price_cents, $additional_cents, $payment_method, $payment_reference
             );
             """;
         command.AddText("$id", payment.Id.ToString());
@@ -47,6 +47,8 @@ public sealed class CashPaymentRepository
         command.Parameters.AddWithValue("$commission_cents", payment.CommissionCents is null ? DBNull.Value : payment.CommissionCents);
         command.Parameters.AddWithValue("$service_price_cents", payment.ServicePriceCents is null ? DBNull.Value : payment.ServicePriceCents);
         command.AddInteger("$additional_cents", payment.AdditionalCents);
+        command.Parameters.AddWithValue("$payment_method", (int)payment.PaymentMethod);
+        command.Parameters.AddWithValue("$payment_reference", payment.PaymentReference is null ? DBNull.Value : payment.PaymentReference);
         command.ExecuteNonQuery();
     }
 
@@ -57,7 +59,7 @@ public sealed class CashPaymentRepository
         command.CommandText = """
             SELECT id, turn_id, barber_id, service_id, amount_cents, currency, collected_at,
                    device_id, receipt_number, cash_drawer_opened, commission_cents,
-                   service_price_cents, additional_cents
+                   service_price_cents, additional_cents, payment_method, payment_reference
             FROM cash_payments
             WHERE turn_id = $turn_id
             ORDER BY collected_at;
@@ -81,7 +83,9 @@ public sealed class CashPaymentRepository
                 reader.GetInt32(9) == 1,
                 reader.IsDBNull(10) ? null : reader.GetInt64(10),
                 reader.IsDBNull(11) ? null : reader.GetInt64(11),
-                reader.GetInt64(12)));
+                reader.GetInt64(12),
+                (CustomerPaymentMethod)reader.GetInt32(13),
+                reader.IsDBNull(14) ? null : reader.GetString(14)));
         }
 
         return payments;

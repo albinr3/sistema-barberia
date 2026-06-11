@@ -74,7 +74,7 @@ public sealed class CashBoxCloseService
             barberStationCode);
     }
 
-    public CashBoxDepositResult CloseService(string ticketNumber, Guid serviceId, decimal additionalAmount)
+    public CashBoxDepositResult CloseService(string ticketNumber, Guid serviceId, decimal additionalAmount, CustomerPaymentMethod paymentMethod, string? paymentReference)
     {
         if (string.IsNullOrWhiteSpace(ticketNumber))
         {
@@ -152,16 +152,22 @@ public sealed class CashBoxCloseService
                 commission,
                 Currency,
                 now,
-                deviceId));
+                deviceId,
+                paymentMethod.ToString()));
             if (!printResult.Succeeded)
             {
                 throw new InvalidOperationException($"Could not print receipt: {printResult.ErrorMessage}");
             }
 
-            var drawerResult = _cashDrawer.Open(deviceId);
-            if (!drawerResult.Succeeded)
+            var cashDrawerOpened = false;
+            if (paymentMethod == CustomerPaymentMethod.Cash)
             {
-                throw new InvalidOperationException($"Could not open cash drawer: {drawerResult.ErrorMessage}");
+                var drawerResult = _cashDrawer.Open(deviceId);
+                if (!drawerResult.Succeeded)
+                {
+                    throw new InvalidOperationException($"Could not open cash drawer: {drawerResult.ErrorMessage}");
+                }
+                cashDrawerOpened = true;
             }
 
             var barbers = barberRepository
@@ -185,10 +191,12 @@ public sealed class CashBoxCloseService
                 now,
                 deviceId,
                 receiptNumber,
-                cashDrawerOpened: true,
+                cashDrawerOpened: cashDrawerOpened,
                 commission,
                 servicePrice,
-                additionalAmount));
+                additionalAmount,
+                paymentMethod,
+                paymentReference));
             turnRepository.MarkCompleted(turn.Id, now);
             barberRepository.ApplyCashBoxClose(
                 closeResult.BarberId,
@@ -224,7 +232,9 @@ public sealed class CashBoxCloseService
                     commissionRate = barber.CommissionRate,
                     receiptNumber,
                     receiptPrinted = true,
-                    cashDrawerOpened = true
+                    cashDrawerOpened = cashDrawerOpened,
+                    paymentMethod = paymentMethod.ToString(),
+                    paymentReference
                 }),
                 deviceId));
 
@@ -268,7 +278,7 @@ public sealed class CashBoxCloseService
                 commission,
                 receiptNumber,
                 now,
-                "Service closed locally. Deposit cash into cash drawer.");
+                paymentMethod == CustomerPaymentMethod.Zelle ? "Service closed by Zelle. Payment registered." : "Service closed locally. Deposit cash into cash drawer.");
         });
 
         return result ?? throw new InvalidOperationException("Could not close service at cash box.");
@@ -289,7 +299,7 @@ public sealed class CashBoxCloseService
             .ToList();
 
         var job = new DayReportPrintJob(
-            report.Cash.TotalAmountCents / 100m,
+            report.Cash.TotalSalesCents / 100m,
             barberReports,
             now,
             deviceId);

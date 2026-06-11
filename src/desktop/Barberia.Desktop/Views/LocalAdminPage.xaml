@@ -62,7 +62,7 @@
             VerticalScrollMode="Enabled">
         <Grid
             MaxWidth="1200"
-            Padding="48,48,48,72"
+            Padding="48,96,48,72"
             Background="Transparent"
             HorizontalAlignment="Center">
             <StackPanel Spacing="32">
@@ -163,13 +163,20 @@
                                     Foreground="White"
                                     Glyph="&#xE8C7;" />
                             </Border>
-                            <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Cash Today" />
-                            <TextBlock
-                                x:Name="_cashText"
-                                FontSize="38"
-                                FontWeight="Bold"
-                                Foreground="{StaticResource AdminPrimaryBrush}"
-                                TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource AdminLabelStyle}" Text="Sales Today" />
+                            <StackPanel Spacing="4">
+                                <TextBlock
+                                    x:Name="_salesTotalText"
+                                    FontSize="34"
+                                    FontWeight="Bold"
+                                    Foreground="{StaticResource AdminPrimaryBrush}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    x:Name="_salesBreakdownText"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource AdminMutedTextBrush}" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -478,8 +485,8 @@
             Canvas.ZIndex="1"
             Width="48"
             Height="48"
-            Margin="0,24,24,0"
-            HorizontalAlignment="Right"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Background="{StaticResource AdminSurfaceBrush}"
             BorderBrush="{StaticResource AdminSurfaceContainerBrush}"

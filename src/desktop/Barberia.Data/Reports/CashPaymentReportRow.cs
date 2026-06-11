@@ -1,3 +1,5 @@
+using Barberia.Data.Models;
+
 namespace Barberia.Data.Reports;
 
 public sealed record CashPaymentReportRow(
@@ -17,7 +19,9 @@ public sealed record CashPaymentReportRow(
     string DeviceId,
     string? ReceiptNumber,
     bool CashDrawerOpened,
-    long? CommissionCents)
+    long? CommissionCents,
+    CustomerPaymentMethod PaymentMethod,
+    string? PaymentReference)
 {
     public string? BarberStationCode => BarberStationNumber is null ? null : $"B-{BarberStationNumber.Value}";
 
@@ -27,14 +31,14 @@ public sealed record CashPaymentReportRow(
     {
         get
         {
-            var name = string.IsNullOrWhiteSpace(ServiceName) ? "Servicio no registrado" : ServiceName;
+            var name = string.IsNullOrWhiteSpace(ServiceName) ? "Service not registered" : ServiceName;
             if (ServicePriceCents is null)
             {
-                return AdditionalCents > 0 ? $"{name} - adicional {AdditionalCents / 100m:0.00}" : name;
+                return AdditionalCents > 0 ? $"{name} - additional {AdditionalCents / 100m:0.00}" : name;
             }
 
             return AdditionalCents > 0
-                ? $"{name} {ServicePriceCents.Value / 100m:0.00} + adicional {AdditionalCents / 100m:0.00}"
+                ? $"{name} {ServicePriceCents.Value / 100m:0.00} + additional {AdditionalCents / 100m:0.00}"
                 : $"{name} {ServicePriceCents.Value / 100m:0.00}";
         }
     }

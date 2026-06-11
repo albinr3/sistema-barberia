@@ -10,8 +10,8 @@
             Canvas.ZIndex="1"
             Width="48"
             Height="48"
-            Margin="0,24,24,0"
-            HorizontalAlignment="Right"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Background="{StaticResource SurfaceBrush}"
             BorderBrush="{StaticResource BorderSubtleBrush}"
@@ -25,10 +25,10 @@
 
         <ScrollViewer
             x:Name="_screenScrollViewer"
-            Padding="48,48,48,32">
+            Padding="48,96,48,32">
             <StackPanel
                 MaxWidth="1200"
-                HorizontalAlignment="Stretch"
+                HorizontalAlignment="Center"
                 Spacing="24">
                 <StackPanel Spacing="4">
                     <TextBlock
@@ -208,6 +208,25 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
+
+                                    <StackPanel Spacing="12">
+                                        <TextBlock
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Foreground="#FF444655"
+                                            Text="Payment Method" />
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox x:Name="_paymentMethodComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnPaymentMethodSelectionChanged">
+                                                <ComboBoxItem Content="Cash" Tag="0" IsSelected="True" />
+                                                <ComboBoxItem Content="Zelle" Tag="1" />
+                                            </ComboBox>
+                                            <TextBox x:Name="_paymentReferenceInput" Grid.Column="1" PlaceholderText="Zelle Reference (Optional)" Visibility="Collapsed" />
+                                        </Grid>
+                                    </StackPanel>
 
                                     <StackPanel Spacing="12">
                                         <Grid>

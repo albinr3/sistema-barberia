@@ -12,7 +12,8 @@ public sealed record CashReceiptPrintJob(
     decimal Commission,
     string Currency,
     DateTimeOffset CollectedAt,
-    string DeviceId)
+    string DeviceId,
+    string PaymentMethod = "Cash")
 {
     public CashReceiptPrintJob(
         string receiptNumber,
@@ -23,20 +24,22 @@ public sealed record CashReceiptPrintJob(
         decimal commission,
         string currency,
         DateTimeOffset collectedAt,
-        string deviceId)
+        string deviceId,
+        string paymentMethod = "Cash")
         : this(
             receiptNumber,
             displayTicketNumber,
             barberName,
             barberStationCode,
-            "Servicio no registrado",
+            "Service not registered",
             amount,
             0,
             amount,
             commission,
             currency,
             collectedAt,
-            deviceId)
+            deviceId,
+            paymentMethod)
     {
     }
 }

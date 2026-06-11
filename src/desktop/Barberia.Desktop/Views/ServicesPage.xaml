@@ -41,7 +41,7 @@
         </Button>
 
         <ScrollViewer
-            Padding="48"
+            Padding="48,96,48,48"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <StackPanel
@@ -272,7 +272,7 @@
                         <CheckBox
                             x:Name="_serviceActiveCheckBox"
                             MinHeight="40"
-                            Content="Active in autocaja"
+                            Content="Active in Cash Box"
                             IsChecked="True" />
                     </StackPanel>
 

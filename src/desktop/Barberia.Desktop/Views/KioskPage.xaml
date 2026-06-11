@@ -41,29 +41,13 @@
                 MinHeight="64"
                 Padding="48,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition />
                 </Grid.ColumnDefinitions>
 
-                <Grid VerticalAlignment="Center">
-                    <Image
-                        x:Name="_brandLogo"
-                        MaxWidth="230"
-                        Height="42"
-                        HorizontalAlignment="Left"
-                        Stretch="Uniform" />
-                    <TextBlock
-                        x:Name="_brandFallbackText"
-                        VerticalAlignment="Center"
-                        FontSize="24"
-                        FontWeight="Bold"
-                        Foreground="{StaticResource KioskPrimaryBrush}"
-                        Text="Master Clips"
-                        Visibility="Collapsed" />
-                </Grid>
-
                 <Button
-                    Grid.Column="1"
+                    Grid.Column="0"
+                    Margin="0,0,16,0"
                     Width="44"
                     Height="44"
                     Click="OnHelpButtonClick"
@@ -75,8 +59,26 @@
                     <FontIcon
                         FontSize="22"
                         Foreground="{StaticResource KioskMutedTextBrush}"
-                        Glyph="&#xE897;" />
+                        Glyph="&#xE700;" />
                 </Button>
+
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <Image
+                        x:Name="_brandLogo"
+                        MaxWidth="230"
+                        Height="42"
+                        HorizontalAlignment="Center"
+                        Stretch="Uniform" />
+                    <TextBlock
+                        x:Name="_brandFallbackText"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="24"
+                        FontWeight="Bold"
+                        Foreground="{StaticResource KioskPrimaryBrush}"
+                        Text="Master Clips"
+                        Visibility="Collapsed" />
+                </Grid>
             </Grid>
         </Border>
 

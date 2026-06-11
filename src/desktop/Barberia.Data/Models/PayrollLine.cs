@@ -5,9 +5,10 @@ public sealed record PayrollLine(
     Guid PeriodId,
     Guid BarberId,
     string BarberName,
+    string? BarberImagePath,
     int? StationNumber,
     int ClosedServicesCount,
-    long CashGeneratedCents,
+    long SalesGeneratedCents,
     long CommissionCents,
     long AdjustmentsCents,
     long TotalCents);

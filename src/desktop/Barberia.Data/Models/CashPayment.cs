@@ -12,8 +12,10 @@ public sealed record CashPayment(
     string? ReceiptNumber,
     bool CashDrawerOpened,
     long? CommissionCents,
-    long? ServicePriceCents,
-    long AdditionalCents)
+    long? ServicePriceCents = null,
+    long AdditionalCents = 0,
+    CustomerPaymentMethod PaymentMethod = CustomerPaymentMethod.Cash,
+    string? PaymentReference = null)
 {
     public CashPayment(
         Guid id,
@@ -25,7 +27,9 @@ public sealed record CashPayment(
         string deviceId,
         string? receiptNumber,
         bool cashDrawerOpened,
-        long? commissionCents)
+        long? commissionCents,
+        CustomerPaymentMethod paymentMethod = CustomerPaymentMethod.Cash,
+        string? paymentReference = null)
         : this(
             id,
             turnId,
@@ -39,7 +43,9 @@ public sealed record CashPayment(
             cashDrawerOpened,
             commissionCents,
             null,
-            0)
+            0,
+            paymentMethod,
+            paymentReference)
     {
     }
 
@@ -53,7 +59,9 @@ public sealed record CashPayment(
         string deviceId,
         string? receiptNumber,
         bool cashDrawerOpened,
-        decimal? commission)
+        decimal? commission,
+        CustomerPaymentMethod paymentMethod = CustomerPaymentMethod.Cash,
+        string? paymentReference = null)
         : this(
             id,
             turnId,
@@ -67,7 +75,9 @@ public sealed record CashPayment(
             cashDrawerOpened,
             commission,
             null,
-            0)
+            0,
+            paymentMethod,
+            paymentReference)
     {
     }
 
@@ -84,7 +94,9 @@ public sealed record CashPayment(
         bool cashDrawerOpened,
         decimal? commission,
         decimal? servicePrice,
-        decimal additional)
+        decimal additional,
+        CustomerPaymentMethod paymentMethod = CustomerPaymentMethod.Cash,
+        string? paymentReference = null)
         : this(
             id,
             turnId,
@@ -98,7 +110,9 @@ public sealed record CashPayment(
             cashDrawerOpened,
             commission.HasValue ? Money.ToCents(commission.Value) : null,
             servicePrice.HasValue ? Money.ToCents(servicePrice.Value) : null,
-            Money.ToCents(additional))
+            Money.ToCents(additional),
+            paymentMethod,
+            paymentReference)
     {
     }
 }

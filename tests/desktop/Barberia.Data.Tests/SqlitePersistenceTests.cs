@@ -791,8 +791,8 @@ public sealed class SqlitePersistenceTests
         Assert.Equal(2, snapshot.Operations.CompletedServices);
         Assert.Equal(1, snapshot.Operations.ActiveTurns);
         Assert.Equal(1, snapshot.Operations.NoShows);
-        Assert.Equal(2, snapshot.Cash.PaymentCount);
-        Assert.Equal(6500, snapshot.Cash.TotalAmountCents);
+        Assert.Equal(2, snapshot.Cash.TotalPaymentCount);
+        Assert.Equal(6500, snapshot.Cash.TotalSalesCents);
         Assert.Equal(500, snapshot.Cash.CommissionCents);
         Assert.Equal(1, snapshot.Cash.PaymentsMissingCommission);
         Assert.Equal(2, snapshot.Cash.CashDrawerOpenCount);
