@@ -130,7 +130,7 @@
                                 <StackPanel Spacing="16">
                                     <TextBlock Style="{StaticResource PayrollTitleStyle}" Text="Acciones" />
                                     <TextBlock x:Name="_lblReferenceWeek" Text="Semana de referencia:" Style="{StaticResource PayrollLabelStyle}" TextWrapping="Wrap" />
-                                    <DatePicker x:Name="_weekDatePicker" DateChanged="OnWeekDateChanged" HorizontalAlignment="Stretch" />
+                                    <CalendarDatePicker x:Name="_weekDatePicker" DateChanged="OnWeekDateChanged" HorizontalAlignment="Stretch" />
                                     <Button x:Name="_btnRecalculate" Content="Generar / Recalcular Semana" HorizontalAlignment="Stretch" Click="OnRecalculateClick" />
                                     <Button x:Name="_btnAddAdjustment" Content="Agregar Ajuste Manual" HorizontalAlignment="Stretch" Click="OnAddAdjustmentClick" />
                                 </StackPanel>

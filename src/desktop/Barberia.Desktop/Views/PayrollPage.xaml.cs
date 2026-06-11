@@ -175,14 +175,17 @@ public sealed partial class PayrollPage : Page
         });
     }
 
-    private void OnWeekDateChanged(object sender, DatePickerValueChangedEventArgs args)
+    private void OnWeekDateChanged(object sender, CalendarDatePickerDateChangedEventArgs args)
     {
         if (_isInitializing)
         {
             return;
         }
 
-        LoadWeek(args.NewDate);
+        if (args.NewDate.HasValue)
+        {
+            LoadWeek(args.NewDate.Value);
+        }
     }
 
     private void LoadWeek(DateTimeOffset reference)
