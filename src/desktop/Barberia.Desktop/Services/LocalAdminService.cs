@@ -102,15 +102,33 @@ public sealed class LocalAdminService
                 throw new InvalidOperationException("A called or in-service barber cannot be deactivated.");
             }
 
-            if (normalizedStationNumber is int activeStationNumber)
+            if (!isActive)
+            {
+                normalizedStationNumber = null;
+            }
+
+            if (isActive && normalizedStationNumber is int activeStationNumber)
             {
                 EnsureStationAvailable(barberRepository, barberId, activeStationNumber);
+            }
+
+            var newState = existingState;
+            if (isActive)
+            {
+                if (existing is not null && !existing.IsActive)
+                {
+                    newState = BarberState.Available;
+                }
+            }
+            else
+            {
+                newState = BarberState.Offline;
             }
 
             var barber = new Barber(
                 barberId ?? Guid.NewGuid(),
                 normalizedName,
-                isActive ? existingState : BarberState.Offline,
+                newState,
                 existing?.ClientsServedToday ?? 0,
                 rotationOrder,
                 existing?.CheckedInAt,
@@ -353,7 +371,7 @@ public sealed class LocalAdminService
 
     public void ActivateBarber(Guid barberId)
     {
-        UpdateBarberActiveState(barberId, isActive: true);
+        throw new InvalidOperationException("Reactivate the barber from the barber editor and assign an available station.");
     }
 
     public void DeactivateBarber(Guid barberId)
@@ -730,16 +748,7 @@ public sealed class LocalAdminService
                 throw new InvalidOperationException("A called or in-service barber cannot be deactivated.");
             }
 
-            var targetStationNumber = barber.StationNumber;
-            if (isActive)
-            {
-                if (targetStationNumber is null)
-                {
-                    throw new InvalidOperationException("Active barbers require a fixed station number.");
-                }
-                EnsureStationAvailable(barberRepository, barberId, targetStationNumber.Value);
-            }
-
+            int? targetStationNumber = null;
             barberRepository.SetActive(barberId, isActive, now, targetStationNumber);
             if (!isActive && barber.State != BarberState.Offline)
             {
@@ -805,7 +814,7 @@ public sealed class LocalAdminService
     {
         if (isActive && stationNumber is null)
         {
-            throw new InvalidOperationException("Station code is required for active barbers.");
+            throw new InvalidOperationException("Write a station number before activating this barber.");
         }
 
         if (stationNumber <= 0)

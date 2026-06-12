@@ -32,7 +32,7 @@ public sealed class KioskCheckInService
         using var connection = _connectionFactory.OpenConnection();
         var barbers = new LocalBarberRepository(connection)
             .ListAll()
-            .Where(barber => barber.IsActive)
+            .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
             .ToArray();
 
         return new KioskCheckInSnapshot(DateTimeOffset.Now, barbers);
@@ -79,7 +79,7 @@ public sealed class KioskCheckInService
 
             var barbers = barberRepository
                 .ListAll()
-                .Where(barber => barber.IsActive)
+                .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
                 .ToArray();
             var requestedBarbers = ResolveRequestedBarbers(acceptsAnyBarber, requestedIds, barbers);
             var ticketDate = DateOnly.FromDateTime(now.LocalDateTime);

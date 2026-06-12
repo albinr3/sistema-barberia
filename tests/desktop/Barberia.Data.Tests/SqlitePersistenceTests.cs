@@ -85,12 +85,12 @@ public sealed class SqlitePersistenceTests
         var repository = new LocalBarberRepository(database.Connection);
 
         repository.Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 1), now);
-        repository.SetActive(barberId, isActive: false, now.AddMinutes(1), stationNumber: 1);
+        repository.SetActive(barberId, isActive: false, now.AddMinutes(1));
 
         var savedBarber = repository.GetById(barberId);
 
         Assert.False(savedBarber?.IsActive);
-        Assert.Equal(1, savedBarber?.StationNumber);
+        Assert.Null(savedBarber?.StationNumber);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
-    public void BarberRepository_PreservesStationWhenDeactivated()
+    public void BarberRepository_ReleasesStationWhenDeactivated()
     {
         using var database = TestDatabase.Create();
         var now = DateTimeOffset.Parse("2026-06-04T10:55:00Z");
@@ -147,9 +147,9 @@ public sealed class SqlitePersistenceTests
         var repository = new LocalBarberRepository(database.Connection);
 
         repository.Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, now, stationNumber: 1), now);
-        repository.SetActive(barberId, isActive: false, now.AddMinutes(1), stationNumber: 1);
+        repository.SetActive(barberId, isActive: false, now.AddMinutes(1));
 
-        Assert.Equal(1, repository.GetById(barberId)?.StationNumber);
+        Assert.Null(repository.GetById(barberId)?.StationNumber);
     }
 
     [Fact]
@@ -202,6 +202,45 @@ public sealed class SqlitePersistenceTests
                 Assert.False(barber.IsActive);
                 Assert.Null(barber.StationNumber);
             });
+    }
+
+    [Fact]
+    public void LocalDatabaseInitializer_ReleasesStationsForInactiveBarbers()
+    {
+        using var database = TestDatabase.CreateUninitialized();
+        using (var command = database.Connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE barbers (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    display_name TEXT NOT NULL,
+                    state INTEGER NOT NULL,
+                    clients_served_today INTEGER NOT NULL,
+                    rotation_order INTEGER NOT NULL,
+                    station_number INTEGER NULL,
+                    checked_in_at TEXT NULL,
+                    profile_image_path TEXT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                );
+
+                INSERT INTO barbers (id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, updated_at)
+                VALUES
+                    ('11111111-1111-1111-1111-111111111111', 'Ana', 1, 0, 0, 1, NULL, NULL, 1, '2026-06-11T11:00:00.0000000+00:00'),
+                    ('22222222-2222-2222-2222-222222222222', 'Luis', 4, 0, 1, 2, NULL, NULL, 0, '2026-06-11T11:00:00.0000000+00:00');
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        LocalDatabaseInitializer.Initialize(database.Connection);
+
+        var inactiveBarber = new LocalBarberRepository(database.Connection)
+            .GetById(Guid.Parse("22222222-2222-2222-2222-222222222222"));
+
+        Assert.False(inactiveBarber?.IsActive);
+        Assert.Equal(BarberState.Offline, inactiveBarber?.State);
+        Assert.Null(inactiveBarber?.StationNumber);
+        Assert.Null(inactiveBarber?.StationCode);
     }
 
     [Fact]

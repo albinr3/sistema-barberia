@@ -36,11 +36,10 @@ public class LocalAdminServiceTests
     }
 
     [Fact]
-    public void DeactivateBarber_PreservesStationNumber()
+    public void DeactivateBarber_ReleasesStationNumberAndSetsOffline()
     {
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
-        var now = DateTimeOffset.Now;
 
         service.SaveBarber(null, "Ana", 0, 1, null, true, 50);
 
@@ -51,11 +50,12 @@ public class LocalAdminServiceTests
 
         var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
         Assert.False(savedBarber!.IsActive);
-        Assert.Equal(1, savedBarber.StationNumber);
+        Assert.Equal(BarberState.Offline, savedBarber.State);
+        Assert.Null(savedBarber.StationNumber);
     }
 
     [Fact]
-    public void ActivateBarber_RequiresStationNumber()
+    public void ActivateBarber_RequiresEditorSaveWithStation()
     {
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
@@ -65,11 +65,64 @@ public class LocalAdminServiceTests
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
 
-        service.ActivateBarber(barberId);
+        var exception = Assert.Throws<InvalidOperationException>(() => service.ActivateBarber(barberId));
+
+        Assert.Contains("barber editor", exception.Message);
+    }
+
+    [Fact]
+    public void SaveBarber_InactiveBarberWithStation_ReleasesStationNumber()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+
+        service.SaveBarber(null, "Luis", 0, null, null, false, 65);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
+
+        service.SaveBarber(barberId, "Luis", 0, 5, null, false, 65);
+
+        var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
+        Assert.False(savedBarber!.IsActive);
+        Assert.Equal(BarberState.Offline, savedBarber.State);
+        Assert.Null(savedBarber.StationNumber);
+    }
+
+    [Fact]
+    public void SaveBarber_ReactivatesInactiveBarberWithStation_AsAvailable()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+
+        service.SaveBarber(null, "Luis", 0, null, null, false, 65);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
+
+        service.SaveBarber(barberId, "Luis", 0, 5, null, true, 65);
 
         var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
         Assert.True(savedBarber!.IsActive);
-        Assert.Equal(1, savedBarber.StationNumber);
+        Assert.Equal(BarberState.Available, savedBarber.State);
+        Assert.Equal(5, savedBarber.StationNumber);
+    }
+
+    [Fact]
+    public void SaveBarber_ReactivatingInactiveBarberWithoutStation_ShowsStationRequiredMessage()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+
+        service.SaveBarber(null, "Luis", 0, null, null, false, 65);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => service.SaveBarber(barberId, "Luis", 0, null, null, true, 65));
+
+        Assert.Contains("Write a station number", exception.Message);
     }
 
     [Fact]

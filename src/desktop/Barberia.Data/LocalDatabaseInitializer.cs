@@ -226,8 +226,20 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "cash_payments", "additional_cents", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "cash_payments", "payment_method", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "cash_payments", "payment_reference", "TEXT NULL");
+        NormalizeInactiveBarbers(connection);
         NormalizeBarberStations(connection);
         EnsureActiveStationIndex(connection);
+    }
+
+    private static void NormalizeInactiveBarbers(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE barbers
+            SET station_number = NULL, state = 4
+            WHERE is_active = 0;
+            """;
+        command.ExecuteNonQuery();
     }
 
     private static void BackfillDisplayTicketNumbers(SqliteConnection connection)

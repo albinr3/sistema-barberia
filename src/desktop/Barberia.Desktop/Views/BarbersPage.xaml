@@ -349,8 +349,14 @@
                         <CheckBox
                             x:Name="_showInKioskCheckBox"
                             MinHeight="40"
-                            Content="Show in kiosk and local operations"
+                            Content="Active in system"
                             IsChecked="True" />
+                        <TextBlock
+                            x:Name="_barberModalMessageText"
+                            FontFamily="Inter"
+                            FontSize="13"
+                            Foreground="#FF444655"
+                            TextWrapping="WrapWholeWords" />
                     </StackPanel>
 
                     <Grid

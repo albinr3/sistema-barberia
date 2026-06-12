@@ -204,28 +204,14 @@ public sealed partial class BarbersPage : Page
         Grid.SetColumn(identity, 1);
         row.Children.Add(identity);
 
-        var stateSwitch = new ToggleSwitch
-        {
-            IsOn = barber.IsActive && barber.State != BarberState.Offline,
-            IsEnabled = barber.IsActive && canChangeAvailability,
-            OnContent = FormatBarberState(barber.State),
-            OffContent = barber.IsActive ? FormatBarberState(barber.State) : "Inactive",
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        stateSwitch.Toggled += (_, _) =>
-        {
-            if (!stateSwitch.IsEnabled)
-            {
-                return;
-            }
-
-            ExecuteAdminAction(
-                stateSwitch.IsOn
-                    ? () => _service.MarkBarberAvailable(barber.Id)
-                    : () => _service.MarkBarberOffline(barber.Id));
-        };
-        Grid.SetColumn(stateSwitch, 2);
-        row.Children.Add(stateSwitch);
+        var stateBadge = CreateTextBadge(
+            barber.IsActive ? FormatBarberState(barber.State) : "Inactive",
+            barber.IsActive ? GetStateBackground(barber.State) : Brush(248, 249, 251),
+            barber.IsActive ? GetStateForeground(barber.State) : Brush(101, 108, 116));
+        stateBadge.HorizontalAlignment = HorizontalAlignment.Left;
+        stateBadge.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(stateBadge, 2);
+        row.Children.Add(stateBadge);
 
         var stationBadge = CreateTextBadge(
             barber.StationCode ?? "Unassigned",
@@ -345,12 +331,14 @@ public sealed partial class BarbersPage : Page
             var importedPath = _service.ImportProfileImage(file.Path);
             SelectProfileImage(importedPath);
             _messageText.Text = "Profile image imported. Save the barber to apply it.";
+            SetModalMessage("Profile image imported. Save the barber to apply it.", success: true);
             RefreshModalAvatar();
             SetStatus("Image loaded", success: true);
         }
         catch (Exception exception)
         {
             _messageText.Text = exception.Message;
+            SetModalMessage(exception.Message, success: false);
             SetStatus("Image blocked", success: false);
         }
     }
@@ -383,12 +371,14 @@ public sealed partial class BarbersPage : Page
         {
             action();
             LoadAdmin();
+            SetModalMessage("", success: true);
             SetStatus(successStatus, success: true);
             return true;
         }
         catch (Exception exception)
         {
             _messageText.Text = exception.Message;
+            SetModalMessage(exception.Message, success: false);
             SetStatus("Action blocked", success: false);
             return false;
         }
@@ -409,6 +399,17 @@ public sealed partial class BarbersPage : Page
     {
         _messageText.Text = text;
         _messageText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
+    }
+
+    private void SetModalMessage(string text, bool success)
+    {
+        if (_barberModalMessageText is null)
+        {
+            return;
+        }
+
+        _barberModalMessageText.Text = text;
+        _barberModalMessageText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
     }
 
     private void OnCancelBarberClick(object sender, RoutedEventArgs args)
@@ -479,7 +480,9 @@ public sealed partial class BarbersPage : Page
         _stationCodeInput.Text = barber.StationCode ?? string.Empty;
         _rotationOrderInput.Text = barber.RotationOrder.ToString();
         _commissionPercentageInput.Text = barber.CommissionPercentage.ToString();
-        SelectProfileImage(barber.ProfileImagePath);
+        SelectProfileImage(ProfileImageCatalog.ResolveImageUri(barber.ProfileImagePath) is null
+            ? null
+            : barber.ProfileImagePath);
         _showInKioskCheckBox.IsChecked = barber.IsActive;
         _deleteBarberButton.IsEnabled = true;
         RefreshModalAvatar();
@@ -501,11 +504,13 @@ public sealed partial class BarbersPage : Page
     {
         _barberModalTitle.Text = title;
         _barberModalOverlay.Visibility = Visibility.Visible;
+        SetModalMessage("", success: true);
         RefreshModalAvatar();
     }
 
     private void CloseBarberModal()
     {
+        SetModalMessage("", success: true);
         _barberModalOverlay.Visibility = Visibility.Collapsed;
     }
 
@@ -522,15 +527,15 @@ public sealed partial class BarbersPage : Page
 
     private int? ParseStationNumber(bool isActive)
     {
-        if (!isActive)
-        {
-            return null;
-        }
-
         var text = _stationCodeInput.Text.Trim();
         if (string.IsNullOrWhiteSpace(text))
         {
-            throw new InvalidOperationException("Station code is required for active barbers.");
+            if (!isActive)
+            {
+                return null;
+            }
+
+            throw new InvalidOperationException("Write a station number before activating this barber.");
         }
 
         if (!text.StartsWith("B-", StringComparison.OrdinalIgnoreCase)

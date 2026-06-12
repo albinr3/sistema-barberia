@@ -87,7 +87,7 @@ public sealed partial class LocalAdminPage : Page
             snapshot.RecentAuditEvents.Select(CreateAuditRow),
             "No audit events recorded yet.");
 
-        var staffElements = snapshot.Barbers.Take(10).Select(CreateStaffRow).ToList();
+        var staffElements = snapshot.Barbers.Where(b => b.IsActive).Take(10).Select(CreateStaffRow).ToList();
         var staffChildren = new List<UIElement>();
         
         if (staffElements.Count > 0)
@@ -126,7 +126,7 @@ public sealed partial class LocalAdminPage : Page
                 .Select(turn => new ReassignTicketOption(turn.Id, FormatReassignTicketOption(turn, snapshot.Barbers))))
             .ToArray();
         var barberOptions = snapshot.Barbers
-            .Where(barber => barber.IsActive)
+            .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
             .Select(barber => new ReassignBarberOption(barber.Id, FormatReassignBarberOption(barber)))
             .ToArray();
 

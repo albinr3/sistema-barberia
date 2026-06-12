@@ -42,7 +42,7 @@ public sealed partial class BarberPublicPage : Page
         try
         {
             var snapshot = _service.Load();
-            _barbers = snapshot.Barbers;
+            _barbers = snapshot.Barbers.Where(b => b.IsActive).ToList();
             _currentPage = 1;
             UpdatePagination();
             SetStatus("", success: true);
@@ -190,7 +190,7 @@ public sealed partial class BarberPublicPage : Page
 
         var stateLabel = new TextBlock
         {
-            Text = barber.IsActive ? "Active" : "Inactive",
+            Text = FormatBarberState(barber.State),
             VerticalAlignment = VerticalAlignment.Center,
             FontFamily = new FontFamily("Inter"),
             FontSize = 14,
@@ -200,7 +200,8 @@ public sealed partial class BarberPublicPage : Page
 
         var stateSwitch = new ToggleSwitch
         {
-            IsOn = barber.IsActive,
+            IsOn = barber.State != BarberState.Offline,
+            IsEnabled = barber.State is not BarberState.Called and not BarberState.InService,
             VerticalAlignment = VerticalAlignment.Center
         };
         Grid.SetColumn(stateSwitch, 1);
@@ -211,18 +212,18 @@ public sealed partial class BarberPublicPage : Page
             {
                 if (stateSwitch.IsOn)
                 {
-                    _service.ActivateBarber(barber.Id);
+                    _service.MarkBarberAvailable(barber.Id);
                 }
                 else
                 {
-                    _service.DeactivateBarber(barber.Id);
+                    _service.MarkBarberOffline(barber.Id);
                 }
                 LoadData();
             }
             catch (Exception ex)
             {
                 SetStatus(ex.Message, success: false);
-                stateSwitch.IsOn = barber.IsActive; // Revert visually
+                stateSwitch.IsOn = barber.State != BarberState.Offline; // Revert visually
             }
         };
 
@@ -243,6 +244,16 @@ public sealed partial class BarberPublicPage : Page
     {
         return new SolidColorBrush(Windows.UI.Color.FromArgb(255, r, g, b));
     }
+
+    private static string FormatBarberState(BarberState state) => state switch
+    {
+        BarberState.Available => "Available",
+        BarberState.Offline => "Offline",
+        BarberState.Called => "Called",
+        BarberState.InService => "In service",
+        BarberState.NotCheckedIn => "Not checked in",
+        _ => state.ToString()
+    };
 
     private static Grid CreateProfileAvatar(Barber barber, double size)
     {

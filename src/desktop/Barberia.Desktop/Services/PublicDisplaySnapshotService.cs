@@ -33,7 +33,7 @@ public sealed class PublicDisplaySnapshotService
         var turns = turnRepository.ListActiveForPublicDisplay();
         var barbers = barberRepository
             .ListAll()
-            .Where(barber => barber.IsActive)
+            .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
             .ToArray();
         var appointments = appointmentRepository.ListBetween(
             now.Subtract(AppointmentReservation.DefaultProtectionWindow),
