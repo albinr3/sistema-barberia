@@ -39,9 +39,12 @@ public sealed class CashBoxCloseService
 
     public CashBoxSnapshot Load()
     {
+        var now = OperationalClock.Now;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, Environment.MachineName);
+
         using var connection = _connectionFactory.OpenConnection();
         var services = new ServiceRepository(connection).ListActive();
-        return new CashBoxSnapshot(DateTimeOffset.Now, services);
+        return new CashBoxSnapshot(now, services);
     }
 
     public CashBoxTicketLookupResult LookupTicket(string ticketNumber)
@@ -51,10 +54,12 @@ public sealed class CashBoxCloseService
             throw new InvalidOperationException("Scan or enter the service ticket.");
         }
 
+        var now = OperationalClock.Now;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, Environment.MachineName);
+
         using var connection = _connectionFactory.OpenConnection();
         var turnRepository = new LocalTurnRepository(connection);
         var barberRepository = new LocalBarberRepository(connection);
-        var now = DateTimeOffset.Now;
 
         var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
             ?? throw new InvalidOperationException("Ticket not found in local database.");
@@ -91,18 +96,21 @@ public sealed class CashBoxCloseService
             throw new InvalidOperationException("The addition must be 0, 2, 3 or 5 dollars.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         CashBoxDepositResult? result = null;
 
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var paymentRepository = new CashPaymentRepository(connection, sqliteTransaction);
             var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var dailyRotationRepository = new DailyRotationRepository(connection, sqliteTransaction);
 
             var receiptNumber = paymentRepository.GetNextReceiptNumber();
 
@@ -174,10 +182,11 @@ public sealed class CashBoxCloseService
                 .ListAll()
                 .Where(candidate => candidate.IsActive)
                 .ToArray();
-            var rotationQueue = barbers
-                .OrderBy(candidate => candidate.RotationOrder)
-                .Select(candidate => candidate.Id)
-                .ToArray();
+            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            var rotationQueue = DailyRotationQueue.Build(
+                barbers,
+                dailyRotationRepository.ListByDate(businessDate),
+                businessDate);
             var closeResult = _assignmentEngine.CloseServiceAtCashBox(
                 new CashBoxCloseRequest(barberId, rotationQueue));
 
@@ -201,13 +210,8 @@ public sealed class CashBoxCloseService
             barberRepository.ApplyCashBoxClose(
                 closeResult.BarberId,
                 closeResult.BarberState,
-                closeResult.RotationQueue.Count - 1,
                 now);
-
-            for (var index = 0; index < closeResult.RotationQueue.Count; index++)
-            {
-                barberRepository.SetRotationOrder(closeResult.RotationQueue[index], index, now);
-            }
+            dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
 
             auditRepository.Add(new AuditEvent(
                 Guid.NewGuid(),
@@ -242,6 +246,7 @@ public sealed class CashBoxCloseService
             var reassignment = TryAssignNextWaitingTurn(
                 turnRepository,
                 barberRepository,
+                dailyRotationRepository,
                 new AppointmentReservationRepository(connection, sqliteTransaction),
                 now);
 
@@ -286,7 +291,7 @@ public sealed class CashBoxCloseService
 
     public void PrintDayReport()
     {
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var from = new DateTimeOffset(now.Date, now.Offset);
         var to = from.AddDays(1);
@@ -314,6 +319,7 @@ public sealed class CashBoxCloseService
     private TurnAssignmentDecision? TryAssignNextWaitingTurn(
         LocalTurnRepository turnRepository,
         LocalBarberRepository barberRepository,
+        DailyRotationRepository dailyRotationRepository,
         AppointmentReservationRepository appointmentRepository,
         DateTimeOffset now)
     {
@@ -322,10 +328,11 @@ public sealed class CashBoxCloseService
             .Where(barber => barber.IsActive)
             .ToArray();
         var waitingTurns = turnRepository.ListWaiting();
-        var rotationQueue = barbers
-            .OrderBy(barber => barber.RotationOrder)
-            .Select(barber => barber.Id)
-            .ToArray();
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var rotationQueue = DailyRotationQueue.Build(
+            barbers,
+            dailyRotationRepository.ListByDate(businessDate),
+            businessDate);
         var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
 
         try

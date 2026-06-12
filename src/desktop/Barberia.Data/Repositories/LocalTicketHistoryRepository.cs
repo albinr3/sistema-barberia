@@ -15,10 +15,9 @@ public sealed class LocalTicketHistoryRepository
         _transaction = transaction;
     }
 
-    public IReadOnlyList<TicketHistoryRow> ListRecentHistoryToday(int limit)
+    public IReadOnlyList<TicketHistoryRow> ListRecentHistoryForDate(DateOnly ticketDate, int limit)
     {
-        var now = DateTimeOffset.Now;
-        var startOfDay = new DateTimeOffset(now.Date, now.Offset).ToString("yyyy-MM-dd");
+        var formattedTicketDate = ticketDate.ToString("yyyy-MM-dd");
 
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
@@ -51,7 +50,7 @@ public sealed class LocalTicketHistoryRepository
             LIMIT $limit;
             """;
         
-        command.AddText("$ticket_date", startOfDay);
+        command.AddText("$ticket_date", formattedTicketDate);
         command.AddInteger("$completed", (int)TurnState.Completed);
         command.AddInteger("$cancelled", (int)TurnState.Cancelled);
         command.AddInteger("$noshow", (int)TurnState.NoShow);

@@ -27,13 +27,21 @@ public sealed class LocalAdminService
 
     public LocalAdminSnapshot Load()
     {
-        var now = DateTimeOffset.Now;
-        var from = new DateTimeOffset(now.Date, now.Offset);
-        var to = from.AddDays(1);
+        var now = OperationalClock.Now;
+        var deviceId = Environment.MachineName;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, deviceId);
+
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var from = OperationalClock.StartOfDay(businessDate);
+        var to = OperationalClock.StartOfDay(businessDate.AddDays(1));
 
         using var connection = _connectionFactory.OpenConnection();
         var report = new LocalAdminReportRepository(connection).Load(from, to, now);
-        var barbers = new LocalBarberRepository(connection).ListAll();
+        var dailyRotationEntries = new DailyRotationRepository(connection).ListByDate(businessDate);
+        var barbers = DailyRotationQueue.OrderBarbers(
+            new LocalBarberRepository(connection).ListAll(),
+            dailyRotationEntries,
+            businessDate);
         var services = new ServiceRepository(connection).ListAll();
         var activeTurnRows = new LocalTurnRepository(connection).ListActiveWithUpdatedAt();
         var activeTurns = activeTurnRows.Select(row => row.Turn).ToArray();
@@ -42,7 +50,7 @@ public sealed class LocalAdminService
             .OrderByDescending(auditEvent => auditEvent.OccurredAt)
             .Take(10)
             .ToArray();
-        var recentHistory = new LocalTicketHistoryRepository(connection).ListRecentHistoryToday(10);
+        var recentHistory = new LocalTicketHistoryRepository(connection).ListRecentHistoryForDate(businessDate, 10);
         var databaseSize = File.Exists(LocalAppPaths.DatabasePath)
             ? new FileInfo(LocalAppPaths.DatabasePath).Length
             : 0;
@@ -56,6 +64,7 @@ public sealed class LocalAdminService
             report.Operations,
             report.Cash,
             barbers,
+            dailyRotationEntries,
             services,
             ProfileImageCatalog.ListProfileImages(),
             activeTurns,
@@ -67,7 +76,6 @@ public sealed class LocalAdminService
     public void SaveBarber(
         Guid? barberId,
         string displayName,
-        int rotationOrder,
         int? stationNumber,
         string? profileImagePath,
         bool isActive,
@@ -77,16 +85,14 @@ public sealed class LocalAdminService
         var normalizedStationNumber = NormalizeStationNumber(stationNumber, isActive);
         var normalizedProfileImagePath = NormalizeProfileImagePath(profileImagePath);
         var normalizedCommissionPercentage = NormalizeCommissionPercentage(commissionPercentage);
-        if (rotationOrder < 0)
-        {
-            throw new InvalidOperationException("Rotation order must be zero or greater.");
-        }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
             var existing = barberId is null ? null : barberRepository.GetById(barberId.Value);
@@ -113,16 +119,19 @@ public sealed class LocalAdminService
             }
 
             var newState = existingState;
+            var checkedInAt = existing?.CheckedInAt;
             if (isActive)
             {
-                if (existing is not null && !existing.IsActive)
+                if (existing is null || !existing.IsActive)
                 {
-                    newState = BarberState.Available;
+                    newState = BarberState.Offline;
+                    checkedInAt = null;
                 }
             }
             else
             {
                 newState = BarberState.Offline;
+                checkedInAt = null;
             }
 
             var barber = new Barber(
@@ -130,8 +139,8 @@ public sealed class LocalAdminService
                 normalizedName,
                 newState,
                 existing?.ClientsServedToday ?? 0,
-                rotationOrder,
-                existing?.CheckedInAt,
+                existing?.RotationOrder ?? 0,
+                checkedInAt,
                 normalizedStationNumber,
                 normalizedProfileImagePath,
                 isActive,
@@ -148,7 +157,6 @@ public sealed class LocalAdminService
                 {
                     barberId = barber.Id,
                     barberName = barber.DisplayName,
-                    barber.RotationOrder,
                     previousStationCode = existing?.StationCode,
                     barber.StationCode,
                     barber.ProfileImagePath,
@@ -177,7 +185,7 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Service display order must be zero or greater.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
@@ -235,7 +243,7 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a service before deleting.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
 
@@ -283,7 +291,7 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a barber before deleting.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
 
@@ -331,7 +339,7 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a service before changing active status.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
@@ -386,11 +394,13 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a ticket before cancelling.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
@@ -419,6 +429,7 @@ public sealed class LocalAdminService
             var reassignment = TryAssignNextWaitingTurn(
                 turnRepository,
                 barberRepository,
+                new DailyRotationRepository(connection, sqliteTransaction),
                 new AppointmentReservationRepository(connection, sqliteTransaction),
                 now);
 
@@ -479,11 +490,13 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a target barber before reassigning.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
@@ -544,6 +557,7 @@ public sealed class LocalAdminService
                 reassignment = TryAssignNextWaitingTurn(
                     turnRepository,
                     barberRepository,
+                    new DailyRotationRepository(connection, sqliteTransaction),
                     new AppointmentReservationRepository(connection, sqliteTransaction),
                     now);
             }
@@ -602,6 +616,7 @@ public sealed class LocalAdminService
     private TurnAssignmentDecision? TryAssignNextWaitingTurn(
         LocalTurnRepository turnRepository,
         LocalBarberRepository barberRepository,
+        DailyRotationRepository dailyRotationRepository,
         AppointmentReservationRepository appointmentRepository,
         DateTimeOffset now)
     {
@@ -610,10 +625,11 @@ public sealed class LocalAdminService
             .Where(barber => barber.IsActive)
             .ToArray();
         var waitingTurns = turnRepository.ListWaiting();
-        var rotationQueue = barbers
-            .OrderBy(barber => barber.RotationOrder)
-            .Select(barber => barber.Id)
-            .ToArray();
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var rotationQueue = DailyRotationQueue.Build(
+            barbers,
+            dailyRotationRepository.ListByDate(businessDate),
+            businessDate);
         var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
 
         try
@@ -655,11 +671,13 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a barber before changing status.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
             var barber = barberRepository.GetById(barberId)
@@ -675,7 +693,24 @@ public sealed class LocalAdminService
                 throw new InvalidOperationException("A called or in-service barber cannot be changed from Local Admin.");
             }
 
-            barberRepository.SetState(barberId, state, now);
+            DateTimeOffset? checkedInAt = barber.CheckedInAt;
+            if (state == BarberState.Available)
+            {
+                var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+                checkedInAt = checkedInAt is DateTimeOffset existingCheckedInAt
+                    && OperationalClock.GetBusinessDate(existingCheckedInAt) == businessDate
+                        ? existingCheckedInAt
+                        : now;
+
+                barberRepository.SetStateAndCheckedInAt(barberId, state, checkedInAt.Value, now);
+                new DailyRotationRepository(connection, sqliteTransaction)
+                    .EnsureQueued(businessDate, barberId, checkedInAt.Value, now);
+            }
+            else
+            {
+                barberRepository.SetState(barberId, state, now);
+            }
+
             auditRepository.Add(new AuditEvent(
                 Guid.NewGuid(),
                 now,
@@ -687,7 +722,8 @@ public sealed class LocalAdminService
                     barberId,
                     barberName = barber.DisplayName,
                     previousState = barber.State.ToString(),
-                    state = state.ToString()
+                    state = state.ToString(),
+                    checkedInAt
                 }),
                 deviceId));
 
@@ -699,6 +735,7 @@ public sealed class LocalAdminService
                 var reassignment = TryAssignNextWaitingTurn(
                     turnRepository,
                     barberRepository,
+                    new DailyRotationRepository(connection, sqliteTransaction),
                     appointmentRepository,
                     now);
 
@@ -733,11 +770,13 @@ public sealed class LocalAdminService
             throw new InvalidOperationException("Select a barber before changing active status.");
         }
 
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
             var barber = barberRepository.GetById(barberId)

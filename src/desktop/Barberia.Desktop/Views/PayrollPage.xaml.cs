@@ -43,9 +43,9 @@ public sealed partial class PayrollPage : Page
     {
         ApplyResponsiveLayout(ActualWidth);
         _isInitializing = true;
-        _weekDatePicker.Date = DateTimeOffset.Now;
+        _weekDatePicker.Date = OperationalClock.Now;
         _isInitializing = false;
-        LoadWeek(DateTimeOffset.Now);
+        LoadWeek(OperationalClock.Now);
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs args)
@@ -70,7 +70,7 @@ public sealed partial class PayrollPage : Page
     {
         TryRun(() =>
         {
-            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, DateTimeOffset.Now);
+            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, OperationalClock.Now);
             RenderSnapshot("Week recalculated.");
         });
     }
@@ -159,11 +159,11 @@ public sealed partial class PayrollPage : Page
                 barberId,
                 Money.ToCents(amount),
                 reasonBox.Text.Trim(),
-                DateTimeOffset.Now);
+                OperationalClock.Now);
 
             _tempAdjustments.Add(adjustment);
 
-            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, DateTimeOffset.Now);
+            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, OperationalClock.Now);
             RenderSnapshot("Adjustment added.");
         });
     }
@@ -208,7 +208,7 @@ public sealed partial class PayrollPage : Page
                 PayrollPaymentMethod.Cash,
                 reference,
                 null,
-                DateTimeOffset.Now);
+                OperationalClock.Now);
             RenderSnapshot("Week marked as paid.");
             success = true;
         });

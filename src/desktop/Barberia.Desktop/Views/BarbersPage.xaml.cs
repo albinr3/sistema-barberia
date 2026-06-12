@@ -20,10 +20,10 @@ public sealed partial class BarbersPage : Page
 {
     private readonly LocalAdminService _service = new();
     private Guid? _editingBarberId;
-    private int _nextRotationOrder;
     private int _nextStationNumber = 1;
     private string? _selectedProfileImagePath;
     private IReadOnlyList<Barber> _barbers = [];
+    private IReadOnlyDictionary<Guid, DailyRotationEntry> _dailyRotationEntries = new Dictionary<Guid, DailyRotationEntry>();
     private int _currentPage = 1;
     private const int PageSize = 10;
 
@@ -61,10 +61,8 @@ public sealed partial class BarbersPage : Page
 
     private void ShowSnapshot(LocalAdminSnapshot snapshot)
     {
-        _nextRotationOrder = snapshot.Barbers.Count == 0
-            ? 0
-            : snapshot.Barbers.Max(barber => barber.RotationOrder) + 1;
         _nextStationNumber = GetNextStationNumber(snapshot.Barbers);
+        _dailyRotationEntries = snapshot.DailyRotationEntries.ToDictionary(entry => entry.BarberId);
 
         SyncEditor(snapshot);
 
@@ -230,7 +228,7 @@ public sealed partial class BarbersPage : Page
             {
                 new TextBlock
                 {
-                    Text = $"Order {barber.RotationOrder}",
+                    Text = FormatDailyRotationText(barber),
                     FontFamily = new FontFamily("Inter"),
                     FontSize = 14,
                     Foreground = Brush(26, 28, 30)
@@ -288,7 +286,6 @@ public sealed partial class BarbersPage : Page
                 _service.SaveBarber(
                     _editingBarberId,
                     _barberNameInput.Text,
-                    ParseRotationOrder(),
                     ParseStationNumber(_showInKioskCheckBox.IsChecked == true),
                     GetSelectedProfileImagePath(),
                     _showInKioskCheckBox.IsChecked == true,
@@ -453,11 +450,6 @@ public sealed partial class BarbersPage : Page
             _editingBarberId = null;
         }
 
-        if (string.IsNullOrWhiteSpace(_rotationOrderInput.Text))
-        {
-            _rotationOrderInput.Text = _nextRotationOrder.ToString();
-        }
-
         if (_showInKioskCheckBox.IsChecked == true && string.IsNullOrWhiteSpace(_stationCodeInput.Text))
         {
             _stationCodeInput.Text = FormatStationCode(_nextStationNumber);
@@ -478,7 +470,6 @@ public sealed partial class BarbersPage : Page
     {
         _barberNameInput.Text = barber.DisplayName;
         _stationCodeInput.Text = barber.StationCode ?? string.Empty;
-        _rotationOrderInput.Text = barber.RotationOrder.ToString();
         _commissionPercentageInput.Text = barber.CommissionPercentage.ToString();
         SelectProfileImage(ProfileImageCatalog.ResolveImageUri(barber.ProfileImagePath) is null
             ? null
@@ -492,7 +483,6 @@ public sealed partial class BarbersPage : Page
     {
         _barberNameInput.Text = string.Empty;
         _stationCodeInput.Text = FormatStationCode(_nextStationNumber);
-        _rotationOrderInput.Text = _nextRotationOrder.ToString();
         _commissionPercentageInput.Text = Barber.DefaultCommissionPercentage.ToString();
         SelectProfileImage(null);
         _showInKioskCheckBox.IsChecked = true;
@@ -512,17 +502,6 @@ public sealed partial class BarbersPage : Page
     {
         SetModalMessage("", success: true);
         _barberModalOverlay.Visibility = Visibility.Collapsed;
-    }
-
-    private int ParseRotationOrder()
-    {
-        var text = _rotationOrderInput.Text.Trim();
-        if (!int.TryParse(text, out var rotationOrder) || rotationOrder < 0)
-        {
-            throw new InvalidOperationException("Rotation order must be zero or greater.");
-        }
-
-        return rotationOrder;
     }
 
     private int? ParseStationNumber(bool isActive)
@@ -609,6 +588,13 @@ public sealed partial class BarbersPage : Page
         BarberState.InService => "In Service",
         _ => "Unknown"
     };
+
+    private string FormatDailyRotationText(Barber barber)
+    {
+        return _dailyRotationEntries.TryGetValue(barber.Id, out var entry)
+            ? $"Arrival #{entry.QueuePosition + 1} - {entry.ArrivedAt:hh:mm tt}"
+            : "Not checked in today";
+    }
 
     private static SolidColorBrush GetStateBackground(BarberState state) => state switch
     {

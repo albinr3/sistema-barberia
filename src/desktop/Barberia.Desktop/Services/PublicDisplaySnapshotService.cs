@@ -23,18 +23,23 @@ public sealed class PublicDisplaySnapshotService
 
     public PublicDisplaySnapshot Load()
     {
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, Environment.MachineName);
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
 
         using var connection = _connectionFactory.OpenConnection();
         var turnRepository = new LocalTurnRepository(connection);
         var barberRepository = new LocalBarberRepository(connection);
         var appointmentRepository = new AppointmentReservationRepository(connection);
+        var dailyRotationEntries = new DailyRotationRepository(connection).ListByDate(businessDate);
 
         var turns = turnRepository.ListActiveForPublicDisplay();
-        var barbers = barberRepository
+        var barbers = DailyRotationQueue.OrderBarbers(
+            barberRepository
             .ListAll()
-            .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
-            .ToArray();
+            .Where(barber => barber.IsActive && barber.State != BarberState.Offline),
+            dailyRotationEntries,
+            businessDate);
         var appointments = appointmentRepository.ListBetween(
             now.Subtract(AppointmentReservation.DefaultProtectionWindow),
             now.Add(AppointmentLookAhead));

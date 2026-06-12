@@ -20,7 +20,6 @@ public class LocalAdminServiceTests
         service.SaveBarber(
             null,
             "Ana",
-            rotationOrder: 0,
             stationNumber: 1,
             profileImagePath: null,
             isActive: true,
@@ -41,7 +40,7 @@ public class LocalAdminServiceTests
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
 
-        service.SaveBarber(null, "Ana", 0, 1, null, true, 50);
+        service.SaveBarber(null, "Ana", 1, null, true, 50);
 
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
@@ -60,7 +59,7 @@ public class LocalAdminServiceTests
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
 
-        service.SaveBarber(null, "Ana", 0, 1, null, false, 50);
+        service.SaveBarber(null, "Ana", 1, null, false, 50);
 
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
@@ -76,12 +75,12 @@ public class LocalAdminServiceTests
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
 
-        service.SaveBarber(null, "Luis", 0, null, null, false, 65);
+        service.SaveBarber(null, "Luis", null, null, false, 65);
 
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
 
-        service.SaveBarber(barberId, "Luis", 0, 5, null, false, 65);
+        service.SaveBarber(barberId, "Luis", 5, null, false, 65);
 
         var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
         Assert.False(savedBarber!.IsActive);
@@ -95,16 +94,16 @@ public class LocalAdminServiceTests
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
 
-        service.SaveBarber(null, "Luis", 0, null, null, false, 65);
+        service.SaveBarber(null, "Luis", null, null, false, 65);
 
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
 
-        service.SaveBarber(barberId, "Luis", 0, 5, null, true, 65);
+        service.SaveBarber(barberId, "Luis", 5, null, true, 65);
 
         var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
         Assert.True(savedBarber!.IsActive);
-        Assert.Equal(BarberState.Available, savedBarber.State);
+        Assert.Equal(BarberState.Offline, savedBarber.State);
         Assert.Equal(5, savedBarber.StationNumber);
     }
 
@@ -114,15 +113,86 @@ public class LocalAdminServiceTests
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
 
-        service.SaveBarber(null, "Luis", 0, null, null, false, 65);
+        service.SaveBarber(null, "Luis", null, null, false, 65);
 
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberId = new LocalBarberRepository(verifyConnection).ListAll()[0].Id;
 
         var exception = Assert.Throws<InvalidOperationException>(
-            () => service.SaveBarber(barberId, "Luis", 0, null, null, true, 65));
+            () => service.SaveBarber(barberId, "Luis", null, null, true, 65));
 
         Assert.Contains("Write a station number", exception.Message);
+    }
+
+    [Fact]
+    public void MarkBarberAvailable_QueuesByFirstArrivalAndPreservesSameDayReentry()
+    {
+        using var database = TestDatabase.Create();
+        var service = new LocalAdminService(database.ConnectionFactory);
+
+        service.SaveBarber(null, "Ana", 1, null, true, 65);
+        service.SaveBarber(null, "Luis", 2, null, true, 65);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberRepository = new LocalBarberRepository(verifyConnection);
+        var barbers = barberRepository.ListAll();
+        var anaId = barbers.Single(barber => barber.DisplayName == "Ana").Id;
+        var luisId = barbers.Single(barber => barber.DisplayName == "Luis").Id;
+
+        service.MarkBarberAvailable(anaId);
+        service.MarkBarberAvailable(luisId);
+        service.MarkBarberOffline(anaId);
+        var initialAnaEntry = new DailyRotationRepository(verifyConnection)
+            .ListByDate(DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime))
+            .Single(entry => entry.BarberId == anaId);
+
+        service.MarkBarberAvailable(anaId);
+
+        var entries = new DailyRotationRepository(verifyConnection)
+            .ListByDate(DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime));
+        var savedAna = barberRepository.GetById(anaId);
+
+        Assert.Equal(BarberState.Available, savedAna?.State);
+        Assert.NotNull(savedAna?.CheckedInAt);
+        Assert.Collection(
+            entries,
+            entry =>
+            {
+                Assert.Equal(anaId, entry.BarberId);
+                Assert.Equal(initialAnaEntry.ArrivedAt, entry.ArrivedAt);
+            },
+            entry => Assert.Equal(luisId, entry.BarberId));
+    }
+
+    [Fact]
+    public void Load_AppliesPendingDailyResetForPreviousDayActiveTickets()
+    {
+        using var database = TestDatabase.Create();
+        var previousDay = DateTimeOffset.Now.AddDays(-1);
+        var barberId = Guid.NewGuid();
+        var turnId = Guid.NewGuid();
+
+        using (var connection = database.ConnectionFactory.OpenConnection())
+        {
+            var barberRepository = new LocalBarberRepository(connection);
+            var turnRepository = new LocalTurnRepository(connection);
+            barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.InService, 3, 0, previousDay, stationNumber: 1), previousDay);
+            turnRepository.Upsert(CreateTurn(turnId, "T-099", TurnState.InService, previousDay, barberId), previousDay);
+        }
+
+        new LocalAdminService(database.ConnectionFactory).Load();
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var savedBarber = new LocalBarberRepository(verifyConnection).GetById(barberId);
+        var savedTurn = new LocalTurnRepository(verifyConnection).GetById(turnId);
+        var auditEvents = new AuditEventRepository(verifyConnection).ListAll();
+
+        Assert.Equal(BarberState.Offline, savedBarber?.State);
+        Assert.Equal(0, savedBarber?.ClientsServedToday);
+        Assert.Null(savedBarber?.CheckedInAt);
+        Assert.Equal(TurnState.Cancelled, savedTurn?.State);
+        Assert.NotNull(savedTurn?.CancelledAt);
+        Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "daily_operational_reset");
     }
 
     [Fact]
@@ -176,7 +246,7 @@ public class LocalAdminServiceTests
     public void ReassignTurn_CalledTicketToAvailableBarber_CallsTargetAndReleasesPrevious()
     {
         using var database = TestDatabase.Create();
-        var now = DateTimeOffset.Parse("2026-06-03T14:00:00Z");
+        var now = DateTimeOffset.Now;
         var juanId = Guid.NewGuid();
         var pedroId = Guid.NewGuid();
         var turnId = Guid.NewGuid();
@@ -210,7 +280,7 @@ public class LocalAdminServiceTests
     public void ReassignTurn_CalledTicketToBusyBarber_ReservesTicketForTarget()
     {
         using var database = TestDatabase.Create();
-        var now = DateTimeOffset.Parse("2026-06-03T14:20:00Z");
+        var now = DateTimeOffset.Now;
         var juanId = Guid.NewGuid();
         var pedroId = Guid.NewGuid();
         var turnId = Guid.NewGuid();
@@ -242,7 +312,7 @@ public class LocalAdminServiceTests
     public void ReassignTurn_WhenPreviousBarberIsReleased_AssignsNextCompatibleWaitingTicket()
     {
         using var database = TestDatabase.Create();
-        var now = DateTimeOffset.Parse("2026-06-03T14:40:00Z");
+        var now = DateTimeOffset.Now;
         var juanId = Guid.NewGuid();
         var pedroId = Guid.NewGuid();
         var reassignedTurnId = Guid.NewGuid();
@@ -280,7 +350,7 @@ public class LocalAdminServiceTests
     public void ReassignTurn_RejectsInServiceTicket()
     {
         using var database = TestDatabase.Create();
-        var now = DateTimeOffset.Parse("2026-06-03T15:00:00Z");
+        var now = DateTimeOffset.Now;
         var barberId = Guid.NewGuid();
         var targetBarberId = Guid.NewGuid();
         var turnId = Guid.NewGuid();
@@ -304,7 +374,7 @@ public class LocalAdminServiceTests
     public void ReassignTurn_RejectsInactiveTargetBarber()
     {
         using var database = TestDatabase.Create();
-        var now = DateTimeOffset.Parse("2026-06-03T15:20:00Z");
+        var now = DateTimeOffset.Now;
         var targetBarberId = Guid.NewGuid();
         var turnId = Guid.NewGuid();
 

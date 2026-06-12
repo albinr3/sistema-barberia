@@ -29,13 +29,20 @@ public sealed class KioskCheckInService
 
     public KioskCheckInSnapshot Load()
     {
-        using var connection = _connectionFactory.OpenConnection();
-        var barbers = new LocalBarberRepository(connection)
-            .ListAll()
-            .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
-            .ToArray();
+        var now = OperationalClock.Now;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, Environment.MachineName);
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
 
-        return new KioskCheckInSnapshot(DateTimeOffset.Now, barbers);
+        using var connection = _connectionFactory.OpenConnection();
+        var dailyRotationEntries = new DailyRotationRepository(connection).ListByDate(businessDate);
+        var barbers = DailyRotationQueue.OrderBarbers(
+            new LocalBarberRepository(connection)
+            .ListAll()
+            .Where(barber => barber.IsActive && barber.State != BarberState.Offline),
+            dailyRotationEntries,
+            businessDate);
+
+        return new KioskCheckInSnapshot(now, barbers);
     }
 
     public KioskCheckInResult RegisterWalkIn(
@@ -65,24 +72,28 @@ public sealed class KioskCheckInService
         bool acceptsAnyBarber,
         IReadOnlyList<Guid> requestedIds)
     {
-        var now = DateTimeOffset.Now;
+        var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
 
         KioskCheckInResult? result = null;
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var dailyRotationRepository = new DailyRotationRepository(connection, sqliteTransaction);
+            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
 
             var barbers = barberRepository
                 .ListAll()
                 .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
                 .ToArray();
             var requestedBarbers = ResolveRequestedBarbers(acceptsAnyBarber, requestedIds, barbers);
-            var ticketDate = DateOnly.FromDateTime(now.LocalDateTime);
+            var ticketDate = OperationalClock.GetBusinessDate(now);
             var turn = new Turn(
                 Guid.NewGuid(),
                 CreateTicketNumber(now),
@@ -96,10 +107,10 @@ public sealed class KioskCheckInService
             turnRepository.Upsert(turn, now);
 
             var waitingTurns = turnRepository.ListWaiting();
-            var rotationQueue = barbers
-                .OrderBy(barber => barber.RotationOrder)
-                .Select(barber => barber.Id)
-                .ToArray();
+            var rotationQueue = DailyRotationQueue.Build(
+                barbers,
+                dailyRotationRepository.ListByDate(businessDate),
+                businessDate);
             var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
             string? assignedBarberName = null;
             string? assignedBarberStationCode = null;

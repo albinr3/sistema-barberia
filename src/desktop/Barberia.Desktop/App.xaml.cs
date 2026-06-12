@@ -28,7 +28,7 @@ public sealed partial class App : Application
         {
             File.AppendAllText(
                 LocalAppPaths.ErrorLogPath,
-                $"[{DateTimeOffset.Now:O}] {args.Exception}{Environment.NewLine}");
+                $"[{OperationalClock.Now:O}] {args.Exception}{Environment.NewLine}");
         }
         catch (IOException)
         {

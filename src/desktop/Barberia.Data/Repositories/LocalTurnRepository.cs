@@ -111,7 +111,7 @@ public sealed class LocalTurnRepository
             return null;
         }
 
-        return GetByDisplayTicketNumber(DateOnly.FromDateTime(now.LocalDateTime), displayTicketNumber);
+        return GetByDisplayTicketNumber(DateOnly.FromDateTime(now.DateTime), displayTicketNumber);
     }
 
     public Turn? GetByDisplayTicketNumber(DateOnly ticketDate, int displayTicketNumber)
@@ -229,6 +229,33 @@ public sealed class LocalTurnRepository
             var turn = ReadTurn(reader);
             var updatedAt = DateTimeOffset.Parse(reader.GetString(14));
             turns.Add(new ActiveTurnRow(turn, updatedAt));
+        }
+
+        return turns;
+    }
+
+    public IReadOnlyList<Turn> ListActiveBefore(DateOnly businessDate)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
+            FROM turns
+            WHERE state IN ($waiting, $called, $in_service)
+              AND ticket_date < $business_date
+            ORDER BY checked_in_at, ticket_number;
+            """;
+        command.AddInteger("$waiting", (int)TurnState.Waiting);
+        command.AddInteger("$called", (int)TurnState.Called);
+        command.AddInteger("$in_service", (int)TurnState.InService);
+        command.AddText("$business_date", FormatDate(businessDate));
+
+        using var reader = command.ExecuteReader();
+        var turns = new List<Turn>();
+        while (reader.Read())
+        {
+            turns.Add(ReadTurn(reader));
         }
 
         return turns;

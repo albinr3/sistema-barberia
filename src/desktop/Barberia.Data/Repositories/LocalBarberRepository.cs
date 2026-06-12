@@ -72,7 +72,7 @@ public sealed class LocalBarberRepository
         command.CommandText = """
             SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage
             FROM barbers
-            ORDER BY rotation_order, display_name;
+            ORDER BY is_active DESC, COALESCE(station_number, 2147483647), display_name;
             """;
 
         using var reader = command.ExecuteReader();
@@ -173,7 +173,46 @@ public sealed class LocalBarberRepository
         }
     }
 
-    public void ApplyCashBoxClose(Guid barberId, BarberState state, int rotationOrder, DateTimeOffset updatedAt)
+    public void SetStateAndCheckedInAt(Guid barberId, BarberState state, DateTimeOffset checkedInAt, DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE barbers
+            SET state = $state,
+                checked_in_at = $checked_in_at,
+                updated_at = $updated_at
+            WHERE id = $id;
+            """;
+        command.AddText("$id", barberId.ToString());
+        command.AddInteger("$state", (int)state);
+        command.AddText("$checked_in_at", Format(checkedInAt));
+        command.AddText("$updated_at", Format(updatedAt));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("Barber was not found for state update.");
+        }
+    }
+
+    public int ResetDailyOperationalState(DateTimeOffset updatedAt)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            UPDATE barbers
+            SET state = $state,
+                clients_served_today = 0,
+                checked_in_at = NULL,
+                updated_at = $updated_at;
+            """;
+        command.AddInteger("$state", (int)BarberState.Offline);
+        command.AddText("$updated_at", Format(updatedAt));
+
+        return command.ExecuteNonQuery();
+    }
+
+    public void ApplyCashBoxClose(Guid barberId, BarberState state, DateTimeOffset updatedAt)
     {
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
@@ -181,38 +220,16 @@ public sealed class LocalBarberRepository
             UPDATE barbers
             SET state = $state,
                 clients_served_today = clients_served_today + 1,
-                rotation_order = $rotation_order,
                 updated_at = $updated_at
             WHERE id = $id;
             """;
         command.AddText("$id", barberId.ToString());
         command.AddInteger("$state", (int)state);
-        command.AddInteger("$rotation_order", rotationOrder);
         command.AddText("$updated_at", Format(updatedAt));
 
         if (command.ExecuteNonQuery() != 1)
         {
             throw new InvalidOperationException("Barber was not found for cash box close.");
-        }
-    }
-
-    public void SetRotationOrder(Guid barberId, int rotationOrder, DateTimeOffset updatedAt)
-    {
-        using var command = _connection.CreateCommand();
-        command.Transaction = _transaction;
-        command.CommandText = """
-            UPDATE barbers
-            SET rotation_order = $rotation_order,
-                updated_at = $updated_at
-            WHERE id = $id;
-            """;
-        command.AddText("$id", barberId.ToString());
-        command.AddInteger("$rotation_order", rotationOrder);
-        command.AddText("$updated_at", Format(updatedAt));
-
-        if (command.ExecuteNonQuery() != 1)
-        {
-            throw new InvalidOperationException("Barber was not found for rotation update.");
         }
     }
 

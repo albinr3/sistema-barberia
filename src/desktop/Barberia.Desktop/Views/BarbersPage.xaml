@@ -307,7 +307,6 @@
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
-                                <ColumnDefinition />
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Spacing="6">
@@ -317,18 +316,6 @@
                                     MinHeight="44"
                                     MaxLength="8"
                                     PlaceholderText="e.g. B-8"
-                                    TextWrapping="NoWrap" />
-                            </StackPanel>
-
-                            <StackPanel
-                                Grid.Column="1"
-                                Spacing="6">
-                                <TextBlock Style="{StaticResource BarberFormLabelTextStyle}" Text="Rotation Order" />
-                                <TextBox
-                                    x:Name="_rotationOrderInput"
-                                    MinHeight="44"
-                                    MaxLength="4"
-                                    PlaceholderText="8"
                                     TextWrapping="NoWrap" />
                             </StackPanel>
                         </Grid>

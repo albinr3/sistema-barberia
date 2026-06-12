@@ -87,7 +87,12 @@ public sealed partial class LocalAdminPage : Page
             snapshot.RecentAuditEvents.Select(CreateAuditRow),
             "No audit events recorded yet.");
 
-        var staffElements = snapshot.Barbers.Where(b => b.IsActive).Take(10).Select(CreateStaffRow).ToList();
+        var dailyRotationEntries = snapshot.DailyRotationEntries.ToDictionary(entry => entry.BarberId);
+        var staffElements = snapshot.Barbers
+            .Where(b => b.IsActive)
+            .Take(10)
+            .Select(barber => CreateStaffRow(barber, dailyRotationEntries))
+            .ToList();
         var staffChildren = new List<UIElement>();
         
         if (staffElements.Count > 0)
@@ -375,7 +380,7 @@ public sealed partial class LocalAdminPage : Page
             Brush(255, 255, 255));
     }
 
-    private UIElement CreateStaffRow(Barber barber)
+    private UIElement CreateStaffRow(Barber barber, IReadOnlyDictionary<Guid, DailyRotationEntry> dailyRotationEntries)
     {
         var isOnline = barber.IsActive && barber.State != BarberState.Offline;
         var initial = string.IsNullOrWhiteSpace(barber.DisplayName)
@@ -468,6 +473,14 @@ public sealed partial class LocalAdminPage : Page
                     Text = FormatBarberState(barber.State),
                     FontSize = 12,
                     Foreground = isOnline ? Brush(68, 70, 85) : Brush(117, 118, 135),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    TextWrapping = TextWrapping.WrapWholeWords
+                },
+                new TextBlock
+                {
+                    Text = FormatDailyRotationText(barber, dailyRotationEntries),
+                    FontSize = 12,
+                    Foreground = Brush(101, 108, 116),
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     TextWrapping = TextWrapping.WrapWholeWords
                 }
@@ -795,7 +808,14 @@ public sealed partial class LocalAdminPage : Page
         };
     }
 
-
+    private static string FormatDailyRotationText(
+        Barber barber,
+        IReadOnlyDictionary<Guid, DailyRotationEntry> dailyRotationEntries)
+    {
+        return dailyRotationEntries.TryGetValue(barber.Id, out var entry)
+            ? $"Arrival #{entry.QueuePosition + 1} - {entry.ArrivedAt:hh:mm tt}"
+            : "Not checked in today";
+    }
 
     private static Brush GetTurnBackground(TurnState state)
     {

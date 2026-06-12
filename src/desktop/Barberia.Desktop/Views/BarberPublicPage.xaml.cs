@@ -21,6 +21,7 @@ public sealed partial class BarberPublicPage : Page
 {
     private readonly LocalAdminService _service = new();
     private IReadOnlyList<Barber> _barbers = [];
+    private IReadOnlyDictionary<Guid, DailyRotationEntry> _dailyRotationEntries = new Dictionary<Guid, DailyRotationEntry>();
     private int _currentPage = 1;
     private const int PageSize = 12;
 
@@ -43,6 +44,7 @@ public sealed partial class BarberPublicPage : Page
         {
             var snapshot = _service.Load();
             _barbers = snapshot.Barbers.Where(b => b.IsActive).ToList();
+            _dailyRotationEntries = snapshot.DailyRotationEntries.ToDictionary(entry => entry.BarberId);
             _currentPage = 1;
             UpdatePagination();
             SetStatus("", success: true);
@@ -180,6 +182,14 @@ public sealed partial class BarberPublicPage : Page
             FontSize = 13,
             Foreground = Brush(68, 70, 85)
         });
+        details.Children.Add(new TextBlock
+        {
+            Text = FormatDailyRotationText(barber),
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 12,
+            Foreground = Brush(68, 70, 85),
+            TextWrapping = TextWrapping.WrapWholeWords
+        });
 
         identity.Children.Add(details);
         container.Children.Add(identity);
@@ -201,6 +211,8 @@ public sealed partial class BarberPublicPage : Page
         var stateSwitch = new ToggleSwitch
         {
             IsOn = barber.State != BarberState.Offline,
+            OnContent = null,
+            OffContent = null,
             IsEnabled = barber.State is not BarberState.Called and not BarberState.InService,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -254,6 +266,13 @@ public sealed partial class BarberPublicPage : Page
         BarberState.NotCheckedIn => "Not checked in",
         _ => state.ToString()
     };
+
+    private string FormatDailyRotationText(Barber barber)
+    {
+        return _dailyRotationEntries.TryGetValue(barber.Id, out var entry)
+            ? $"Arrival #{entry.QueuePosition + 1} - {entry.ArrivedAt:hh:mm tt}"
+            : "Not checked in today";
+    }
 
     private static Grid CreateProfileAvatar(Barber barber, double size)
     {

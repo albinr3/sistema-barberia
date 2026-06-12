@@ -61,8 +61,8 @@ public sealed partial class TicketHistoryPage : Page
             // The history page can still load without the barber filter.
         }
 
-        _fromDatePicker.Date = DateTimeOffset.Now.Date;
-        _toDatePicker.Date = DateTimeOffset.Now.Date;
+        _fromDatePicker.Date = OperationalClock.Now.Date;
+        _toDatePicker.Date = OperationalClock.Now.Date;
 
         _isLoaded = true;
         LoadHistory();
@@ -93,8 +93,8 @@ public sealed partial class TicketHistoryPage : Page
         _searchTextBox.Text = string.Empty;
         _statusComboBox.SelectedIndex = 0;
         _barberComboBox.SelectedIndex = 0;
-        _fromDatePicker.Date = DateTimeOffset.Now.Date;
-        _toDatePicker.Date = DateTimeOffset.Now.Date;
+        _fromDatePicker.Date = OperationalClock.Now.Date;
+        _toDatePicker.Date = OperationalClock.Now.Date;
         _currentPage = 1;
         LoadHistory();
     }

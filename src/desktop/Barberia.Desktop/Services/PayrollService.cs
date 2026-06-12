@@ -36,10 +36,10 @@ public sealed class PayrollService
                 existingPeriod,
                 repository.ListLines(existingPeriod.Id),
                 repository.ListAdjustments(existingPeriod.Id),
-                DateTimeOffset.Now);
+                OperationalClock.Now);
         }
 
-        return GeneratePreview(range, tempAdjustments, DateTimeOffset.Now);
+        return GeneratePreview(range, tempAdjustments, OperationalClock.Now);
     }
 
     public PayrollSnapshot GeneratePreview(PayrollWeekRange range, IReadOnlyList<PayrollAdjustment> tempAdjustments, DateTimeOffset generatedAt)
@@ -128,7 +128,7 @@ public sealed class PayrollService
             period,
             repository.ListLines(period.Id),
             repository.ListAdjustments(period.Id),
-            DateTimeOffset.Now);
+            OperationalClock.Now);
     }
 
     public IReadOnlyList<PayrollBarberOption> ListBarbers()

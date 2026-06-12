@@ -89,8 +89,8 @@ public sealed class TurnAssignmentEngine
     {
         return barbers
             .OrderBy(barber => QueueIndexOrMax(barber.Id, rotationQueue))
-            .ThenBy(barber => barber.RotationOrder)
-            .ThenBy(barber => barber.CheckedInAt)
+            .ThenBy(ArrivalOrMax)
+            .ThenBy(barber => barber.StationNumber ?? int.MaxValue)
             .ThenBy(barber => barber.Id)
             .First();
     }
@@ -99,9 +99,15 @@ public sealed class TurnAssignmentEngine
     {
         return barbers
             .OrderBy(barber => QueueIndexOrMax(barber.Id, rotationQueue))
-            .ThenBy(barber => barber.RotationOrder)
+            .ThenBy(ArrivalOrMax)
+            .ThenBy(barber => barber.StationNumber ?? int.MaxValue)
             .ThenBy(barber => barber.Id)
             .First();
+    }
+
+    private static DateTimeOffset ArrivalOrMax(Barber barber)
+    {
+        return barber.CheckedInAt ?? DateTimeOffset.MaxValue;
     }
 
     private static int QueueIndexOrMax(Guid barberId, IReadOnlyList<Guid> rotationQueue)

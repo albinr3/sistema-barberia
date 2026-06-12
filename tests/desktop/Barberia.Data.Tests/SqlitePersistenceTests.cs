@@ -279,7 +279,7 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
-    public void BarberRepository_ListAllUsesRotationOrderNotStationNumber()
+    public void BarberRepository_ListAllUsesStationNumberNotLegacyRotationOrder()
     {
         using var database = TestDatabase.Create();
         var now = DateTimeOffset.Parse("2026-06-04T11:10:00Z");
@@ -294,8 +294,8 @@ public sealed class SqlitePersistenceTests
 
         Assert.Collection(
             barbers,
-            barber => Assert.Equal(firstBarber, barber.Id),
-            barber => Assert.Equal(secondBarber, barber.Id));
+            barber => Assert.Equal(secondBarber, barber.Id),
+            barber => Assert.Equal(firstBarber, barber.Id));
     }
 
     [Fact]
@@ -662,7 +662,7 @@ public sealed class SqlitePersistenceTests
                     true,
                     500));
             new LocalTurnRepository(connection, sqliteTransaction).MarkCompleted(turnId, now);
-            new LocalBarberRepository(connection, sqliteTransaction).ApplyCashBoxClose(barberId, BarberState.Available, 3, now);
+            new LocalBarberRepository(connection, sqliteTransaction).ApplyCashBoxClose(barberId, BarberState.Available, now);
             new AuditEventRepository(connection, sqliteTransaction).Add(
                 new AuditEvent(Guid.NewGuid(), now, "cash_box_closed", "turn", turnId, """{"receipt":"R-001"}""", "autocaja-1"));
         });
@@ -675,41 +675,59 @@ public sealed class SqlitePersistenceTests
         Assert.Equal(TurnState.Completed, savedTurn?.State);
         Assert.Equal(BarberState.Available, savedBarber?.State);
         Assert.Equal(3, savedBarber?.ClientsServedToday);
-        Assert.Equal(3, savedBarber?.RotationOrder);
         Assert.Single(payments);
         Assert.Single(auditEvents);
     }
 
     [Fact]
-    public void BarberRepository_PersistsCashBoxRotationQueue()
+    public void DailyRotationRepository_PreservesSameDayArrivalWhenQueuedAgain()
     {
         using var database = TestDatabase.Create();
+        var date = DateOnly.Parse("2026-06-04");
+        var arrivedAt = DateTimeOffset.Parse("2026-06-04T08:00:00Z");
+        var later = DateTimeOffset.Parse("2026-06-04T10:00:00Z");
+        var barberId = Guid.NewGuid();
+        var repository = new DailyRotationRepository(database.Connection);
+        new LocalBarberRepository(database.Connection)
+            .Upsert(new Barber(barberId, "Ana", BarberState.Available, 0, 0, arrivedAt, stationNumber: 1), arrivedAt);
+
+        repository.EnsureQueued(date, barberId, arrivedAt, arrivedAt);
+        repository.EnsureQueued(date, barberId, later, later);
+
+        var entry = Assert.Single(repository.ListByDate(date));
+        Assert.Equal(0, entry.QueuePosition);
+        Assert.Equal(arrivedAt, entry.ArrivedAt);
+    }
+
+    [Fact]
+    public void DailyRotationRepository_MovesClosingBarberToEnd()
+    {
+        using var database = TestDatabase.Create();
+        var date = DateOnly.Parse("2026-06-04");
         var now = DateTimeOffset.Parse("2026-06-04T18:00:00Z");
         var firstBarber = Guid.NewGuid();
         var closingBarber = Guid.NewGuid();
         var thirdBarber = Guid.NewGuid();
-        var repository = new LocalBarberRepository(database.Connection);
+        var repository = new DailyRotationRepository(database.Connection);
+        var barberRepository = new LocalBarberRepository(database.Connection);
 
-        repository.Upsert(new Barber(firstBarber, "Ana", BarberState.Available, 1, 0, now, stationNumber: 1), now);
-        repository.Upsert(new Barber(closingBarber, "Luis", BarberState.InService, 2, 1, now, stationNumber: 2), now);
-        repository.Upsert(new Barber(thirdBarber, "Mia", BarberState.Available, 1, 2, now, stationNumber: 3), now);
+        barberRepository.Upsert(new Barber(firstBarber, "Ana", BarberState.Available, 1, 0, now.AddHours(-3), stationNumber: 1), now);
+        barberRepository.Upsert(new Barber(closingBarber, "Luis", BarberState.Available, 2, 1, now.AddHours(-2), stationNumber: 2), now);
+        barberRepository.Upsert(new Barber(thirdBarber, "Mia", BarberState.Available, 1, 2, now.AddHours(-1), stationNumber: 3), now);
 
-        repository.SetRotationOrder(firstBarber, 0, now.AddMinutes(1));
-        repository.SetRotationOrder(thirdBarber, 1, now.AddMinutes(1));
-        repository.ApplyCashBoxClose(closingBarber, BarberState.Available, 2, now.AddMinutes(1));
+        repository.EnsureQueued(date, firstBarber, now.AddHours(-3), now);
+        repository.EnsureQueued(date, closingBarber, now.AddHours(-2), now);
+        repository.EnsureQueued(date, thirdBarber, now.AddHours(-1), now);
 
-        var barbers = repository.ListAll();
+        repository.MoveToEnd(date, closingBarber, now.AddHours(-2), now.AddMinutes(1));
+
+        var entries = repository.ListByDate(date);
 
         Assert.Collection(
-            barbers,
-            barber => Assert.Equal(firstBarber, barber.Id),
-            barber => Assert.Equal(thirdBarber, barber.Id),
-            barber =>
-            {
-                Assert.Equal(closingBarber, barber.Id);
-                Assert.Equal(BarberState.Available, barber.State);
-                Assert.Equal(3, barber.ClientsServedToday);
-            });
+            entries,
+            entry => Assert.Equal(firstBarber, entry.BarberId),
+            entry => Assert.Equal(thirdBarber, entry.BarberId),
+            entry => Assert.Equal(closingBarber, entry.BarberId));
     }
 
     [Fact]

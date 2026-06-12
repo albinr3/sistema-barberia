@@ -37,6 +37,25 @@ public sealed class LocalDatabaseInitializer
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS daily_operation_state (
+                business_date TEXT NOT NULL PRIMARY KEY,
+                reset_applied_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS barber_daily_rotation (
+                business_date TEXT NOT NULL,
+                barber_id TEXT NOT NULL,
+                queue_position INTEGER NOT NULL,
+                arrived_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (business_date, barber_id),
+                FOREIGN KEY (barber_id) REFERENCES barbers(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_barber_daily_rotation_order
+                ON barber_daily_rotation(business_date, queue_position, arrived_at);
+
             CREATE TABLE IF NOT EXISTS appointment_reservations (
                 id TEXT NOT NULL PRIMARY KEY,
                 barber_id TEXT NOT NULL,
@@ -260,7 +279,7 @@ public sealed class LocalDatabaseInitializer
             {
                 var id = reader.GetString(0);
                 var checkedInAt = DateTimeOffset.Parse(reader.GetString(1));
-                var ticketDate = DateOnly.FromDateTime(checkedInAt.LocalDateTime).ToString("yyyy-MM-dd");
+                var ticketDate = DateOnly.FromDateTime(checkedInAt.DateTime).ToString("yyyy-MM-dd");
                 if (!turnsByDay.TryGetValue(ticketDate, out var ids))
                 {
                     ids = [];
@@ -336,7 +355,7 @@ public sealed class LocalDatabaseInitializer
                 SELECT id, station_number
                 FROM barbers
                 WHERE is_active = 1
-                ORDER BY rotation_order, display_name, id;
+                ORDER BY COALESCE(station_number, 2147483647), display_name, id;
                 """;
 
             using var reader = command.ExecuteReader();
