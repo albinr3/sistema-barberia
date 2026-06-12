@@ -43,7 +43,7 @@ No convertir la app en una paleta de un solo color. Mantener contraste suficient
 
 - Mantener la navegacion lateral global de la shell en modulos administrativos y operativos generales.
 - Kiosco, pantalla publica y panel de barbero pueden ocultar navegacion lateral y header superior cuando funcionen como superficies dedicadas de atencion.
-- Kiosco debe ocupar todo el viewport disponible cuando la shell oculta el chrome global, con padding adaptable y grilla responsive de barberos para tablets, pantallas pequenas y monitores grandes.
+- Kiosco debe ocupar todo el viewport disponible cuando la shell oculta el chrome global, con padding adaptable y grilla responsive de barberos para tablets, pantallas pequenas y monitores grandes; en monitor 1920x1080 debe mostrar el check-in completo con hasta 12 barberos sin scroll vertical.
 - Mantener header superior con titulo de modulo y contexto operativo en modulos que usan la shell completa.
 - Usar tarjetas solo para bloques funcionales, elementos repetidos o resumenes concretos.
 - No anidar tarjetas dentro de tarjetas.

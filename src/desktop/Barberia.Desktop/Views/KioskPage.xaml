@@ -38,8 +38,8 @@
             BorderThickness="0,0,0,1">
             <Grid
                 x:Name="_topBar"
-                MinHeight="64"
-                Padding="48,0">
+                MinHeight="54"
+                Padding="28,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition />
@@ -66,7 +66,7 @@
                     <Image
                         x:Name="_brandLogo"
                         MaxWidth="230"
-                        Height="42"
+                        Height="34"
                         HorizontalAlignment="Center"
                         Stretch="Uniform" />
                     <TextBlock
@@ -93,86 +93,150 @@
             <Grid
                 x:Name="_contentCanvas"
                 MinHeight="1"
-                Padding="48,42"
-                HorizontalAlignment="Stretch">
+                Padding="28,10"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
                 <Border
                     x:Name="_checkInPanel"
                     HorizontalAlignment="Stretch"
-                    Padding="48"
+                    VerticalAlignment="Stretch"
+                    Padding="20"
                     Background="{StaticResource KioskSurfaceBrush}"
                     BorderBrush="{StaticResource KioskOutlineBrush}"
                     BorderThickness="1"
-                    CornerRadius="12">
-                    <StackPanel>
+                    CornerRadius="8">
+                    <Grid
+                        x:Name="_checkInLayout"
+                        RowSpacing="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
                         <StackPanel
-                            Margin="0,0,0,40"
+                            x:Name="_introSection"
+                            Grid.Row="0"
                             HorizontalAlignment="Center"
-                            Spacing="8">
+                            Spacing="4">
                             <TextBlock
+                                x:Name="_titleText"
                                 HorizontalAlignment="Center"
-                                FontSize="48"
+                                FontSize="34"
                                 FontWeight="Bold"
                                 Foreground="{StaticResource KioskPrimaryBrush}"
                                 Text="Welcome, please check in"
                                 TextAlignment="Center"
                                 TextWrapping="Wrap" />
                             <TextBlock
+                                x:Name="_subtitleText"
                                 HorizontalAlignment="Center"
-                                FontSize="18"
+                                FontSize="15"
                                 Foreground="{StaticResource KioskMutedTextBrush}"
                                 Text="Enter an optional name and select your preferred barber to join the queue."
                                 TextAlignment="Center"
                                 TextWrapping="Wrap" />
                         </StackPanel>
 
-                        <StackPanel
-                            x:Name="_nameInputSection"
-                            MaxWidth="800"
-                            Margin="0,0,0,40"
-                            HorizontalAlignment="Stretch"
-                            Spacing="8">
-                            <TextBlock
-                                FontSize="22"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource KioskTextBrush}"
-                                Text="Your Name (optional)" />
-                            <TextBox
-                                x:Name="_customerNameInput"
-                                MinHeight="56"
-                                Padding="16,10"
-                                Background="{StaticResource KioskInputBrush}"
-                                BorderBrush="{StaticResource KioskOutlineBrush}"
-                                BorderThickness="0,0,0,2"
-                                CornerRadius="4,4,0,0"
-                                FontSize="18"
-                                GotFocus="OnCustomerNameFocus"
+                        <Grid
+                            x:Name="_quickControlsGrid"
+                            Grid.Row="1"
+                            ColumnSpacing="18"
+                            RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="3*" />
+                                <ColumnDefinition Width="2*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel
+                                x:Name="_nameInputSection"
+                                MaxWidth="900"
                                 HorizontalAlignment="Stretch"
-                                KeyDown="OnCustomerNameKeyDown"
-                                PlaceholderText="e.g., John Doe"
-                                TextChanged="OnCustomerNameChanged"
-                                Tapped="OnCustomerNameTapped">
-                                <TextBox.InputScope>
-                                    <InputScope>
-                                        <InputScope.Names>
-                                            <InputScopeName NameValue="PersonalFullName" />
-                                        </InputScope.Names>
-                                    </InputScope>
-                                </TextBox.InputScope>
-                            </TextBox>
-                            <TextBlock
-                                x:Name="_nameErrorText"
-                                Foreground="{StaticResource ErrorTextBrush}"
-                                TextWrapping="Wrap"
-                                Visibility="Collapsed" />
-                        </StackPanel>
+                                Spacing="6">
+                                <TextBlock
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource KioskTextBrush}"
+                                    Text="Your Name (optional)" />
+                                <TextBox
+                                    x:Name="_customerNameInput"
+                                    MinHeight="46"
+                                    Padding="14,8"
+                                    Background="{StaticResource KioskInputBrush}"
+                                    BorderBrush="{StaticResource KioskOutlineBrush}"
+                                    BorderThickness="0,0,0,2"
+                                    CornerRadius="4,4,0,0"
+                                    FontSize="16"
+                                    GotFocus="OnCustomerNameFocus"
+                                    HorizontalAlignment="Stretch"
+                                    KeyDown="OnCustomerNameKeyDown"
+                                    PlaceholderText="e.g., John Doe"
+                                    TextChanged="OnCustomerNameChanged"
+                                    Tapped="OnCustomerNameTapped">
+                                    <TextBox.InputScope>
+                                        <InputScope>
+                                            <InputScope.Names>
+                                                <InputScopeName NameValue="PersonalFullName" />
+                                            </InputScope.Names>
+                                        </InputScope>
+                                    </TextBox.InputScope>
+                                </TextBox>
+                                <TextBlock
+                                    x:Name="_nameErrorText"
+                                    Foreground="{StaticResource ErrorTextBrush}"
+                                    TextWrapping="Wrap"
+                                    Visibility="Collapsed" />
+                            </StackPanel>
 
-                        <Border
-                            Height="1"
-                            Margin="0,0,0,40"
-                            Background="{StaticResource KioskOutlineBrush}" />
+                            <Button
+                                x:Name="_anyBarberButton"
+                                Grid.Column="1"
+                                MinHeight="54"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Bottom"
+                                Click="OnAnyBarberButtonClick"
+                                IsEnabled="False"
+                                Padding="16,10"
+                                Background="{StaticResource KioskSurfaceBrush}"
+                                BorderBrush="{StaticResource KioskPrimaryContainerBrush}"
+                                BorderThickness="1.5"
+                                CornerRadius="8">
+                                <StackPanel
+                                    HorizontalAlignment="Center"
+                                    Orientation="Horizontal"
+                                    Spacing="10">
+                                    <FontIcon
+                                        FontSize="22"
+                                        Foreground="{StaticResource KioskPrimaryContainerBrush}"
+                                        Glyph="&#xE716;" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="18"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource KioskPrimaryContainerBrush}"
+                                        Text="ANY BARBER" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
 
-                        <StackPanel Margin="0,0,0,40">
-                            <Grid Margin="0,0,0,24">
+                        <Grid
+                            x:Name="_barberSectionGrid"
+                            Grid.Row="2"
+                            RowSpacing="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid
+                                x:Name="_barberHeaderGrid"
+                                Grid.Row="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition />
                                     <ColumnDefinition Width="Auto" />
@@ -180,13 +244,13 @@
 
                                 <StackPanel Spacing="4">
                                     <TextBlock
-                                        FontSize="24"
+                                        FontSize="20"
                                         FontWeight="SemiBold"
                                         Foreground="{StaticResource KioskTextBrush}"
                                         Text="Select Barber" />
                                     <TextBlock
                                         MaxWidth="560"
-                                        FontSize="15"
+                                        FontSize="13"
                                         Foreground="{StaticResource KioskMutedTextBrush}"
                                         Text="You can select one or multiple preferred barbers before printing your ticket."
                                         TextWrapping="WrapWholeWords" />
@@ -195,63 +259,39 @@
                                     x:Name="_selectionSummaryText"
                                     Grid.Column="1"
                                     VerticalAlignment="Bottom"
-                                    FontSize="14"
+                                    FontSize="13"
                                     Foreground="{StaticResource KioskMutedTextBrush}" />
                             </Grid>
 
-                            <Button
-                                x:Name="_anyBarberButton"
-                                MinHeight="64"
-                                Margin="0,0,0,24"
-                                HorizontalAlignment="Stretch"
-                                Click="OnAnyBarberButtonClick"
-                                IsEnabled="False"
-                                Padding="18,12"
-                                Background="{StaticResource KioskSurfaceBrush}"
-                                BorderBrush="{StaticResource KioskPrimaryContainerBrush}"
-                                BorderThickness="1.5"
-                                CornerRadius="8">
-                                <StackPanel
-                                    HorizontalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    Spacing="12">
-                                    <FontIcon
-                                        FontSize="24"
-                                        Foreground="{StaticResource KioskPrimaryContainerBrush}"
-                                        Glyph="&#xE716;" />
-                                    <TextBlock
-                                        VerticalAlignment="Center"
-                                        FontSize="20"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource KioskPrimaryContainerBrush}"
-                                        Text="ANY BARBER" />
-                                </StackPanel>
-                            </Button>
-
                             <Grid
                                 x:Name="_barberGrid"
-                                ColumnSpacing="16"
-                                RowSpacing="16" />
+                                Grid.Row="1"
+                                ColumnSpacing="10"
+                                RowSpacing="10"
+                                VerticalAlignment="Stretch" />
 
                             <TextBlock
                                 x:Name="_barberErrorText"
-                                Margin="0,14,0,0"
+                                Grid.Row="2"
+                                Margin="0,8,0,0"
                                 Foreground="{StaticResource ErrorTextBrush}"
                                 TextWrapping="Wrap"
                                 Visibility="Collapsed" />
-                        </StackPanel>
+                        </Grid>
 
                         <Border
+                            x:Name="_printFooter"
+                            Grid.Row="3"
                             BorderBrush="{StaticResource KioskOutlineBrush}"
                             BorderThickness="0,1,0,0"
-                            Padding="0,24,0,0">
+                            Padding="0,12,0,0">
                             <Button
                                 x:Name="_printTicketButton"
-                                MinHeight="64"
+                                MinHeight="52"
                                 HorizontalAlignment="Right"
                                 Click="OnPrintTicketButtonClick"
                                 IsEnabled="False"
-                                Padding="32,14"
+                                Padding="28,12"
                                 Background="{StaticResource KioskPrimaryContainerBrush}"
                                 BorderBrush="{StaticResource KioskPrimaryContainerBrush}"
                                 CornerRadius="8"
@@ -261,16 +301,16 @@
                                     Spacing="10">
                                     <TextBlock
                                         VerticalAlignment="Center"
-                                        FontSize="20"
+                                        FontSize="18"
                                         FontWeight="SemiBold"
                                         Text="PRINT TICKET" />
                                     <FontIcon
-                                        FontSize="22"
+                                        FontSize="20"
                                         Glyph="&#xE8A5;" />
                                 </StackPanel>
                             </Button>
                         </Border>
-                    </StackPanel>
+                    </Grid>
                 </Border>
 
                 <Border

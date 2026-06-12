@@ -72,6 +72,25 @@ public sealed class XamlArchitectureTests
         Assert.Contains("payrollPage.ShellMenuRequested += (_, _) => ShowShellMenu();", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void KioskDesktopLayoutTargetsTwelveBarbersWithoutScroll()
+    {
+        var kioskCodePath = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "desktop",
+            "Barberia.Desktop",
+            "Views",
+            "KioskPage.xaml.cs");
+        var source = File.ReadAllText(kioskCodePath);
+
+        Assert.Contains("width < 1460 ? 4 : 5", source, StringComparison.Ordinal);
+        Assert.Contains("_contentCanvas.Height = denseDesktop ? availableHeight : double.NaN;", source, StringComparison.Ordinal);
+        Assert.Contains("_screenScrollViewer.VerticalScrollBarVisibility = denseDesktop ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;", source, StringComparison.Ordinal);
+        Assert.Contains("denseDesktop ? 108", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("MinHeight = 224", source, StringComparison.Ordinal);
+    }
+
     private static bool IsWinUiVisualBase(string baseType)
     {
         return baseType is "Window" or "Page" or "Microsoft.UI.Xaml.Window" or "Microsoft.UI.Xaml.Controls.Page";

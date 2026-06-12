@@ -22,6 +22,13 @@ public sealed partial class KioskPage : Page
     private readonly Dictionary<Guid, Button> _barberButtons = [];
     private readonly HashSet<Guid> _selectedBarberIds = [];
     private int _barberColumnCount = 4;
+    private bool _usesDenseDesktopLayout;
+    private double _barberCardMinHeight = 132;
+    private double _barberCardPadding = 12;
+    private double _barberCardSpacing = 6;
+    private double _avatarSize = 58;
+    private double _avatarFontSize = 20;
+    private double _barberNameFontSize = 15;
     private IReadOnlyList<Barber> _barbers = [];
     private bool _acceptsAnyBarber = true;
     private string _customerName = string.Empty;
@@ -50,27 +57,86 @@ public sealed partial class KioskPage : Page
         }
 
         _contentCanvas.Width = width;
-        _contentCanvas.MinHeight = Math.Max(1, height - _topBar.ActualHeight);
+        var availableHeight = Math.Max(1, height - _topBar.ActualHeight);
 
         var compact = width < 760;
         var medium = width < 1080;
-        var edgePadding = compact ? 16 : medium ? 28 : 48;
-        var verticalPadding = compact ? 20 : medium ? 30 : 42;
-        var panelPadding = compact ? 20 : medium ? 32 : 48;
+        var denseDesktop = width >= 1180 && height >= 700;
+        var edgePadding = compact ? 16 : medium ? 22 : 28;
+        var verticalPadding = denseDesktop ? 8 : compact ? 14 : medium ? 16 : 12;
+        var panelPadding = denseDesktop ? 16 : compact ? 18 : medium ? 22 : 20;
 
+        _topBar.MinHeight = denseDesktop ? 50 : compact ? 58 : 54;
         _topBar.Padding = new Thickness(edgePadding, 0, edgePadding, 0);
         _contentCanvas.Padding = new Thickness(edgePadding, verticalPadding, edgePadding, verticalPadding);
+        _contentCanvas.MinHeight = availableHeight;
+        _contentCanvas.Height = denseDesktop ? availableHeight : double.NaN;
+        _screenScrollViewer.VerticalScrollBarVisibility = denseDesktop ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+        _screenScrollViewer.VerticalScrollMode = denseDesktop ? ScrollMode.Disabled : ScrollMode.Auto;
         _checkInPanel.Padding = new Thickness(panelPadding);
-        _nameInputSection.MaxWidth = compact ? double.PositiveInfinity : 720;
+        _checkInLayout.RowSpacing = denseDesktop ? 8 : compact ? 12 : 10;
+        _quickControlsGrid.ColumnSpacing = denseDesktop ? 14 : 12;
+        _barberSectionGrid.RowSpacing = denseDesktop ? 6 : 8;
+        _barberGrid.ColumnSpacing = denseDesktop ? 8 : compact ? 8 : 10;
+        _barberGrid.RowSpacing = denseDesktop ? 8 : compact ? 8 : 10;
+        _nameInputSection.MaxWidth = compact ? double.PositiveInfinity : 900;
+        _titleText.FontSize = denseDesktop ? 30 : compact ? 30 : 34;
+        _subtitleText.FontSize = denseDesktop ? 14 : compact ? 13 : 15;
+        _brandLogo.Height = denseDesktop ? 32 : 38;
+        _brandLogo.MaxWidth = denseDesktop ? 190 : 230;
 
-        var nextColumnCount = width < 680 ? 1 : width < 980 ? 2 : width < 1320 ? 3 : 4;
-        if (_barberColumnCount == nextColumnCount)
+        Grid.SetColumn(_anyBarberButton, compact ? 0 : 1);
+        Grid.SetRow(_anyBarberButton, compact ? 1 : 0);
+        Grid.SetColumnSpan(_nameInputSection, compact ? 2 : 1);
+        Grid.SetColumnSpan(_anyBarberButton, compact ? 2 : 1);
+
+        if (compact)
+        {
+            _anyBarberButton.VerticalAlignment = VerticalAlignment.Stretch;
+            _printTicketButton.HorizontalAlignment = HorizontalAlignment.Stretch;
+        }
+        else
+        {
+            _anyBarberButton.VerticalAlignment = VerticalAlignment.Bottom;
+            _printTicketButton.HorizontalAlignment = HorizontalAlignment.Right;
+        }
+
+        var nextColumnCount = width < 680 ? 1 : width < 940 ? 2 : width < 1120 ? 3 : width < 1460 ? 4 : 5;
+        var metricsChanged = ApplyBarberCardMetrics(denseDesktop, compact);
+        if (_barberColumnCount == nextColumnCount && _usesDenseDesktopLayout == denseDesktop && !metricsChanged)
         {
             return;
         }
 
         _barberColumnCount = nextColumnCount;
+        _usesDenseDesktopLayout = denseDesktop;
         RenderBarberChoices();
+    }
+
+    private bool ApplyBarberCardMetrics(bool denseDesktop, bool compact)
+    {
+        var minHeight = denseDesktop ? 108 : compact ? 120 : 136;
+        var padding = denseDesktop ? 8 : compact ? 10 : 12;
+        var spacing = denseDesktop ? 4 : 6;
+        var avatarSize = denseDesktop ? 46 : compact ? 52 : 60;
+        var avatarFontSize = denseDesktop ? 17 : compact ? 18 : 21;
+        var nameFontSize = denseDesktop ? 14 : compact ? 14 : 16;
+
+        var changed = _barberCardMinHeight != minHeight ||
+            _barberCardPadding != padding ||
+            _barberCardSpacing != spacing ||
+            _avatarSize != avatarSize ||
+            _avatarFontSize != avatarFontSize ||
+            _barberNameFontSize != nameFontSize;
+
+        _barberCardMinHeight = minHeight;
+        _barberCardPadding = padding;
+        _barberCardSpacing = spacing;
+        _avatarSize = avatarSize;
+        _avatarFontSize = avatarFontSize;
+        _barberNameFontSize = nameFontSize;
+
+        return changed;
     }
 
     private void LoadBrandLogo()
@@ -255,7 +321,10 @@ public sealed partial class KioskPage : Page
         {
             if (index % _barberColumnCount == 0)
             {
-                _barberGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                _barberGrid.RowDefinitions.Add(new RowDefinition
+                {
+                    Height = _usesDenseDesktopLayout ? new GridLength(1, GridUnitType.Star) : GridLength.Auto
+                });
             }
 
             var barber = _barbers[index];
@@ -274,10 +343,11 @@ public sealed partial class KioskPage : Page
     {
         var button = new Button
         {
-            MinHeight = 224,
+            MinHeight = _barberCardMinHeight,
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(22),
+            Padding = new Thickness(_barberCardPadding),
             Background = Brush(255, 255, 255),
             BorderBrush = Brush(233, 236, 239),
             BorderThickness = new Thickness(1),
@@ -286,18 +356,21 @@ public sealed partial class KioskPage : Page
             Content = new StackPanel
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Spacing = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+                Spacing = _barberCardSpacing,
                 Children =
                 {
-                    CreateAvatar(barber),
+                    CreateAvatar(barber, _avatarSize, _avatarFontSize),
                     new TextBlock
                     {
                         Text = barber.DisplayNameWithStation,
                         HorizontalAlignment = HorizontalAlignment.Center,
-                        FontSize = 20,
+                        FontSize = _barberNameFontSize,
                         FontWeight = FontWeights.SemiBold,
                         Foreground = Brush(26, 28, 30),
                         TextAlignment = TextAlignment.Center,
+                        MaxLines = 2,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
                         TextWrapping = TextWrapping.WrapWholeWords
                     }
                 }
@@ -324,12 +397,12 @@ public sealed partial class KioskPage : Page
         return button;
     }
 
-    private static Grid CreateAvatar(Barber barber)
+    private static Grid CreateAvatar(Barber barber, double size, double fontSize)
     {
         var avatar = new Grid
         {
-            Width = 96,
-            Height = 96,
+            Width = size,
+            Height = size,
             HorizontalAlignment = HorizontalAlignment.Center
         };
 
@@ -345,7 +418,7 @@ public sealed partial class KioskPage : Page
             Text = GetInitials(barber.DisplayName),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 30,
+            FontSize = fontSize,
             FontWeight = FontWeights.Bold,
             Foreground = Brush(0, 19, 135)
         });
