@@ -12,5 +12,6 @@ public enum ShellModuleKey
     TicketHistory,
     Payroll,
     PayrollHistory,
-    BarberPublic
+    BarberPublic,
+    Appointments
 }

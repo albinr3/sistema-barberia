@@ -90,6 +90,8 @@ public sealed partial class LocalAdminPage : Page
         var dailyRotationEntries = snapshot.DailyRotationEntries.ToDictionary(entry => entry.BarberId);
         var staffElements = snapshot.Barbers
             .Where(b => b.IsActive)
+            .OrderBy(b => b.StationNumber ?? int.MaxValue)
+            .ThenBy(b => b.DisplayName)
             .Take(10)
             .Select(barber => CreateStaffRow(barber, dailyRotationEntries))
             .ToList();
@@ -101,7 +103,8 @@ public sealed partial class LocalAdminPage : Page
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            for (int i = 0; i < 5; i++)
+            var rows = (int)Math.Ceiling(staffElements.Count / 2d);
+            for (int i = 0; i < rows; i++)
             {
                 grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             }
@@ -109,8 +112,8 @@ public sealed partial class LocalAdminPage : Page
             for (int i = 0; i < staffElements.Count; i++)
             {
                 var child = (FrameworkElement)staffElements[i];
-                Grid.SetRow(child, i % 5);
-                Grid.SetColumn(child, i / 5);
+                Grid.SetRow(child, i / 2);
+                Grid.SetColumn(child, i % 2);
                 grid.Children.Add(child);
             }
             staffChildren.Add(grid);

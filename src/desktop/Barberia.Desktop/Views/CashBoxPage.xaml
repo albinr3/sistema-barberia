@@ -25,7 +25,7 @@
 
         <ScrollViewer
             x:Name="_screenScrollViewer"
-            Padding="48,96,48,32">
+            Padding="48,16,48,32">
             <StackPanel
                 MaxWidth="1200"
                 HorizontalAlignment="Center"

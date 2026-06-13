@@ -43,7 +43,11 @@ public sealed partial class BarberPublicPage : Page
         try
         {
             var snapshot = _service.Load();
-            _barbers = snapshot.Barbers.Where(b => b.IsActive).ToList();
+            _barbers = snapshot.Barbers
+                .Where(b => b.IsActive)
+                .OrderBy(b => b.StationNumber ?? int.MaxValue)
+                .ThenBy(b => b.DisplayName)
+                .ToList();
             _dailyRotationEntries = snapshot.DailyRotationEntries.ToDictionary(entry => entry.BarberId);
             _currentPage = 1;
             UpdatePagination();

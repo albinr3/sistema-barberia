@@ -26,9 +26,9 @@ public sealed partial class KioskPage : Page
     private double _barberCardMinHeight = 132;
     private double _barberCardPadding = 12;
     private double _barberCardSpacing = 6;
-    private double _avatarSize = 58;
-    private double _avatarFontSize = 20;
-    private double _barberNameFontSize = 15;
+    private double _avatarSize = 92;
+    private double _avatarFontSize = 26;
+    private double _barberNameFontSize = 20;
     private IReadOnlyList<Barber> _barbers = [];
     private bool _acceptsAnyBarber = true;
     private string _customerName = string.Empty;
@@ -115,12 +115,12 @@ public sealed partial class KioskPage : Page
 
     private bool ApplyBarberCardMetrics(bool denseDesktop, bool compact)
     {
-        var minHeight = denseDesktop ? 108 : compact ? 120 : 136;
+        var minHeight = denseDesktop ? 148 : compact ? 160 : 176;
         var padding = denseDesktop ? 8 : compact ? 10 : 12;
-        var spacing = denseDesktop ? 4 : 6;
-        var avatarSize = denseDesktop ? 46 : compact ? 52 : 60;
-        var avatarFontSize = denseDesktop ? 17 : compact ? 18 : 21;
-        var nameFontSize = denseDesktop ? 14 : compact ? 14 : 16;
+        var spacing = denseDesktop ? 6 : compact ? 7 : 8;
+        var avatarSize = denseDesktop ? 84 : compact ? 94 : 106;
+        var avatarFontSize = denseDesktop ? 24 : compact ? 26 : 29;
+        var nameFontSize = denseDesktop ? 18 : compact ? 19 : 21;
 
         var changed = _barberCardMinHeight != minHeight ||
             _barberCardPadding != padding ||
@@ -286,7 +286,10 @@ public sealed partial class KioskPage : Page
     {
         try
         {
-            _barbers = _checkInService.Load().Barbers;
+            _barbers = _checkInService.Load().Barbers
+                .OrderBy(barber => barber.StationNumber ?? int.MaxValue)
+                .ThenBy(barber => barber.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
         catch (Exception exception)
         {
@@ -476,9 +479,6 @@ public sealed partial class KioskPage : Page
 
         var hasSelection = _acceptsAnyBarber || _selectedBarberIds.Count > 0;
         _printTicketButton.IsEnabled = canSelect && hasSelection;
-        _selectionSummaryText.Text = hasSelection
-            ? FormatSelectionSummary()
-            : "Choose a barber";
     }
 
     private void UpdateSelectionVisuals()
@@ -508,19 +508,6 @@ public sealed partial class KioskPage : Page
         button.BorderThickness = isSelected ? new Thickness(2) : new Thickness(1);
     }
 
-    private string FormatSelectionSummary()
-    {
-        if (_acceptsAnyBarber)
-        {
-            return "Any Barber";
-        }
-
-        return string.Join(
-            ", ",
-            _barbers
-                .Where(barber => _selectedBarberIds.Contains(barber.Id))
-                .Select(barber => barber.DisplayNameWithStation));
-    }
 
     private void ResetToAnyBarber()
     {

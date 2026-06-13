@@ -131,8 +131,7 @@ public sealed partial class PublicDisplayPage : Page
             .GroupBy(turn => turn.AssignedBarberId!.Value)
             .ToDictionary(group => group.Key, group => group.OrderBy(turn => GetTurnDisplayPriority(turn.State)).First());
         var orderedBarbers = snapshot.Barbers
-            .OrderBy(barber => GetBarberDisplayPriority(barber, snapshot.ProtectedBarberIds.Contains(barber.Id), activeTurnsByBarber))
-            .ThenBy(barber => barber.StationNumber ?? int.MaxValue)
+            .OrderBy(barber => barber.StationNumber ?? int.MaxValue)
             .ThenBy(barber => barber.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

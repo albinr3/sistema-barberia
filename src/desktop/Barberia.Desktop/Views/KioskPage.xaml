@@ -77,6 +77,7 @@
                         FontWeight="Bold"
                         Foreground="{StaticResource KioskPrimaryBrush}"
                         Text="Master Clips"
+                        TextAlignment="Center"
                         Visibility="Collapsed" />
                 </Grid>
             </Grid>
@@ -144,25 +145,18 @@
                             Grid.Row="1"
                             ColumnSpacing="18"
                             RowSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="3*" />
-                                <ColumnDefinition Width="2*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
                             <StackPanel
                                 x:Name="_nameInputSection"
                                 MaxWidth="900"
                                 HorizontalAlignment="Stretch"
                                 Spacing="6">
                                 <TextBlock
+                                    HorizontalAlignment="Center"
                                     FontSize="16"
                                     FontWeight="SemiBold"
                                     Foreground="{StaticResource KioskTextBrush}"
-                                    Text="Your Name (optional)" />
+                                    Text="Your Name (optional)"
+                                    TextAlignment="Center" />
                                 <TextBox
                                     x:Name="_customerNameInput"
                                     MinHeight="46"
@@ -176,6 +170,7 @@
                                     HorizontalAlignment="Stretch"
                                     KeyDown="OnCustomerNameKeyDown"
                                     PlaceholderText="e.g., John Doe"
+                                    TextAlignment="Center"
                                     TextChanged="OnCustomerNameChanged"
                                     Tapped="OnCustomerNameTapped">
                                     <TextBox.InputScope>
@@ -188,40 +183,12 @@
                                 </TextBox>
                                 <TextBlock
                                     x:Name="_nameErrorText"
+                                    HorizontalAlignment="Stretch"
                                     Foreground="{StaticResource ErrorTextBrush}"
+                                    TextAlignment="Center"
                                     TextWrapping="Wrap"
                                     Visibility="Collapsed" />
                             </StackPanel>
-
-                            <Button
-                                x:Name="_anyBarberButton"
-                                Grid.Column="1"
-                                MinHeight="54"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Bottom"
-                                Click="OnAnyBarberButtonClick"
-                                IsEnabled="False"
-                                Padding="16,10"
-                                Background="{StaticResource KioskSurfaceBrush}"
-                                BorderBrush="{StaticResource KioskPrimaryContainerBrush}"
-                                BorderThickness="1.5"
-                                CornerRadius="8">
-                                <StackPanel
-                                    HorizontalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    Spacing="10">
-                                    <FontIcon
-                                        FontSize="22"
-                                        Foreground="{StaticResource KioskPrimaryContainerBrush}"
-                                        Glyph="&#xE716;" />
-                                    <TextBlock
-                                        VerticalAlignment="Center"
-                                        FontSize="18"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource KioskPrimaryContainerBrush}"
-                                        Text="ANY BARBER" />
-                                </StackPanel>
-                            </Button>
                         </Grid>
 
                         <Grid
@@ -242,25 +209,53 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel Spacing="4">
+                                <StackPanel HorizontalAlignment="Center" Spacing="4">
                                     <TextBlock
-                                        FontSize="20"
+                                        HorizontalAlignment="Center"
+                                        FontSize="28"
                                         FontWeight="SemiBold"
                                         Foreground="{StaticResource KioskTextBrush}"
-                                        Text="Select Barber" />
+                                        Text="Select Barber"
+                                        TextAlignment="Center" />
                                     <TextBlock
                                         MaxWidth="560"
-                                        FontSize="13"
+                                        HorizontalAlignment="Center"
+                                        FontSize="16"
                                         Foreground="{StaticResource KioskMutedTextBrush}"
                                         Text="You can select one or multiple preferred barbers before printing your ticket."
+                                        TextAlignment="Center"
                                         TextWrapping="WrapWholeWords" />
+                                    <Button
+                                        x:Name="_anyBarberButton"
+                                        Margin="0,16,0,8"
+                                        MinHeight="54"
+                                        MinWidth="320"
+                                        HorizontalAlignment="Center"
+                                        Click="OnAnyBarberButtonClick"
+                                        IsEnabled="False"
+                                        Padding="32,10"
+                                        Background="{StaticResource KioskSurfaceBrush}"
+                                        BorderBrush="{StaticResource KioskPrimaryContainerBrush}"
+                                        BorderThickness="1.5"
+                                        CornerRadius="8">
+                                        <StackPanel
+                                            HorizontalAlignment="Center"
+                                            Orientation="Horizontal"
+                                            Spacing="10">
+                                            <FontIcon
+                                                FontSize="22"
+                                                Foreground="{StaticResource KioskPrimaryContainerBrush}"
+                                                Glyph="&#xE716;" />
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontSize="18"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource KioskPrimaryContainerBrush}"
+                                                Text="ANY BARBER"
+                                                TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
-                                <TextBlock
-                                    x:Name="_selectionSummaryText"
-                                    Grid.Column="1"
-                                    VerticalAlignment="Bottom"
-                                    FontSize="13"
-                                    Foreground="{StaticResource KioskMutedTextBrush}" />
                             </Grid>
 
                             <Grid
@@ -274,7 +269,9 @@
                                 x:Name="_barberErrorText"
                                 Grid.Row="2"
                                 Margin="0,8,0,0"
+                                HorizontalAlignment="Stretch"
                                 Foreground="{StaticResource ErrorTextBrush}"
+                                TextAlignment="Center"
                                 TextWrapping="Wrap"
                                 Visibility="Collapsed" />
                         </Grid>
@@ -288,7 +285,7 @@
                             <Button
                                 x:Name="_printTicketButton"
                                 MinHeight="52"
-                                HorizontalAlignment="Right"
+                                HorizontalAlignment="Center"
                                 Click="OnPrintTicketButtonClick"
                                 IsEnabled="False"
                                 Padding="28,12"
@@ -303,7 +300,8 @@
                                         VerticalAlignment="Center"
                                         FontSize="18"
                                         FontWeight="SemiBold"
-                                        Text="PRINT TICKET" />
+                                        Text="PRINT TICKET"
+                                        TextAlignment="Center" />
                                     <FontIcon
                                         FontSize="20"
                                         Glyph="&#xE8A5;" />
@@ -326,6 +324,7 @@
                     Visibility="Collapsed">
                     <StackPanel Spacing="20">
                         <TextBlock
+                            HorizontalAlignment="Center"
                             FontSize="22"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource KioskPrimaryContainerBrush}"
@@ -333,29 +332,34 @@
                             TextAlignment="Center" />
                         <TextBlock
                             x:Name="_ticketNumberText"
+                            HorizontalAlignment="Center"
                             FontSize="44"
                             FontWeight="Bold"
                             Foreground="{StaticResource KioskTextBrush}"
                             TextAlignment="Center" />
                         <TextBlock
                             x:Name="_ticketCustomerText"
+                            HorizontalAlignment="Center"
                             FontSize="20"
                             Foreground="{StaticResource KioskTextBrush}"
                             TextAlignment="Center" />
                         <TextBlock
                             x:Name="_ticketBarberText"
+                            HorizontalAlignment="Stretch"
                             FontSize="18"
                             Foreground="{StaticResource KioskMutedTextBrush}"
                             TextAlignment="Center"
                             TextWrapping="Wrap" />
                         <TextBlock
                             x:Name="_ticketMessageText"
+                            HorizontalAlignment="Stretch"
                             FontSize="16"
                             Foreground="{StaticResource KioskMutedTextBrush}"
                             TextAlignment="Center"
                             TextWrapping="Wrap" />
                         <TextBlock
                             x:Name="_ticketTimeText"
+                            HorizontalAlignment="Center"
                             FontSize="14"
                             Foreground="{StaticResource KioskMutedTextBrush}"
                             TextAlignment="Center" />
