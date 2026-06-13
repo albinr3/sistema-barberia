@@ -91,6 +91,80 @@ public sealed class PosHardwareTests
     }
 
     [Fact]
+    public void WindowsGraphicsKioskTicketPrinter_ReturnsValidationFailureBeforePrinting()
+    {
+        var printer = new WindowsGraphicsKioskTicketPrinter();
+
+        var result = printer.Print(new KioskTicketPrintJob(
+            1,
+            "",
+            "Mia",
+            [],
+            [],
+            AcceptsAnyBarber: true,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "kiosk-1"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("QR payload is required.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void QrCodeMatrix_CreatesVersionOneQrForTicketPayload()
+    {
+        var matrix = QrCodeMatrix.CreateAlphanumeric("W20260604120000000");
+        var darkModules = 0;
+        var lightModules = 0;
+
+        for (var y = 0; y < matrix.Size; y++)
+        {
+            for (var x = 0; x < matrix.Size; x++)
+            {
+                if (matrix.IsDark(x, y))
+                {
+                    darkModules++;
+                }
+                else
+                {
+                    lightModules++;
+                }
+            }
+        }
+
+        Assert.Equal(21, matrix.Size);
+        Assert.True(matrix.IsDark(0, 0));
+        Assert.True(matrix.IsDark(6, 0));
+        Assert.True(matrix.IsDark(14, 0));
+        Assert.True(matrix.IsDark(0, 14));
+        Assert.True(darkModules > 0);
+        Assert.True(lightModules > 0);
+    }
+
+    [Fact]
+    public void KioskTicketPrintText_UsesMasterClipsAndEnglishCopy()
+    {
+        var printedText = string.Join(
+            Environment.NewLine,
+            KioskTicketPrintText.BrandName,
+            KioskTicketPrintText.CodeLabel,
+            KioskTicketPrintText.AnyAvailableBarber,
+            KioskTicketPrintText.RequestedBarbers,
+            KioskTicketPrintText.Assigned,
+            KioskTicketPrintText.PresentTicket,
+            KioskTicketPrintText.ThankYou);
+
+        Assert.Contains("MASTERCLIPS\nBARBER SHOP", printedText);
+        Assert.Contains("Please present this ticket to your barber.", printedText);
+        Assert.Contains("Thank you for your visit.", printedText);
+        Assert.DoesNotContain("BARBERIA", printedText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Codigo", printedText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Barbero", printedText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Gracias", printedText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SimulatedCashBoxReceiptPrinter_ReturnsSuccess()
     {
         var printer = new SimulatedCashBoxReceiptPrinter();

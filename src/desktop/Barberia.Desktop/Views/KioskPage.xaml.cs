@@ -44,6 +44,11 @@ public sealed partial class KioskPage : Page
         UpdateInteractionState();
     }
 
+    private void OnKioskLoaded(object sender, RoutedEventArgs args)
+    {
+        Focus(FocusState.Programmatic);
+    }
+
     private void OnKioskSizeChanged(object sender, SizeChangedEventArgs args)
     {
         UpdateKioskResponsiveLayout(args.NewSize.Width, args.NewSize.Height);
@@ -453,7 +458,7 @@ public sealed partial class KioskPage : Page
             Padding = new Thickness(20),
             Child = new TextBlock
             {
-                Text = "No barbers are available in the local database.",
+                Text = "No barbers are available right now. Open Local Admin and mark at least one barber as Available.",
                 FontSize = 16,
                 Foreground = Brush(147, 0, 10),
                 TextWrapping = TextWrapping.Wrap
@@ -525,7 +530,6 @@ public sealed partial class KioskPage : Page
         ResetToAnyBarber();
         _checkInPanel.Visibility = Visibility.Visible;
         _ticketPanel.Visibility = Visibility.Collapsed;
-        _customerNameInput.Focus(FocusState.Programmatic);
         UpdateInteractionState();
     }
 

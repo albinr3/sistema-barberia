@@ -16,7 +16,7 @@ public sealed class KioskCheckInService
     private readonly TurnAssignmentEngine _assignmentEngine = new();
 
     public KioskCheckInService()
-        : this(LocalDesktopDatabase.CreateConnectionFactory(), new SimulatedKioskTicketPrinter())
+        : this(LocalDesktopDatabase.CreateConnectionFactory(), new WindowsGraphicsKioskTicketPrinter())
     {
     }
 
