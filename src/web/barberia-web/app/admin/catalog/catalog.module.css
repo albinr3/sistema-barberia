@@ -1,0 +1,174 @@
+.page {
+  display: grid;
+  gap: 24px;
+}
+
+.section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  background: var(--surface);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.sectionHeader p {
+  max-width: 760px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.inlineForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.inlineForm label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.inlineForm input,
+.inlineForm select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  background: var(--surface-low);
+  color: var(--text);
+}
+
+.checkboxLabel {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+  background: var(--surface-low);
+}
+
+.checkboxLabel input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.rowPanel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  background: var(--surface-low);
+}
+
+.rowSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rowSummary strong {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.rowSummary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.empty {
+  margin: 0;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.notice,
+.error {
+  border-radius: var(--radius);
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.notice {
+  background: rgba(15, 106, 61, 0.1);
+  color: var(--success);
+}
+
+.error {
+  background: rgba(180, 26, 26, 0.1);
+  color: var(--danger);
+}
+
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.slot {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  background: var(--surface-low);
+}
+
+.slot strong {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.slot span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+@media (max-width: 760px) {
+  .section {
+    padding: 16px;
+  }
+
+  .inlineForm {
+    grid-template-columns: 1fr;
+  }
+}

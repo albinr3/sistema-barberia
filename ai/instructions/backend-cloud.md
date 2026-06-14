@@ -2,20 +2,24 @@
 
 ## Proposito
 
-Plantilla para servicios cloud futuros.
+Instrucciones para backend cloud de Fase 2.
 
 ## Alcance Futuro
 
-- Sincronizacion con la aplicacion local.
+- Supabase Auth/PostgreSQL/RLS.
+- Booking web autenticado.
 - Panel admin web.
-- Booking web.
+- Sincronizacion con la aplicacion local por contrato aprobado.
 
 ## Reglas
 
-- No crear API ni servicios cloud hasta que se apruebe su alcance.
-- No definir contratos sin decision registrada.
+- Fase 2 cloud esta aprobada como scaffold Supabase.
+- No desplegar servicios cloud reales sin aprobacion explicita.
+- No definir contratos de sync/POS sin decision registrada.
+- Mantener tickets/POS separados de citas web y eventos de sync.
+- Registrar decisiones cloud en `docs/decisiones/decision-log.md`.
 
 ## Pendiente
 
-- TODO: confirmar stack backend.
+- TODO: definir RPC/Edge Functions para disponibilidad, citas y sync.
 

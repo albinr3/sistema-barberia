@@ -1,0 +1,11 @@
+{
+  "name": "barberia-system",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "web:dev": "npm --prefix src/web/barberia-web run dev",
+    "web:build": "npm --prefix src/web/barberia-web run build",
+    "web:typecheck": "npm --prefix src/web/barberia-web run typecheck",
+    "web:lint": "npm --prefix src/web/barberia-web run lint"
+  }
+}
