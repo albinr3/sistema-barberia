@@ -19,9 +19,26 @@ Shell y UI actual:
 - Catalogo de modulos visuales en `Shell/ShellModuleCatalog.cs`.
 - Paginas operativas en `Views/` declaradas en XAML y con logica de servicio en code-behind.
 - Rutas locales estables en `Services/LocalAppPaths.cs` para preservar SQLite, configuracion futura y logs durante updates.
+- Sincronizacion cloud opcional mediante `%LocalAppData%\BarberiaSystem\config\sync-settings.json`; si falta o es invalida, la operacion local sigue funcionando sin bloquearse.
 - Perfil de publicacion `Properties/PublishProfiles/Phase1LocalWinX64.pubxml` y artefactos base en `Packaging/` para preparar instalacion/update sin publicar instaladores.
 - Guard de arquitectura en `tests/desktop/Barberia.Desktop.Tests` para evitar nuevas pantallas C# puras sin XAML.
 
+Sync cloud:
+
+```json
+{
+  "supabaseUrl": "https://your-project-ref.supabase.co",
+  "deviceId": "00000000-0000-0000-0000-000000000000",
+  "deviceSecret": "replace-with-device-secret",
+  "pollSeconds": 60
+}
+```
+
+- Al iniciar, `DesktopSyncService` envia snapshot de barberos/servicios locales si cambio, descarga citas y mappings, aplica no-shows vencidos y despacha el outbox.
+- Las citas sincronizadas se guardan en `appointment_reservations` con `appointment_code`, cliente, servicio, hora de inicio/fin y estado local.
+- Barber Panel acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.
+- Cash Box completa la cita solo al cerrar el cobro; ahi se marcan el turno y la reserva como completados y se suben `ticket.completed`, `payment.collected` y `appointment.completed`.
+- Appointment turns are operational records for Cash Box/Barber Panel, but are not ticket-dashboard rows.
 Restricciones actuales:
 
 - No contiene reglas de negocio.

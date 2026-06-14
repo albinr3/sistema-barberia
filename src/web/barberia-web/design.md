@@ -181,4 +181,4 @@ The design system employs a **Rounded (8px)** corner strategy. This provides a s
 ### Specialized Components
 - **Barber Selection / Profile:** Large circular avatars (64px) with a 2px Royal Blue border when selected or active. Shows `station_number` clearly.
 - **Time Slot Picker:** A grid of 8px rounded buttons. Selected slots fill with Royal Blue; unavailable slots are greyed out with a strike-through.
-- **Admin Data Tables:** Clean rows for CRUD de Barberos y Servicios, con 1px dividers, optimized to show Sync state with Supabase.
+- **Admin Data Tables & Catalogs:** Clean, compact list/table rows for CRUD operations (e.g. Barberos y Servicios). They utilize inline focused editing (only the active row shows the edit form) to keep the interface scannable and reduce cognitive load. Secondary tools (like exceptions or previews) are visually separated or placed in secondary layouts to highlight the primary catalog tasks.

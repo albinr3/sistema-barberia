@@ -3,13 +3,70 @@
   gap: 24px;
 }
 
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.summaryCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summaryCard span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.summaryCard strong {
+  font-size: 32px;
+  line-height: 36px;
+  color: var(--text);
+}
+
 .section {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
   display: grid;
-  gap: 18px;
+  gap: 20px;
   background: var(--surface);
+}
+
+.sectionSecondary {
+  background: var(--surface-low);
+  border-style: dashed;
+}
+
+.collapsibleSection summary {
+  cursor: pointer;
+  list-style: none;
+  outline: none;
+}
+.collapsibleSection summary::-webkit-details-marker {
+  display: none;
+}
+.collapsibleSection summary::after {
+  content: "▼";
+  font-size: 12px;
+  color: var(--muted);
+  float: right;
+  margin-top: 6px;
+}
+.collapsibleSection[open] summary::after {
+  content: "▲";
+}
+.sectionContent {
+  margin-top: 20px;
 }
 
 .sectionHeader {
@@ -33,14 +90,99 @@
   line-height: 22px;
 }
 
+.secondaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.managerContainer {
+  display: grid;
+  gap: 16px;
+}
+
+.managerHeader {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dataList {
+  display: grid;
+  gap: 8px;
+}
+
+.dataRow {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-low);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.dataRowActive {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.rowSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.rowInfo {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.rowInfo strong {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.rowInfo span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editPanel {
+  padding: 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-low);
+}
+
+.editPanelTitle {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+}
+
 .inlineForm {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+  gap: 16px;
+}
+
+.previewForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: end;
   gap: 12px;
 }
 
-.inlineForm label {
+.inlineForm label,
+.previewForm label {
   display: grid;
   gap: 6px;
   color: var(--text);
@@ -50,24 +192,34 @@
 }
 
 .inlineForm input,
-.inlineForm select {
+.inlineForm select,
+.previewForm input,
+.previewForm select {
   width: 100%;
-  min-height: 42px;
+  min-height: 40px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  padding: 0 10px;
+  padding: 0 12px;
   background: var(--surface-low);
   color: var(--text);
 }
 
+.inlineForm input:focus,
+.inlineForm select:focus,
+.previewForm input:focus,
+.previewForm select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
 .checkboxLabel {
-  min-height: 42px;
+  min-height: 40px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 0 10px;
+  padding: 0 12px;
   display: flex !important;
   align-items: center;
-  gap: 8px !important;
+  gap: 10px !important;
   background: var(--surface-low);
 }
 
@@ -76,46 +228,30 @@
   min-height: 18px;
 }
 
-.stack {
-  display: grid;
-  gap: 12px;
-}
-
-.rowPanel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 14px;
-  display: grid;
-  gap: 12px;
-  background: var(--surface-low);
-}
-
-.rowSummary {
+.formActions {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin-top: 8px;
 }
 
-.rowSummary strong {
-  font-size: 15px;
-  line-height: 22px;
-}
-
-.rowSummary span {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
+.deleteSection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .empty {
   margin: 0;
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 24px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 700;
+  text-align: center;
 }
 
 .notice,
@@ -136,9 +272,172 @@
   color: var(--danger);
 }
 
+/* Weekly Availability Editor Specifics */
+.weeklyEditor {
+  display: grid;
+  gap: 20px;
+}
+
+.weeklyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 16px;
+}
+
+.barberSelectLabel {
+  display: grid;
+  gap: 8px;
+}
+
+.barberSelectLabel span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.barberSelectLabel select {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  font-size: 16px;
+  min-width: 240px;
+}
+
+.scheduleGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.scheduleHeaderRow {
+  display: grid;
+  grid-template-columns: 100px 120px 200px 100px;
+  gap: 16px;
+  padding: 0 16px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.scheduleRow {
+  display: grid;
+  grid-template-columns: 100px 120px 200px 100px;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  background: var(--surface-low);
+  transition: opacity 0.2s ease;
+}
+
+.scheduleRowClosed {
+  opacity: 0.6;
+  background: transparent;
+  border-style: dashed;
+}
+
+.scheduleDayName {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.scheduleToggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.toggleSwitch {
+  width: 36px;
+  height: 20px;
+  background: var(--subtle);
+  border-radius: 20px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.toggleSwitch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggleSwitchOn {
+  background: var(--accent);
+}
+
+.toggleSwitchOn::after {
+  transform: translateX(16px);
+}
+
+.scheduleTimeInputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scheduleTimeInputs input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0 8px;
+}
+
+.scheduleTimeInputs span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.scheduleSlotInput input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0 8px;
+}
+
+.scheduleClosedState {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Slots Grid for Preview */
 .slotGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
 }
 
@@ -163,12 +462,51 @@
   line-height: 18px;
 }
 
+@media (max-width: 960px) {
+  .secondaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 760px) {
   .section {
     padding: 16px;
   }
 
+  .rowSummary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rowActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .inlineForm {
     grid-template-columns: 1fr;
+  }
+
+  .previewForm {
+    grid-template-columns: 1fr;
+  }
+
+  .weeklyHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .scheduleHeaderRow {
+    display: none;
+  }
+
+  .scheduleRow {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .scheduleRowClosed {
+    border-style: solid;
   }
 }

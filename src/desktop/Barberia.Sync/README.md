@@ -1,16 +1,17 @@
 # Barberia.Sync
 
-Libreria para cola y sincronizacion futura no bloqueante.
+Libreria para cola y sincronizacion no bloqueante entre Desktop y Supabase.
 
-Responsabilidades futuras:
+Responsabilidades actuales:
 
-- Cola de eventos locales.
-- Reintentos cuando exista conectividad.
-- Coordinacion de sincronizacion eventual sin bloquear la operacion local.
+- Registrar eventos locales en el outbox SQLite.
+- Enviar eventos vencidos por medio de `ICloudSyncClient`.
+- Marcar eventos como enviados o fallidos para permitir reintentos.
+- Mantener la operacion local funcionando aunque la nube falle.
 
 Restricciones actuales:
 
-- Depende de `Barberia.Core`, `Barberia.Data` para el outbox SQLite local y `Barberia.ApiClient` para el contrato cloud futuro.
-- No configura Supabase.
-- No implementa HTTP, autenticacion ni backend cloud.
-- Registra eventos locales en una cola outbox y procesa reintentos sin bloquear los flujos locales.
+- Depende de `Barberia.Core`, `Barberia.Data` para el outbox SQLite local y `Barberia.ApiClient` para el contrato cloud.
+- No configura Supabase; Desktop carga `sync-settings.json` y decide si iniciar la sincronizacion.
+- No conoce reglas de negocio de citas, turnos o caja; solo entrega eventos y reintentos.
+- El pull de cambios y la resolucion de mappings se coordinan desde `DesktopSyncService`.

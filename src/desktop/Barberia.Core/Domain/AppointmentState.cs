@@ -8,4 +8,5 @@ public enum AppointmentState
     NoShow = 3,
     Rescheduled = 4,
     Cancelled = 5,
+    Completed = 6,
 }

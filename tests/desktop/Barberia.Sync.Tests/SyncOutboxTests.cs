@@ -53,7 +53,7 @@ public sealed class SyncOutboxTests
         var cloudClient = new FakeCloudSyncClient(CloudSyncResult.Success());
 
         var result = new SyncOutboxDispatcher(database.OutboxStore, cloudClient)
-            .DispatchDue(now);
+            .DispatchDueAsync(now).GetAwaiter().GetResult();
 
         var saved = new SyncOutboxRepository(database.Connection).GetById(eventId);
         Assert.Equal(new SyncDispatchResult(1, 1, 0), result);
@@ -78,8 +78,8 @@ public sealed class SyncOutboxTests
         var cloudClient = new FakeCloudSyncClient(CloudSyncResult.Failure("offline"));
         var dispatcher = new SyncOutboxDispatcher(database.OutboxStore, cloudClient, retryPolicy);
 
-        var failedResult = dispatcher.DispatchDue(now);
-        var skippedResult = dispatcher.DispatchDue(now.AddMinutes(1));
+        var failedResult = dispatcher.DispatchDueAsync(now).GetAwaiter().GetResult();
+        var skippedResult = dispatcher.DispatchDueAsync(now.AddMinutes(1)).GetAwaiter().GetResult();
 
         var saved = new SyncOutboxRepository(database.Connection).GetById(eventId);
         Assert.Equal(new SyncDispatchResult(1, 0, 1), failedResult);
@@ -104,7 +104,7 @@ public sealed class SyncOutboxTests
         var cloudClient = new FakeCloudSyncClient(new InvalidOperationException("API unavailable"));
 
         var result = new SyncOutboxDispatcher(database.OutboxStore, cloudClient)
-            .DispatchDue(now);
+            .DispatchDueAsync(now).GetAwaiter().GetResult();
 
         var saved = new SyncOutboxRepository(database.Connection).GetById(eventId);
         Assert.Equal(new SyncDispatchResult(1, 0, 1), result);
@@ -133,7 +133,7 @@ public sealed class SyncOutboxTests
             CloudSyncResult.Success());
 
         var result = new SyncOutboxDispatcher(database.OutboxStore, cloudClient)
-            .DispatchDue(now);
+            .DispatchDueAsync(now).GetAwaiter().GetResult();
 
         var repository = new SyncOutboxRepository(database.Connection);
         Assert.Equal(new SyncDispatchResult(2, 1, 1), result);
@@ -152,13 +152,13 @@ public sealed class SyncOutboxTests
 
         public List<CloudSyncEnvelope> Pushed { get; } = [];
 
-        public CloudSyncResult Push(CloudSyncEnvelope envelope)
+        public Task<CloudSyncResult> PushAsync(CloudSyncEnvelope envelope)
         {
             Pushed.Add(envelope);
 
             if (_responses.Count == 0)
             {
-                return CloudSyncResult.Success();
+                return Task.FromResult(CloudSyncResult.Success());
             }
 
             var response = _responses.Dequeue();
@@ -167,7 +167,7 @@ public sealed class SyncOutboxTests
                 throw exception;
             }
 
-            return (CloudSyncResult)response;
+            return Task.FromResult((CloudSyncResult)response);
         }
     }
 

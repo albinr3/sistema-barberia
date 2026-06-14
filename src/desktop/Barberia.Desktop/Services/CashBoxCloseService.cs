@@ -5,7 +5,9 @@ using Barberia.Data;
 using Barberia.Data.Models;
 using Barberia.Data.Repositories;
 using Barberia.Data.Reports;
+using Barberia.Data.Sync;
 using Barberia.Hardware.Pos;
+using Barberia.Sync.Outbox;
 
 namespace Barberia.Desktop.Services;
 
@@ -111,6 +113,7 @@ public sealed class CashBoxCloseService
             var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
             var dailyRotationRepository = new DailyRotationRepository(connection, sqliteTransaction);
+            var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
 
             var receiptNumber = paymentRepository.GetNextReceiptNumber();
 
@@ -190,8 +193,9 @@ public sealed class CashBoxCloseService
             var closeResult = _assignmentEngine.CloseServiceAtCashBox(
                 new CashBoxCloseRequest(barberId, rotationQueue));
 
+            var paymentId = Guid.NewGuid();
             paymentRepository.Add(new CashPayment(
-                Guid.NewGuid(),
+                paymentId,
                 turn.Id,
                 barberId,
                 service.Id,
@@ -207,11 +211,53 @@ public sealed class CashBoxCloseService
                 paymentMethod,
                 paymentReference));
             turnRepository.MarkCompleted(turn.Id, now);
+            if (turn.AppointmentId is Guid appointmentId)
+            {
+                appointmentRepository.MarkCompleted(appointmentId, now, now);
+            }
             barberRepository.ApplyCashBoxClose(
                 closeResult.BarberId,
                 closeResult.BarberState,
                 now);
             dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
+
+            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+
+            syncRecorder.Enqueue(new LocalSyncEvent(
+                Guid.NewGuid(), now, "ticket.completed", "ticket", turn.Id,
+                JsonSerializer.Serialize(new {
+                    barber_id = barberId,
+                    appointment_id = turn.AppointmentId,
+                    customer_name = turn.CustomerName,
+                    status = "completed",
+                    completed_at = now,
+                    items = new[] { new { service_id = service.Id, price_cents = service.PriceCents, local_item_id = Guid.NewGuid().ToString() } }
+                }),
+                deviceId), now);
+
+            syncRecorder.Enqueue(new LocalSyncEvent(
+                Guid.NewGuid(), now, "payment.collected", "payment", paymentId,
+                JsonSerializer.Serialize(new {
+                    ticket_id = turn.Id,
+                    appointment_id = turn.AppointmentId,
+                    payment_method = paymentMethod.ToString().ToLower(),
+                    amount_cents = Money.ToCents(amount)
+                }),
+                deviceId), now);
+
+            if (turn.AppointmentId is Guid completedAppointmentId)
+            {
+                syncRecorder.Enqueue(new LocalSyncEvent(
+                    Guid.NewGuid(), now, "appointment.completed", "appointment", completedAppointmentId,
+                    JsonSerializer.Serialize(new
+                    {
+                        appointment_id = completedAppointmentId,
+                        appointment_code = turn.TicketNumber,
+                        ticket_id = turn.Id,
+                        completed_at = now
+                    }),
+                    deviceId), now);
+            }
 
             auditRepository.Add(new AuditEvent(
                 Guid.NewGuid(),
@@ -247,11 +293,16 @@ public sealed class CashBoxCloseService
                 turnRepository,
                 barberRepository,
                 dailyRotationRepository,
-                new AppointmentReservationRepository(connection, sqliteTransaction),
+                appointmentRepository,
                 now);
 
             if (reassignment is not null)
             {
+                syncRecorder.Enqueue(new LocalSyncEvent(
+                    Guid.NewGuid(), now, "ticket.called", "ticket", reassignment.TurnId,
+                    JsonSerializer.Serialize(new { assigned_barber_id = reassignment.BarberId, status = "called" }),
+                    deviceId), now);
+
                 auditRepository.Add(new AuditEvent(
                     Guid.NewGuid(),
                     now,

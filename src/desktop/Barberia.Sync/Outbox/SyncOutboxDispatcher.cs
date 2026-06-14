@@ -27,7 +27,7 @@ public sealed class SyncOutboxDispatcher
         _batchSize = batchSize;
     }
 
-    public SyncDispatchResult DispatchDue(DateTimeOffset now)
+    public async Task<SyncDispatchResult> DispatchDueAsync(DateTimeOffset now)
     {
         var dueEvents = _outboxStore.ListReadyToSync(now, _batchSize);
         var synced = 0;
@@ -35,7 +35,7 @@ public sealed class SyncOutboxDispatcher
 
         foreach (var outboxEvent in dueEvents)
         {
-            var pushResult = PushSafely(outboxEvent);
+            var pushResult = await PushSafelyAsync(outboxEvent);
             if (pushResult.Succeeded)
             {
                 _outboxStore.MarkSynced(outboxEvent.Id, now);
@@ -55,11 +55,11 @@ public sealed class SyncOutboxDispatcher
         return new SyncDispatchResult(dueEvents.Count, synced, failed);
     }
 
-    private CloudSyncResult PushSafely(SyncOutboxEvent outboxEvent)
+    private async Task<CloudSyncResult> PushSafelyAsync(SyncOutboxEvent outboxEvent)
     {
         try
         {
-            return _cloudSyncClient.Push(ToCloudEnvelope(outboxEvent));
+            return await _cloudSyncClient.PushAsync(ToCloudEnvelope(outboxEvent));
         }
         catch (Exception ex)
         {

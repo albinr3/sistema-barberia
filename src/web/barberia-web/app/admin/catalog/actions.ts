@@ -35,12 +35,6 @@ const serviceSchema = z.object({
   is_active: z.boolean(),
 });
 
-const assignmentSchema = z.object({
-  barber_id: z.string().uuid(),
-  service_id: z.string().uuid(),
-  is_active: z.boolean(),
-});
-
 const ruleSchema = z.object({
   id: optionalUuid,
   barber_id: z.string().uuid(),
@@ -98,28 +92,6 @@ export async function saveBarber(formData: FormData) {
       profile_image_path: formData.get("profile_image_path")?.toString() ?? "",
       is_active: checked(formData, "is_active"),
     });
-
-    if (values.id && !values.is_active) {
-      const { count, error } = await supabase
-        .from("appointments")
-        .select("id", { count: "exact", head: true })
-        .eq("barber_id", values.id)
-        .in("status", ["pending", "confirmed"])
-        .gte("starts_at", new Date().toISOString());
-
-      if (error) {
-        redirect(statusUrl("error", error.message));
-      }
-
-      if ((count ?? 0) > 0) {
-        redirect(
-          statusUrl(
-            "error",
-            "Resolve future pending or confirmed appointments before deactivating this barber.",
-          ),
-        );
-      }
-    }
 
     const payload = {
       ...(values.id ? { id: values.id } : {}),
@@ -184,29 +156,6 @@ export async function saveService(formData: FormData) {
 
   revalidatePath(catalogPath);
   redirect(statusUrl("success", "Service saved."));
-}
-
-export async function saveBarberService(formData: FormData) {
-  const supabase = await getAdminSupabase();
-
-  try {
-    const values = assignmentSchema.parse({
-      barber_id: formData.get("barber_id")?.toString() ?? "",
-      service_id: formData.get("service_id")?.toString() ?? "",
-      is_active: checked(formData, "is_active"),
-    });
-    const { error } = await supabase.from("barber_services").upsert(values);
-
-    if (error) {
-      redirect(statusUrl("error", error.message));
-    }
-  } catch (error) {
-    handleValidationError(error);
-    throw error;
-  }
-
-  revalidatePath(catalogPath);
-  redirect(statusUrl("success", "Service assignment saved."));
 }
 
 export async function saveAvailabilityRule(formData: FormData) {
@@ -310,4 +259,77 @@ export async function deleteAvailabilityException(formData: FormData) {
 
   revalidatePath(catalogPath);
   redirect(statusUrl("success", "Availability exception deleted."));
+}
+
+const weeklyScheduleSchema = z.object({
+  barber_id: z.string({ message: "Invalid barber ID format. Expected string." }),
+  schedule_json: z.string({ message: "Missing schedule data." }),
+});
+
+const dayScheduleSchema = z.array(z.object({
+  day_of_week: z.coerce.number().int().min(0).max(6),
+  is_open: z.boolean(),
+  starts_at: z.string().regex(/^[0-9]{2}:[0-9]{2}$/),
+  ends_at: z.string().regex(/^[0-9]{2}:[0-9]{2}$/),
+  slot_minutes: z.coerce.number().int().positive(),
+}));
+
+export async function saveWeeklyAvailability(formData: FormData) {
+  const supabase = await getAdminSupabase();
+
+  try {
+    const rawBarberId = formData.get("barber_id")?.toString() ?? "";
+    const rawSchedule = formData.get("schedule_json")?.toString() ?? "";
+
+    const values = weeklyScheduleSchema.parse({
+      barber_id: rawBarberId,
+      schedule_json: rawSchedule,
+    });
+
+    const parsedJson = JSON.parse(values.schedule_json);
+    const schedule = dayScheduleSchema.parse(parsedJson);
+
+    const { error: deleteError } = await supabase
+      .from("availability_rules")
+      .delete()
+      .eq("barber_id", values.barber_id);
+
+    if (deleteError) {
+      redirect(statusUrl("error", deleteError.message));
+    }
+
+    const payload = schedule
+      .filter((day) => day.is_open)
+      .map((day) => ({
+        barber_id: values.barber_id,
+        day_of_week: day.day_of_week,
+        starts_at: day.starts_at,
+        ends_at: day.ends_at,
+        slot_minutes: day.slot_minutes,
+        is_active: true,
+      }));
+
+    if (payload.length > 0) {
+      const { error: insertError } = await supabase.from("availability_rules").insert(payload);
+
+      if (insertError) {
+        redirect(statusUrl("error", insertError.message));
+      }
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message?.startsWith("DEBUG_INVALID_UUID:")) {
+      redirect(statusUrl("error", error.message));
+    }
+    if (error instanceof SyntaxError) {
+      redirect(statusUrl("error", "Invalid schedule format."));
+    }
+    if (error instanceof z.ZodError) {
+      const message = error.issues[0]?.message ?? "Review the form values.";
+      redirect(statusUrl("error", `Validation error: ${message}`));
+    }
+    throw error;
+  }
+
+  revalidatePath(catalogPath);
+  redirect(statusUrl("success", "Weekly schedule saved."));
 }

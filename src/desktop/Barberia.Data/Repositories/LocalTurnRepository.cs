@@ -93,6 +93,22 @@ public sealed class LocalTurnRepository
         return reader.Read() ? ReadTurn(reader) : null;
     }
 
+    public Turn? GetByAppointmentId(Guid appointmentId)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, ticket_number, display_ticket_number, ticket_date, state, source, checked_in_at, assigned_barber_id,
+                   appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
+            FROM turns
+            WHERE appointment_id = $appointment_id;
+            """;
+        command.AddText("$appointment_id", appointmentId.ToString());
+
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadTurn(reader) : null;
+    }
+
     public Turn? GetByTicketInputForToday(string ticketInput, DateTimeOffset now)
     {
         if (string.IsNullOrWhiteSpace(ticketInput))
@@ -177,6 +193,7 @@ public sealed class LocalTurnRepository
                    appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at
             FROM turns
             WHERE state IN ($waiting, $called, $in_service)
+              AND source != $appointment_source
             ORDER BY
                 CASE state
                     WHEN $called THEN 0
@@ -189,6 +206,7 @@ public sealed class LocalTurnRepository
         command.AddInteger("$waiting", (int)TurnState.Waiting);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddInteger("$in_service", (int)TurnState.InService);
+        command.AddInteger("$appointment_source", (int)TurnSource.Appointment);
 
         using var reader = command.ExecuteReader();
         var turns = new List<Turn>();
@@ -209,6 +227,7 @@ public sealed class LocalTurnRepository
                    appointment_id, requested_barber_ids, customer_name, started_at, completed_at, cancelled_at, updated_at
             FROM turns
             WHERE state IN ($waiting, $called, $in_service)
+              AND source != $appointment_source
             ORDER BY
                 CASE state
                     WHEN $called THEN 0
@@ -221,6 +240,7 @@ public sealed class LocalTurnRepository
         command.AddInteger("$waiting", (int)TurnState.Waiting);
         command.AddInteger("$called", (int)TurnState.Called);
         command.AddInteger("$in_service", (int)TurnState.InService);
+        command.AddInteger("$appointment_source", (int)TurnSource.Appointment);
 
         using var reader = command.ExecuteReader();
         var turns = new List<ActiveTurnRow>();

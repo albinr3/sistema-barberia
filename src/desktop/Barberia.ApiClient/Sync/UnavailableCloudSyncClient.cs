@@ -2,10 +2,10 @@ namespace Barberia.ApiClient.Sync;
 
 public sealed class UnavailableCloudSyncClient : ICloudSyncClient
 {
-    public CloudSyncResult Push(CloudSyncEnvelope envelope)
+    public Task<CloudSyncResult> PushAsync(CloudSyncEnvelope envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        return CloudSyncResult.Failure("Cloud sync client is not configured for Phase 1.");
+        return Task.FromResult(CloudSyncResult.Failure("Cloud sync client is not configured for Phase 1."));
     }
 }

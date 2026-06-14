@@ -59,9 +59,16 @@ public sealed class LocalDatabaseInitializer
             CREATE TABLE IF NOT EXISTS appointment_reservations (
                 id TEXT NOT NULL PRIMARY KEY,
                 barber_id TEXT NOT NULL,
+                service_id TEXT NULL,
+                appointment_code TEXT NULL,
+                customer_name TEXT NULL,
                 state INTEGER NOT NULL,
                 scheduled_for TEXT NOT NULL,
+                ends_at TEXT NULL,
                 protection_window_minutes INTEGER NOT NULL,
+                checked_in_at TEXT NULL,
+                no_show_at TEXT NULL,
+                completed_at TEXT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (barber_id) REFERENCES barbers(id)
             );
@@ -157,6 +164,12 @@ public sealed class LocalDatabaseInitializer
             CREATE INDEX IF NOT EXISTS idx_sync_outbox_aggregate
                 ON sync_outbox_events(aggregate_type, aggregate_id);
 
+            CREATE TABLE IF NOT EXISTS sync_state (
+                key TEXT NOT NULL PRIMARY KEY,
+                value TEXT NULL,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS payroll_periods (
                 id TEXT NOT NULL PRIMARY KEY,
                 start_date TEXT NOT NULL,
@@ -232,9 +245,18 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "turns", "started_at", "TEXT NULL");
         EnsureColumn(connection, "turns", "completed_at", "TEXT NULL");
         EnsureColumn(connection, "turns", "cancelled_at", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "service_id", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "appointment_code", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "customer_name", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "ends_at", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "checked_in_at", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "no_show_at", "TEXT NULL");
+        EnsureColumn(connection, "appointment_reservations", "completed_at", "TEXT NULL");
         BackfillDisplayTicketNumbers(connection);
         BackfillTurnLifecycleTimes(connection);
         EnsureDisplayTicketIndex(connection);
+        EnsureTurnAppointmentIndex(connection);
+        EnsureAppointmentCodeIndex(connection);
         EnsureColumn(connection, "barbers", "profile_image_path", "TEXT NULL");
         EnsureColumn(connection, "barbers", "is_active", "INTEGER NOT NULL DEFAULT 1");
         EnsureColumn(connection, "barbers", "station_number", "INTEGER NULL");
@@ -331,6 +353,28 @@ public sealed class LocalDatabaseInitializer
             CREATE UNIQUE INDEX IF NOT EXISTS idx_turns_ticket_date_display_number
                 ON turns(ticket_date, display_ticket_number)
                 WHERE ticket_date IS NOT NULL AND display_ticket_number IS NOT NULL;
+            """;
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureTurnAppointmentIndex(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_turns_appointment_id_unique
+                ON turns(appointment_id)
+                WHERE appointment_id IS NOT NULL;
+            """;
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureAppointmentCodeIndex(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_appointment_reservations_code
+                ON appointment_reservations(appointment_code)
+                WHERE appointment_code IS NOT NULL;
             """;
         command.ExecuteNonQuery();
     }

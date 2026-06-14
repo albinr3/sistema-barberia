@@ -7,12 +7,6 @@ La **pagina principal debe ser login/registro de usuario**. Despues de iniciar s
 
 Backend y datos viviran en **Supabase/PostgreSQL/Auth/RLS/Storage/Edge Functions**. La app Windows local seguira siendo autoridad para operacion en vivo, tickets, caja y POS; la web/Supabase sera autoridad principal para usuarios, catalogo, booking, disponibilidad y administracion remota.
 
-Agentes asignados:
-- **Alfredo**: frontend web, experiencia de login, booking autenticado, cuenta cliente, admin web, accesibilidad y pruebas E2E.
-- **Julio**: backend cloud, Supabase schema, Auth/RLS, Edge Functions, sync, conflictos y seguridad.
-
-Nota operativa: cualquier decision fuerte de frontend web debe validarse con Alfredo, y cualquier decision fuerte de backend cloud/API debe validarse con Julio antes de implementarla.
-
 ## Principio De Entrada
 
 - La ruta principal `/` muestra login/registro, no booking publico.
@@ -33,12 +27,12 @@ Nota operativa: cualquier decision fuerte de frontend web debe validarse con Alf
   - `docs/arquitectura/phase-2-web-cloud.md`: arquitectura web/cloud, auth, roles, sync y autoridad de datos.
 
 - Backend minimo:
-  - Tablas: `profiles`, `barbers`, `services`, `barber_services`, `availability_rules`, `availability_exceptions`, `appointments`, `tickets`, `ticket_items`, `sync_events`, `sync_conflicts`, `audit_log`.
+  - Tablas: `profiles`, `barbers`, `services`, `availability_rules`, `availability_exceptions`, `appointments`, `tickets`, `ticket_items`, `sync_events`, `sync_conflicts`, `audit_log`.
   - Roles: `customer`, `barber`, `admin`, `owner`.
   - RLS activado en tablas expuestas.
   - Supabase Auth como puerta de entrada obligatoria.
   - Edge Functions/RPC para disponibilidad, crear/cancelar citas, sync desktop y operaciones sensibles.
-  - `barbers.is_active=false` oculta al barbero de booking y nuevos flujos sin borrar historial.
+  - `barbers.is_active=false` oculta al barbero de nuevos flujos operativos locales (Kiosko/POS). Para booking, su visibilidad depende estrictamente de su disponibilidad configurada, independientemente de esta bandera (comportamiento modificado para permitir selección en web).
   - Estaciones activas usan `station_code` tipo `B-1` y deben ser unicas entre barberos activos.
 
 - Frontend moderno:
@@ -110,11 +104,13 @@ Nota operativa: cualquier decision fuerte de frontend web debe validarse con Alf
    - Booking completo detras del login, sin depositos.
    - Confirmacion/cancelacion de citas.
    - Prevencion de solapamientos.
+   - Plan operativo: `docs/fases/phase-2-3-2-4-implementation-plan.md`.
 
 5. **Fase 2.4 - Admin operativo**
    - Gestion de citas.
    - Reasignacion/cancelacion/no-show.
    - Auditoria y vista de conflictos.
+   - Plan operativo: `docs/fases/phase-2-3-2-4-implementation-plan.md`.
 
 6. **Fase 2.5 - Sync con Windows**
    - Desktop -> Supabase: tickets, pagos, historial y lifecycle timestamps.

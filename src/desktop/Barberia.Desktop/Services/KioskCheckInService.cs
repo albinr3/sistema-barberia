@@ -5,6 +5,8 @@ using Barberia.Data;
 using Barberia.Data.Models;
 using Barberia.Data.Repositories;
 using Barberia.Hardware.Pos;
+using Barberia.Data.Sync;
+using Barberia.Sync.Outbox;
 using Microsoft.Data.Sqlite;
 
 namespace Barberia.Desktop.Services;
@@ -106,6 +108,12 @@ public sealed class KioskCheckInService
                 customerName: normalizedCustomerName);
             turnRepository.Upsert(turn, now);
 
+            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+            syncRecorder.Enqueue(new LocalSyncEvent(
+                Guid.NewGuid(), now, "ticket.created", "ticket", turn.Id,
+                JsonSerializer.Serialize(new { customer_name = turn.CustomerName, status = "waiting" }),
+                deviceId), now);
+
             var waitingTurns = turnRepository.ListWaiting();
             var rotationQueue = DailyRotationQueue.Build(
                 barbers,
@@ -147,6 +155,11 @@ public sealed class KioskCheckInService
 
             turnRepository.ApplyAssignment(decision.TurnId, decision.BarberId, decision.TurnState, now);
             barberRepository.ApplyAssignment(decision.BarberId, decision.BarberState, now);
+
+            syncRecorder.Enqueue(new LocalSyncEvent(
+                Guid.NewGuid(), now, "ticket.called", "ticket", decision.TurnId,
+                JsonSerializer.Serialize(new { assigned_barber_id = decision.BarberId, status = "called" }),
+                deviceId), now);
 
             if (decision.TurnId == turn.Id)
             {

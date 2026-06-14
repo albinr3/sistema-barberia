@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "supabase:db:push": "cd ../../cloud/supabase && npx supabase db push"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -1,16 +1,17 @@
 # Barberia.ApiClient
 
-Libreria para comunicacion cloud futura.
+Libreria para contratos y comunicacion cloud usada por la sincronizacion Desktop-Supabase.
 
-Responsabilidades futuras:
+Responsabilidades actuales:
 
-- Cliente API/cloud aislado de la operacion local.
-- Contratos de comunicacion remota cuando esten aprobados.
+- Mantener el contrato `ICloudSyncClient` consumido por `Barberia.Sync`.
+- Enviar eventos locales a la Edge Function `sync-events`.
+- Descargar cambios desde la Edge Function `sync-changes`.
+- Aislar detalles HTTP, headers de dispositivo y serializacion JSON fuera de la operacion local.
 
 Restricciones actuales:
 
 - Depende de `Barberia.Core`.
-- No configura Supabase.
-- No implementa llamadas HTTP ni integraciones cloud.
-- No debe bloquear flujos locales de Fase 1.
-- Expone contratos minimos de sync futuro y un cliente no disponible para que `Barberia.Sync` pueda reintentar sin depender de una API real.
+- No configura Supabase por si mismo; la configuracion se carga en Desktop desde `sync-settings.json`.
+- No debe bloquear flujos locales si cloud no esta configurado o no esta disponible.
+- Mantiene `UnavailableCloudSyncClient` para entornos donde la sincronizacion este deshabilitada.

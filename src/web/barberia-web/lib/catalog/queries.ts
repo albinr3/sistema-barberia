@@ -3,7 +3,7 @@ import type {
   AdminCatalogData,
   AvailabilitySlot,
   BarberRow,
-  BarberServiceRow,
+
   AvailabilityExceptionRow,
   AvailabilityRuleRow,
   ServiceRow,
@@ -16,7 +16,7 @@ function throwIfError(error: { message: string } | null, context: string) {
 }
 
 export async function getAdminCatalogData(supabase: SupabaseClient): Promise<AdminCatalogData> {
-  const [barbers, services, barberServices, availabilityRules, availabilityExceptions] =
+  const [barbers, services, availabilityRules, availabilityExceptions] =
     await Promise.all([
       supabase
         .from("barbers")
@@ -27,10 +27,6 @@ export async function getAdminCatalogData(supabase: SupabaseClient): Promise<Adm
         .select("id, name, description, base_price_cents, duration_minutes, sort_order, is_active")
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
-      supabase
-        .from("barber_services")
-        .select("barber_id, service_id, is_active")
-        .order("barber_id", { ascending: true }),
       supabase
         .from("availability_rules")
         .select("id, barber_id, day_of_week, starts_at, ends_at, slot_minutes, is_active")
@@ -44,14 +40,12 @@ export async function getAdminCatalogData(supabase: SupabaseClient): Promise<Adm
 
   throwIfError(barbers.error, "Unable to load barbers");
   throwIfError(services.error, "Unable to load services");
-  throwIfError(barberServices.error, "Unable to load barber services");
   throwIfError(availabilityRules.error, "Unable to load availability rules");
   throwIfError(availabilityExceptions.error, "Unable to load availability exceptions");
 
   return {
     barbers: (barbers.data ?? []) as BarberRow[],
     services: (services.data ?? []) as ServiceRow[],
-    barberServices: (barberServices.data ?? []) as BarberServiceRow[],
     availabilityRules: (availabilityRules.data ?? []) as AvailabilityRuleRow[],
     availabilityExceptions: (availabilityExceptions.data ?? []) as AvailabilityExceptionRow[],
   };

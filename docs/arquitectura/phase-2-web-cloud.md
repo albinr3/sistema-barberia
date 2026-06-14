@@ -46,7 +46,6 @@ Tablas iniciales:
 - `profiles`
 - `barbers`
 - `services`
-- `barber_services`
 - `availability_rules`
 - `availability_exceptions`
 - `appointments`
@@ -62,13 +61,12 @@ Fase 2.2 convierte `/admin/catalog` en la superficie web principal para administ
 
 - `barbers`: nombre visible, estacion `B-#`, imagen opcional y `is_active`.
 - `services`: nombre, descripcion, precio base, duracion, orden e `is_active`.
-- `barber_services`: servicios que cada barbero puede atender.
 - `availability_rules`: reglas semanales por barbero en horario local de New Jersey.
 - `availability_exceptions`: cierre completo o reemplazo de horario para una fecha especifica.
 
 La RPC `public.get_available_slots(service_id uuid, starts_on date, ends_on date, barber_id uuid default null)` es el contrato
 de lectura para preview admin y booking futuro. Devuelve slots en `timestamptz` calculados con zona `America/New_York`,
-filtra barberos/servicios/asignaciones inactivas, aplica excepciones por fecha sobre reglas semanales y excluye citas
+filtra barberos/servicios inactivos, aplica excepciones por fecha sobre reglas semanales y excluye citas
 `pending` o `confirmed` que se solapen.
 
 No hay booking anonimo ni creacion de citas en Fase 2.2. Fase 2.3 debe consumir esta RPC y crear citas mediante una
@@ -90,18 +88,14 @@ operacion transaccional separada.
 
 ## Sync
 
-Fase 2.0 solo define el esqueleto:
+Fase 2.5 convierte el esqueleto inicial en una sincronización operativa bidireccional Desktop-Cloud:
 
-- `sync_events` para recibir eventos idempotentes.
-- `sync_conflicts` para conflictos visibles en admin.
+- **Auth de Dispositivos:** Los clientes Windows se autentican contra Supabase usando un `device_id` y `device_secret` registrado en `sync_devices`. No se utilizan sesiones de usuario (`auth.users`) ni `service_role` en la capa Desktop.
+- **Push (Desktop a Cloud):** Se utiliza la Edge Function `sync-events` para recibir eventos idempotentes desde la cola (outbox) local de Windows (`ticket.created`, `payment.collected`, etc.).
+- **Pull (Cloud a Desktop):** Se utiliza la Edge Function `sync-changes` para servir cambios de catálogo y nuevas citas web de forma incremental usando cursores.
+- **Autoridad:** Desktop es la autoridad para la operación presencial, tickets y pagos (`cash`, `zelle`). Cloud es la autoridad para el catálogo futuro y las citas web.
 
-No se promete sync bidireccional completo hasta definir:
-
-- formato de eventos desktop;
-- idempotencia;
-- reintentos;
-- resolucion manual/automatica;
-- reglas especificas para tickets y pagos.
+El contrato técnico detallado y las estructuras de eventos (JSON) viven en `docs/arquitectura/phase-2-5-sync-contract.md`. Las tablas cloud (ej. `synced_tickets`, `synced_payments`) almacenan el historial materializado proveniente de Windows.
 
 ## Referencias Oficiales
 

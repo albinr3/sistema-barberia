@@ -6,6 +6,7 @@ namespace Barberia.Desktop;
 public sealed partial class App : Application
 {
     private Window? _mainWindow;
+    private DesktopSyncService? _desktopSyncService;
 
     public static Window? MainWindowInstance { get; private set; }
 
@@ -17,6 +18,9 @@ public sealed partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        _desktopSyncService = new DesktopSyncService();
+        _desktopSyncService.Start();
+
         _mainWindow = new MainWindow();
         MainWindowInstance = _mainWindow;
         _mainWindow.Activate();

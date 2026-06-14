@@ -87,7 +87,7 @@ public sealed class XamlArchitectureTests
         Assert.Contains("width < 1460 ? 4 : 5", source, StringComparison.Ordinal);
         Assert.Contains("_contentCanvas.Height = denseDesktop ? availableHeight : double.NaN;", source, StringComparison.Ordinal);
         Assert.Contains("_screenScrollViewer.VerticalScrollBarVisibility = denseDesktop ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;", source, StringComparison.Ordinal);
-        Assert.Contains("denseDesktop ? 108", source, StringComparison.Ordinal);
+        Assert.Contains("denseDesktop ? 84", source, StringComparison.Ordinal);
         Assert.DoesNotContain("MinHeight = 224", source, StringComparison.Ordinal);
     }
 

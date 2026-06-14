@@ -4,11 +4,17 @@ namespace Barberia.Sync.Outbox;
 
 public sealed class SyncOutboxRecorder
 {
-    private readonly LocalSyncOutboxStore _outboxStore;
+    private readonly SyncOutboxRepository? _repository;
+    private readonly LocalSyncOutboxStore? _store;
 
-    public SyncOutboxRecorder(LocalSyncOutboxStore outboxStore)
+    public SyncOutboxRecorder(SyncOutboxRepository repository)
     {
-        _outboxStore = outboxStore;
+        _repository = repository;
+    }
+
+    public SyncOutboxRecorder(LocalSyncOutboxStore store)
+    {
+        _store = store;
     }
 
     public SyncOutboxEvent Enqueue(LocalSyncEvent syncEvent, DateTimeOffset createdAt)
@@ -25,6 +31,13 @@ public sealed class SyncOutboxRecorder
             syncEvent.DeviceId,
             createdAt);
 
-        return _outboxStore.Add(outboxEvent);
+        if (_repository is not null)
+        {
+            _repository.Add(outboxEvent);
+            return outboxEvent;
+        }
+
+        return _store?.Add(outboxEvent)
+            ?? throw new InvalidOperationException("Sync outbox recorder is not configured.");
     }
 }

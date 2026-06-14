@@ -371,14 +371,16 @@ public sealed class SqlitePersistenceTests
         var now = DateTimeOffset.Parse("2026-06-03T12:00:00Z");
         var repository = new LocalTurnRepository(database.Connection);
         var called = CreateTurn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
-        var inService = CreateTurn(Guid.NewGuid(), "A-001", TurnState.InService, TurnSource.Appointment, now);
+        var inService = CreateTurn(Guid.NewGuid(), "A-001", TurnState.InService, TurnSource.WalkIn, now);
         var waiting = CreateTurn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
         var completed = CreateTurn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
+        var appointment = CreateTurn(Guid.NewGuid(), "A-005", TurnState.Waiting, TurnSource.Appointment, now.AddMinutes(5));
 
         repository.Upsert(waiting, now);
         repository.Upsert(completed, now);
         repository.Upsert(called, now);
         repository.Upsert(inService, now);
+        repository.Upsert(appointment, now);
 
         var activeTurns = repository.ListActiveForPublicDisplay();
 
@@ -396,14 +398,16 @@ public sealed class SqlitePersistenceTests
         var now = DateTimeOffset.Parse("2026-06-03T12:00:00Z");
         var repository = new LocalTurnRepository(database.Connection);
         var called = CreateTurn(Guid.NewGuid(), "A-002", TurnState.Called, TurnSource.WalkIn, now.AddMinutes(2));
-        var inService = CreateTurn(Guid.NewGuid(), "A-001", TurnState.InService, TurnSource.Appointment, now);
+        var inService = CreateTurn(Guid.NewGuid(), "A-001", TurnState.InService, TurnSource.WalkIn, now);
         var waiting = CreateTurn(Guid.NewGuid(), "A-003", TurnState.Waiting, TurnSource.WalkIn, now.AddMinutes(3));
         var completed = CreateTurn(Guid.NewGuid(), "A-004", TurnState.Completed, TurnSource.WalkIn, now.AddMinutes(4));
+        var appointment = CreateTurn(Guid.NewGuid(), "A-005", TurnState.InService, TurnSource.Appointment, now.AddMinutes(5));
 
         repository.Upsert(waiting, now);
         repository.Upsert(completed, now);
         repository.Upsert(called, now.AddMinutes(10));
         repository.Upsert(inService, now.AddMinutes(20));
+        repository.Upsert(appointment, now.AddMinutes(30));
 
         var activeTurnRows = repository.ListActiveWithUpdatedAt();
 

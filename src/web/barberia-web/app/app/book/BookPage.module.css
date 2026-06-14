@@ -1,0 +1,11 @@
+.pageContainer {
+  max-width: 672px; /* Roughly max-w-2xl */
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+@media (min-width: 768px) {
+  .pageContainer {
+    padding: 48px 24px;
+  }
+}

@@ -16,12 +16,6 @@ export type ServiceRow = {
   is_active: boolean;
 };
 
-export type BarberServiceRow = {
-  barber_id: string;
-  service_id: string;
-  is_active: boolean;
-};
-
 export type AvailabilityRuleRow = {
   id: string;
   barber_id: string;
@@ -54,7 +48,6 @@ export type AvailabilitySlot = {
 export type AdminCatalogData = {
   barbers: BarberRow[];
   services: ServiceRow[];
-  barberServices: BarberServiceRow[];
   availabilityRules: AvailabilityRuleRow[];
   availabilityExceptions: AvailabilityExceptionRow[];
 };
