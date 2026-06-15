@@ -127,14 +127,7 @@ public sealed class BarberPanelService
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
             syncRecorder.Enqueue(new LocalSyncEvent(
                 Guid.NewGuid(), now, "ticket.started", "ticket", turn.Id,
-                JsonSerializer.Serialize(new
-                {
-                    barber_id = barberId,
-                    appointment_id = turn.AppointmentId,
-                    customer_name = turn.CustomerName,
-                    status = "in_progress",
-                    started_at = now
-                }),
+                JsonSerializer.Serialize(TicketSyncPayload.Create(turn, "in_progress", barberId, now)),
                 Environment.MachineName), now);
 
             result = new BarberPanelStartResult(
@@ -236,14 +229,7 @@ public sealed class BarberPanelService
             "ticket.started",
             "ticket",
             turn.Id,
-            JsonSerializer.Serialize(new
-            {
-                barber_id = appointment.BarberId,
-                appointment_id = appointment.Id,
-                customer_name = turn.CustomerName,
-                status = "in_progress",
-                started_at = now
-            }),
+            JsonSerializer.Serialize(TicketSyncPayload.Create(turn, "in_progress", appointment.BarberId, now)),
             Environment.MachineName), now);
 
         return new BarberPanelStartResult(

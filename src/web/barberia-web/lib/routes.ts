@@ -1,7 +1,7 @@
 import type { AppRole } from "@/types/roles";
 
-export const protectedRoutes = ["/app", "/barber", "/admin"] as const;
-export const adminRoutes = ["/admin"] as const;
+export const protectedRoutes = ["/app", "/barber", "/admin", "/tickets-dashboard"] as const;
+export const adminRoutes = ["/admin", "/tickets-dashboard"] as const;
 export const adminRoles: AppRole[] = ["admin", "owner"];
 export const customerRoles: AppRole[] = ["customer"];
 export const barberRoles: AppRole[] = ["barber"];

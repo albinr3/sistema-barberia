@@ -1,0 +1,377 @@
+.screen {
+  min-height: 100vh;
+  padding: 28px 32px 32px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 24px;
+  background: #f9f9fc;
+  color: #1a1c1e;
+}
+
+.nowCalling,
+.panel {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 24px;
+}
+
+.sectionHeader,
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sectionHeader {
+  margin-bottom: 18px;
+}
+
+.titleGroup,
+.panelTitle,
+.headerPills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.titleGroup svg,
+.panelTitle svg {
+  color: #001387;
+}
+
+.titleGroup h1,
+.panelTitle h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.titleGroup h1 {
+  font-size: 32px;
+  line-height: 40px;
+}
+
+.panelTitle h2 {
+  font-size: 26px;
+  line-height: 34px;
+}
+
+.pill {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0020c2;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.warningPill {
+  background: #fff7e8;
+  color: #7a5215;
+}
+
+.callingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.callingCard {
+  min-height: 142px;
+  border: 2px solid #98a3ff;
+  border-radius: 8px;
+  padding: 16px 18px 16px 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  background: #ffffff;
+  animation: callPulse 1.15s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.callingStripe,
+.statusStripe {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px 0 0 8px;
+  background: #001387;
+}
+
+.callingTicket span,
+.callingDestination span {
+  display: block;
+  color: #444655;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.callingTicket strong {
+  color: #001387;
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.callingDestination {
+  display: grid;
+  grid-template-columns: auto 64px;
+  gap: 8px 22px;
+  align-items: center;
+  text-align: center;
+}
+
+.callingDestination strong {
+  color: #001387;
+  font-size: 54px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.callingDestination b {
+  grid-column: 2;
+  max-width: 120px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border: 1px solid #c5c5d8;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #e8e8ea;
+  color: #444655;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.lowerGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  gap: 24px;
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panelHeader {
+  margin-bottom: 16px;
+  border-bottom: 1px solid #c5c5d8;
+  padding-bottom: 14px;
+}
+
+.waitingTotal {
+  color: #001387;
+  font-size: 20px;
+}
+
+.waitingList,
+.barberGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.barberGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.waitingCard {
+  min-height: 98px;
+  border: 2px solid #d3d8f6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  background: #f5f6ff;
+}
+
+.ticketBox {
+  width: 80px;
+  height: 76px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #001387;
+  color: #ffffff;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.waitingDetails {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.waitingDetails b {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.waitingDetails span {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 6px;
+  padding: 4px 9px;
+  background: #e8e8ea;
+  color: #1a1c1e;
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.waitingCard time {
+  color: #001387;
+  font-size: 16px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.barberCard {
+  min-height: 98px;
+  border: 1px solid #c5c5d8;
+  border-radius: 8px;
+  padding: 16px 16px 16px 0;
+  display: grid;
+  grid-template-columns: 4px 64px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  background: #ffffff;
+}
+
+.barberHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.barberHeading b {
+  min-width: 0;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.barberHeading span {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #e8e8ea;
+  color: #444655;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.barberDetails p {
+  margin: 6px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.available {
+  background: #f7f8ff;
+}
+
+.available .statusStripe {
+  background: #22c55e;
+}
+
+.available .barberHeading span {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.calling .statusStripe {
+  background: #001387;
+}
+
+.calling .barberHeading span {
+  background: #dfe0ff;
+  color: #001387;
+}
+
+.busy .statusStripe {
+  background: #ba1a1a;
+}
+
+.busy .barberHeading span {
+  background: #ffdad6;
+  color: #93000a;
+}
+
+.offline {
+  opacity: 0.68;
+}
+
+.emptyState {
+  border: 1px solid #c5c5d8;
+  border-radius: 8px;
+  padding: 18px;
+  background: #ffffff;
+  color: #444655;
+  font-weight: 800;
+}
+
+@keyframes callPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.018);
+    background: #f6f7ff;
+  }
+}
+
+@media (max-width: 980px) {
+  .screen {
+    padding: 18px 14px;
+  }
+
+  .callingGrid,
+  .lowerGrid,
+  .barberGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeader,
+  .panelHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .callingCard,
+  .waitingCard,
+  .barberCard {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .callingStripe,
+  .statusStripe {
+    display: none;
+  }
+
+  .callingDestination {
+    justify-content: start;
+    text-align: left;
+  }
+
+  .waitingCard {
+    justify-items: start;
+  }
+}

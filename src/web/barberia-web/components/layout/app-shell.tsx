@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { CalendarDays, ClipboardList, Scissors, Settings, UserRound } from "lucide-react";
+import { CalendarDays, ClipboardList, Scissors, Settings, UserRound, Tv } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 import styles from "./app-shell.module.css";
 
@@ -29,8 +29,9 @@ const navItems: Record<AppShellProps["variant"], NavItem[]> = {
   admin: [
     { href: "/admin", label: "Dashboard", icon: ClipboardList },
     { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
-    { href: "/admin/admin-dashboard", label: "Admin Dashboard", icon: Scissors },
+    { href: "/admin/admin-dashboard" as Route, label: "Admin Dashboard", icon: Scissors },
     { href: "/admin/sync", label: "Sync", icon: Settings },
+    { href: "/tickets-dashboard" as Route, label: "Tickets Dashboard", icon: Tv },
   ],
 };
 

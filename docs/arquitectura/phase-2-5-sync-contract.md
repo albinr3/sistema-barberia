@@ -47,17 +47,25 @@ El Desktop agrupa eventos en un arreglo y los envía. Cada evento representa un 
 #### `ticket.created`
 ```json
 {
+  "display_ticket_number": 12,
+  "ticket_date": "2026-06-15",
   "customer_name": "Juan Perez",
   "assigned_barber_id": "uuid-del-barbero-opcional",
+  "checked_in_at": "2026-06-15T15:30:00Z",
   "status": "waiting"
 }
 ```
 
-#### `ticket.started` / `ticket.completed` / `ticket.cancelled`
+#### `ticket.called` / `ticket.started` / `ticket.completed` / `ticket.cancelled`
 ```json
 {
+  "display_ticket_number": 12,
+  "ticket_date": "2026-06-15",
+  "customer_name": "Juan Perez",
+  "assigned_barber_id": "uuid-del-barbero-opcional",
   "status": "in_progress | completed | cancelled",
   "barber_id": "uuid-del-barbero",
+  "checked_in_at": "2026-06-15T15:30:00Z",
   "items": [
     {
       "service_id": "uuid-del-servicio",
@@ -109,3 +117,9 @@ Desktop consulta cambios periódicamente, enviando el cursor (timestamp del últ
 ## 5. Resolución de Conflictos
 
 Si hay incongruencias (e.g. Desktop envía un pago para un ticket que no existe en Cloud por un evento perdido o corrupto), se registra en la tabla `sync_conflicts`. El dashboard web `/admin/sync` permitirá revisar estos casos. En esta fase, no permitiremos que la nube sobreescriba tickets ya cobrados localmente.
+
+## 6. Tickets Dashboard Web
+
+La ruta web `/tickets-dashboard` es una pantalla de sala read-only protegida para `admin`/`owner`. Consume `synced_tickets` materializados desde Desktop y no ejecuta acciones operativas sobre tickets. Para copiar el display local, `synced_tickets` conserva `display_ticket_number`, `ticket_date` y `checked_in_at`; los eventos antiguos que no incluyan esos campos no deben borrar valores ya materializados.
+
+La pantalla excluye tickets asociados a `appointment_id` como filas normales de espera/llamado, porque esos turnos se usan como registros operativos para Barber Panel/Cash Box. Desktop sigue siendo autoridad para cola, POS, pagos y cambios de estado.

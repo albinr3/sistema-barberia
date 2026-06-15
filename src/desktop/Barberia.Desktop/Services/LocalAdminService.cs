@@ -5,6 +5,8 @@ using Barberia.Data;
 using Barberia.Data.Models;
 using Barberia.Data.Repositories;
 using Barberia.Data.Reports;
+using Barberia.Data.Sync;
+using Barberia.Sync.Outbox;
 using Microsoft.Data.Sqlite;
 
 namespace Barberia.Desktop.Services;
@@ -404,6 +406,7 @@ public sealed class LocalAdminService
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
             var turn = turnRepository.GetById(turnId)
                 ?? throw new InvalidOperationException("Ticket was not found in the local database.");
 
@@ -420,6 +423,14 @@ public sealed class LocalAdminService
             }
 
             turnRepository.MarkCancelled(turnId, now);
+            syncRecorder.Enqueue(new LocalSyncEvent(
+                Guid.NewGuid(),
+                now,
+                "ticket.cancelled",
+                "ticket",
+                turn.Id,
+                JsonSerializer.Serialize(TicketSyncPayload.Create(turn, "cancelled", turn.AssignedBarberId, now)),
+                deviceId), now);
 
             if (assignedBarber is not null && assignedBarber.IsActive)
             {
@@ -457,6 +468,19 @@ public sealed class LocalAdminService
 
             if (reassignment is not null)
             {
+                var reassignedTurn = turnRepository.GetById(reassignment.TurnId);
+                if (reassignedTurn is not null)
+                {
+                    syncRecorder.Enqueue(new LocalSyncEvent(
+                        Guid.NewGuid(),
+                        now,
+                        "ticket.called",
+                        "ticket",
+                        reassignment.TurnId,
+                        JsonSerializer.Serialize(TicketSyncPayload.Create(reassignedTurn, "called", reassignment.BarberId)),
+                        deviceId), now);
+                }
+
                 auditRepository.Add(new AuditEvent(
                     Guid.NewGuid(),
                     now,
@@ -500,6 +524,7 @@ public sealed class LocalAdminService
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
             var turn = turnRepository.GetById(turnId)
                 ?? throw new InvalidOperationException("Ticket was not found in the local database.");
             var targetBarber = barberRepository.GetById(targetBarberId)
@@ -590,8 +615,37 @@ public sealed class LocalAdminService
                 }),
                 deviceId));
 
+            var resultTurn = turnRepository.GetById(turnId);
+            if (resultTurn is not null)
+            {
+                syncRecorder.Enqueue(new LocalSyncEvent(
+                    Guid.NewGuid(),
+                    now,
+                    "ticket.called",
+                    "ticket",
+                    turnId,
+                    JsonSerializer.Serialize(TicketSyncPayload.Create(
+                        resultTurn,
+                        resultTurn.State == TurnState.Called ? "called" : "waiting",
+                        targetBarberId)),
+                    deviceId), now);
+            }
+
             if (reassignment is not null)
             {
+                var reassignedTurn = turnRepository.GetById(reassignment.TurnId);
+                if (reassignedTurn is not null)
+                {
+                    syncRecorder.Enqueue(new LocalSyncEvent(
+                        Guid.NewGuid(),
+                        now,
+                        "ticket.called",
+                        "ticket",
+                        reassignment.TurnId,
+                        JsonSerializer.Serialize(TicketSyncPayload.Create(reassignedTurn, "called", reassignment.BarberId)),
+                        deviceId), now);
+                }
+
                 auditRepository.Add(new AuditEvent(
                     Guid.NewGuid(),
                     now,
@@ -742,6 +796,20 @@ public sealed class LocalAdminService
 
                 if (reassignment is not null)
                 {
+                    var reassignedTurn = turnRepository.GetById(reassignment.TurnId);
+                    if (reassignedTurn is not null)
+                    {
+                        var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+                        syncRecorder.Enqueue(new LocalSyncEvent(
+                            Guid.NewGuid(),
+                            now,
+                            "ticket.called",
+                            "ticket",
+                            reassignment.TurnId,
+                            JsonSerializer.Serialize(TicketSyncPayload.Create(reassignedTurn, "called", reassignment.BarberId)),
+                            deviceId), now);
+                    }
+
                     auditRepository.Add(new AuditEvent(
                         Guid.NewGuid(),
                         now,

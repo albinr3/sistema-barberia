@@ -92,6 +92,7 @@ serve(async (req: Request) => {
         await materializeAppointmentEvent(supabaseAdmin, event_type, aggregate_id, payload, occurred_at);
       } else if (
         event_type === "ticket.created" ||
+        event_type === "ticket.called" ||
         event_type === "ticket.started" ||
         event_type === "ticket.completed" ||
         event_type === "ticket.cancelled"
@@ -219,19 +220,57 @@ async function materializeTicketEvent(
   const localBarberId = stringValue(payload.barber_id) || stringValue(payload.assigned_barber_id);
   const cloudBarberId = localBarberId;
   const appointmentId = stringValue(payload.appointment_id);
+  const ticketRecord: Record<string, unknown> = {
+    local_ticket_id: event.aggregate_id,
+    source_device_id: deviceId,
+    status: stringValue(payload.status) || statusFromTicketEvent(event.event_type),
+  };
+
+  const customerName = stringValue(payload.customer_name);
+  if (customerName) {
+    ticketRecord.customer_name = customerName;
+  }
+
+  if (cloudBarberId) {
+    ticketRecord.barber_id = cloudBarberId;
+  }
+
+  if (appointmentId) {
+    ticketRecord.appointment_id = appointmentId;
+  }
+
+  const startedAt = stringValue(payload.started_at) || (event.event_type === "ticket.started" ? occurredAt : null);
+  if (startedAt) {
+    ticketRecord.started_at = startedAt;
+  }
+
+  const completedAt = stringValue(payload.completed_at) || (event.event_type === "ticket.completed" ? occurredAt : null);
+  if (completedAt) {
+    ticketRecord.completed_at = completedAt;
+  }
+
+  const cancelledAt = stringValue(payload.cancelled_at) || (event.event_type === "ticket.cancelled" ? occurredAt : null);
+  if (cancelledAt) {
+    ticketRecord.cancelled_at = cancelledAt;
+  }
+
+  const displayTicketNumber = numberValue(payload.display_ticket_number);
+  if (displayTicketNumber !== null) {
+    ticketRecord.display_ticket_number = displayTicketNumber;
+  }
+
+  const ticketDate = stringValue(payload.ticket_date);
+  if (ticketDate) {
+    ticketRecord.ticket_date = ticketDate;
+  }
+
+  const checkedInAt = stringValue(payload.checked_in_at);
+  if (checkedInAt) {
+    ticketRecord.checked_in_at = checkedInAt;
+  }
 
   await supabaseAdmin.from("synced_tickets").upsert(
-    {
-      local_ticket_id: event.aggregate_id,
-      source_device_id: deviceId,
-      customer_name: stringValue(payload.customer_name),
-      barber_id: cloudBarberId,
-      appointment_id: appointmentId,
-      status: stringValue(payload.status) || statusFromTicketEvent(event.event_type),
-      started_at: stringValue(payload.started_at) || (event.event_type === "ticket.started" ? occurredAt : null),
-      completed_at: stringValue(payload.completed_at) || (event.event_type === "ticket.completed" ? occurredAt : null),
-      cancelled_at: stringValue(payload.cancelled_at) || (event.event_type === "ticket.cancelled" ? occurredAt : null),
-    },
+    ticketRecord,
     { onConflict: "local_ticket_id" },
   );
 
@@ -370,6 +409,7 @@ async function insertSyncConflict(
 }
 
 function statusFromTicketEvent(eventType: string) {
+  if (eventType === "ticket.called") return "called";
   if (eventType === "ticket.started") return "in_progress";
   if (eventType === "ticket.cancelled") return "cancelled";
   if (eventType === "ticket.completed") return "completed";

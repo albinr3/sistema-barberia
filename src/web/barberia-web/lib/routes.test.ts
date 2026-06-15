@@ -6,6 +6,7 @@ describe("web route access rules", () => {
     expect(isProtectedPath("/app/book")).toBe(true);
     expect(isProtectedPath("/barber/settings")).toBe(true);
     expect(isProtectedPath("/admin/admin-dashboard")).toBe(true);
+    expect(isProtectedPath("/tickets-dashboard")).toBe(true);
     expect(isProtectedPath("/auth/reset-password")).toBe(false);
   });
 
@@ -13,6 +14,7 @@ describe("web route access rules", () => {
     expect(allowedRolesForPath("/app/book")).toEqual(["customer"]);
     expect(allowedRolesForPath("/barber/settings")).toEqual(["barber"]);
     expect(allowedRolesForPath("/admin/sync")).toEqual(["admin", "owner"]);
+    expect(allowedRolesForPath("/tickets-dashboard")).toEqual(["admin", "owner"]);
     expect(allowedRolesForPath("/auth/reset-password")).toBeNull();
   });
 

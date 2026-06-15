@@ -105,4 +105,10 @@ El plan detallado para implementar booking autenticado y administracion operativ
 
 ## Plan Operativo 2.5
 
+Extension de Tickets Dashboard web implementada a nivel de codigo:
+- `/tickets-dashboard` muestra una pantalla read-only de sala para `admin`/`owner`, inspirada en `PublicDisplayPage` de Desktop.
+- La pantalla usa datos sincronizados desde `synced_tickets`, refresca cada 30 segundos y separa `Now Calling`, `Waiting List` y `Barber Status`.
+- La sincronizacion de tickets ahora materializa `ticket.called`, `display_ticket_number`, `ticket_date` y `checked_in_at` para conservar el numero visible del dashboard.
+- Los tickets asociados a `appointment_id` no se muestran como filas normales del dashboard publico.
+
 La Fase 2.5 de sincronización Windows-Supabase ha sido implementada a nivel de código, incluyendo el contrato técnico en `docs/arquitectura/phase-2-5-sync-contract.md`, tablas POS cloud en la base de datos (e.g. `synced_tickets`, `synced_payments`), Edge Functions (`sync-events`, `sync-changes`) y el dashboard web `/admin/sync`. También se modificó el Desktop para enviar los eventos a través de un Outbox hacia la nube.

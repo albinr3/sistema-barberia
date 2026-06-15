@@ -111,7 +111,7 @@ public sealed class KioskCheckInService
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
             syncRecorder.Enqueue(new LocalSyncEvent(
                 Guid.NewGuid(), now, "ticket.created", "ticket", turn.Id,
-                JsonSerializer.Serialize(new { customer_name = turn.CustomerName, status = "waiting" }),
+                JsonSerializer.Serialize(TicketSyncPayload.Create(turn, "waiting")),
                 deviceId), now);
 
             var waitingTurns = turnRepository.ListWaiting();
@@ -158,7 +158,10 @@ public sealed class KioskCheckInService
 
             syncRecorder.Enqueue(new LocalSyncEvent(
                 Guid.NewGuid(), now, "ticket.called", "ticket", decision.TurnId,
-                JsonSerializer.Serialize(new { assigned_barber_id = decision.BarberId, status = "called" }),
+                JsonSerializer.Serialize(TicketSyncPayload.Create(
+                    turnRepository.GetById(decision.TurnId) ?? turn,
+                    "called",
+                    decision.BarberId)),
                 deviceId), now);
 
             if (decision.TurnId == turn.Id)

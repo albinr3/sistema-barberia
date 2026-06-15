@@ -20,7 +20,7 @@ export async function dismissSyncConflict(conflictId: string) {
 
     revalidatePath("/admin/sync");
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Failed to dismiss sync conflict." };
   }
 }

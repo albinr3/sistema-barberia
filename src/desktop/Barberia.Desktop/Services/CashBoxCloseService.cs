@@ -225,14 +225,12 @@ public sealed class CashBoxCloseService
 
             syncRecorder.Enqueue(new LocalSyncEvent(
                 Guid.NewGuid(), now, "ticket.completed", "ticket", turn.Id,
-                JsonSerializer.Serialize(new {
-                    barber_id = barberId,
-                    appointment_id = turn.AppointmentId,
-                    customer_name = turn.CustomerName,
-                    status = "completed",
-                    completed_at = now,
-                    items = new[] { new { service_id = service.Id, price_cents = service.PriceCents, local_item_id = Guid.NewGuid().ToString() } }
-                }),
+                JsonSerializer.Serialize(TicketSyncPayload.Create(
+                    turn,
+                    "completed",
+                    barberId,
+                    now,
+                    new[] { new { service_id = service.Id, price_cents = service.PriceCents, local_item_id = Guid.NewGuid().ToString() } })),
                 deviceId), now);
 
             syncRecorder.Enqueue(new LocalSyncEvent(
@@ -300,7 +298,19 @@ public sealed class CashBoxCloseService
             {
                 syncRecorder.Enqueue(new LocalSyncEvent(
                     Guid.NewGuid(), now, "ticket.called", "ticket", reassignment.TurnId,
-                    JsonSerializer.Serialize(new { assigned_barber_id = reassignment.BarberId, status = "called" }),
+                    JsonSerializer.Serialize(TicketSyncPayload.Create(
+                        turnRepository.GetById(reassignment.TurnId)
+                            ?? new Turn(
+                                reassignment.TurnId,
+                                reassignment.TicketNumber,
+                                reassignment.DisplayTicketNumber,
+                                businessDate,
+                                TurnState.Called,
+                                TurnSource.WalkIn,
+                                now,
+                                reassignment.BarberId),
+                        "called",
+                        reassignment.BarberId)),
                     deviceId), now);
 
                 auditRepository.Add(new AuditEvent(
