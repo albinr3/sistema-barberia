@@ -5,7 +5,7 @@ describe("web route access rules", () => {
   it("protects authenticated app surfaces", () => {
     expect(isProtectedPath("/app/book")).toBe(true);
     expect(isProtectedPath("/barber/settings")).toBe(true);
-    expect(isProtectedPath("/admin/catalog")).toBe(true);
+    expect(isProtectedPath("/admin/admin-dashboard")).toBe(true);
     expect(isProtectedPath("/auth/reset-password")).toBe(false);
   });
 

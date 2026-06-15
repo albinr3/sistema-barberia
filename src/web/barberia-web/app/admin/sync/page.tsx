@@ -1,146 +1,167 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireAdmin } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { saveDesktopCatalogMapping } from "./actions";
+import { Activity, Server, Smartphone, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import styles from "./admin-sync.module.css";
+import { DismissConflictButton } from "@/components/admin/dismiss-conflict-button";
+import Link from "next/link";
 
-export default async function AdminSyncPage() {
+export default async function AdminSyncPage(props: { searchParams?: Promise<{ page?: string }> }) {
+  const searchParams = await props.searchParams;
+  const page = parseInt(searchParams?.page || "1", 10);
+  const limit = 15;
+  const offset = (page - 1) * limit;
+
   const supabase = await createClient();
   await requireAdmin(supabase);
 
-  const { data: events } = await supabase
-    .from("sync_events")
-    .select("*")
-    .order("received_at", { ascending: false })
-    .limit(10);
-
-  const { data: conflicts } = await supabase
-    .from("sync_conflicts")
-    .select("*")
-    .eq("status", "open")
-    .order("created_at", { ascending: false });
-
-  const [{ data: localCatalogItems }, { data: mappings }, { data: barbers }, { data: services }] = await Promise.all([
-    supabase
-      .from("synced_catalog_items")
-      .select("*")
-      .order("entity_type", { ascending: true })
-      .order("display_name", { ascending: true }),
-    supabase.from("desktop_catalog_mappings").select("*"),
-    supabase.from("barbers").select("id, display_name, station_code").order("display_name", { ascending: true }),
-    supabase.from("services").select("id, name, base_price_cents").order("sort_order", { ascending: true }).order("name", { ascending: true }),
+  const [
+    { data: devices },
+    { count: barbersCount },
+    { count: servicesCount },
+    { data: events, count: totalEvents },
+    { data: conflicts },
+  ] = await Promise.all([
+    supabase.from("sync_devices").select("*").order("last_sync_at", { ascending: false }),
+    supabase.from("barbers").select("*", { count: "exact", head: true }),
+    supabase.from("services").select("*", { count: "exact", head: true }),
+    supabase.from("sync_events").select("*", { count: "exact" }).order("received_at", { ascending: false }).range(offset, offset + limit - 1),
+    supabase.from("sync_conflicts").select("*").eq("status", "open").order("created_at", { ascending: false }),
   ]);
 
-  const mappedKeys = new Set((mappings || []).map((mapping) => `${mapping.entity_type}:${mapping.local_id}`));
-  const unmappedItems = (localCatalogItems || []).filter((item) => !mappedKeys.has(`${item.entity_type}:${item.local_id}`));
+  const totalPages = Math.ceil((totalEvents || 0) / limit);
 
   return (
     <AppShell title="Sync Dashboard" variant="admin">
-      <div className="space-y-8">
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200">Catalog Mappings</h2>
-          {unmappedItems.length > 0 ? (
-            <div className="grid gap-4">
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1 className={styles.pageTitle}>Sync Dashboard</h1>
+          <p className={styles.pageSubtitle}>Monitor synchronization between the cloud and desktop devices.</p>
+        </div>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}><Activity size={20} /> System Overview</h2>
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <p className={styles.statLabel}>Synced Barbers</p>
+              <p className={styles.statValue}>{barbersCount || 0}</p>
+            </div>
+            <div className={styles.statCard}>
+              <p className={styles.statLabel}>Synced Services</p>
+              <p className={styles.statValue}>{servicesCount || 0}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}><Server size={20} /> Desktop Devices</h2>
+          {devices && devices.length > 0 ? (
+            <div className={styles.devicesGrid}>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {unmappedItems.map((item: any) => {
-                const options = item.entity_type === "barber" ? barbers || [] : services || [];
+              {devices.map((device: any) => {
+                const isOnline = device.last_sync_at && new Date().getTime() - new Date(device.last_sync_at).getTime() < 1000 * 60 * 15;
                 return (
-                  <form
-                    action={saveDesktopCatalogMapping}
-                    className="p-4 bg-white dark:bg-slate-900 shadow rounded-lg border border-slate-200 dark:border-slate-800 grid gap-3 md:grid-cols-[1fr_1fr_auto]"
-                    key={`${item.source_device_id}-${item.entity_type}-${item.local_id}`}
-                  >
-                    <input name="entity_type" type="hidden" value={item.entity_type} />
-                    <input name="local_id" type="hidden" value={item.local_id} />
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{item.display_name}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.entity_type} · {item.station_code || item.local_id}
+                  <div key={device.id} className={styles.deviceCard}>
+                    <div className={styles.deviceInfo}>
+                      <p className={styles.deviceName}>
+                        <Smartphone size={16} className="inline mr-2 text-[var(--muted)]" />
+                        {device.name || "Desktop Client"}
                       </p>
+                      <p className={styles.deviceId}>ID: {device.id}</p>
+                      {device.last_sync_at && (
+                        <p className={styles.deviceTime}>Last seen: {new Date(device.last_sync_at).toLocaleString()}</p>
+                      )}
                     </div>
-                    <select
-                      className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 bg-white dark:bg-slate-950"
-                      name="cloud_id"
-                      required
-                    >
-                      <option value="">Select cloud {item.entity_type}</option>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {options.map((option: any) => (
-                        <option key={option.id} value={option.id}>
-                          {item.entity_type === "barber"
-                            ? `${option.display_name}${option.station_code ? ` (${option.station_code})` : ""}`
-                            : `${option.name} - $${(option.base_price_cents / 100).toFixed(2)}`}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="px-4 py-2 rounded-md bg-[#0020c2] text-white font-semibold" type="submit">
-                      Map
-                    </button>
-                  </form>
+                    <div className={`${styles.statusIndicator} ${isOnline ? styles.online : styles.offline}`}>
+                      <div className={styles.statusDot}></div>
+                      {isOnline ? "Online" : "Offline"}
+                    </div>
+                  </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No unmapped desktop catalog items.</p>
+            <div className={styles.emptyMessage}>No desktop devices registered yet.</div>
           )}
         </section>
 
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200">Open Conflicts</h2>
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}><AlertTriangle size={20} /> Open Conflicts</h2>
           {conflicts && conflicts.length > 0 ? (
-            <div className="grid gap-4">
+            <div className={styles.conflictsGrid}>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {conflicts.map((conflict: any) => (
-                <div key={conflict.id} className="p-4 bg-white dark:bg-slate-900 shadow rounded-lg border-l-4 border-red-500">
-                  <div className="flex justify-between">
+                <div key={conflict.id} className={styles.conflictCard}>
+                  <div className={styles.conflictHeader}>
                     <div>
-                      <p className="font-medium">Type: {conflict.conflict_type}</p>
-                      <p className="text-sm text-slate-500">Aggregate: {conflict.aggregate_type} ({conflict.aggregate_id})</p>
+                      <p className={styles.conflictType}>{conflict.conflict_type.replace(/_/g, ' ').toUpperCase()}</p>
+                      <p className={styles.conflictAggregate}>Target: {conflict.aggregate_type} ({conflict.aggregate_id})</p>
+                      <p className={styles.conflictTime}>Detected: {new Date(conflict.created_at).toLocaleString()}</p>
                     </div>
-                    <StatusBadge tone="danger">Cancelled</StatusBadge>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                      <span className={styles.statusPending} style={{ color: 'var(--danger)', backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>Open Issue</span>
+                      <DismissConflictButton conflictId={conflict.id} />
+                    </div>
                   </div>
-                  <pre className="mt-2 text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded overflow-auto">
+                  <pre className={styles.conflictPayload}>
                     {JSON.stringify(conflict.local_payload, null, 2)}
                   </pre>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No open conflicts detected.</p>
+            <div className={styles.emptyMessage}>All systems are synchronized. No open conflicts.</div>
           )}
         </section>
 
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200">Recent Sync Events</h2>
-          <div className="overflow-x-auto bg-white dark:bg-slate-900 shadow rounded-lg">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 dark:bg-slate-800">
-                <tr>
-                  <th className="p-3">Time</th>
-                  <th className="p-3">Source</th>
-                  <th className="p-3">Event Type</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Device ID</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {events?.map((event: any) => (
-                  <tr key={event.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="p-3">{new Date(event.received_at).toLocaleString()}</td>
-                    <td className="p-3 font-mono text-xs">{event.source}</td>
-                    <td className="p-3 font-medium">{event.event_type}</td>
-                    <td className="p-3">
-                      <StatusBadge tone={event.status === "processed" ? "success" : "warning"}>
-                        {event.status === "processed" ? "Completed" : "Pending"}
-                      </StatusBadge>
-                    </td>
-                    <td className="p-3 text-xs text-slate-500">{event.source_device_id || "Unknown"}</td>
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Recent Sync Events</h2>
+          {events && events.length > 0 ? (
+            <>
+              <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Source</th>
+                    <th>Event Type</th>
+                    <th>Status</th>
+                    <th>Device ID</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {events?.map((event: any) => (
+                    <tr key={event.id}>
+                      <td>{new Date(event.received_at).toLocaleString()}</td>
+                      <td className={styles.monoText}>{event.source}</td>
+                      <td style={{ fontWeight: 500 }}>{event.event_type}</td>
+                      <td>
+                        <span className={event.status === "processed" ? styles.statusCompleted : styles.statusPending}>
+                          {event.status === "processed" ? "Processed" : "Pending"}
+                        </span>
+                      </td>
+                      <td className={styles.monoText}>{event.source_device_id || "Unknown"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div className={styles.pagination}>
+                <Link href={`/admin/sync?page=${page - 1}`} className={styles.pageBtn} aria-disabled={page <= 1} tabIndex={page <= 1 ? -1 : 0} style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1 }}>
+                  <ChevronLeft size={16} /> Previous
+                </Link>
+                <span className={styles.pageText}>Page {page} of {totalPages}</span>
+                <Link href={`/admin/sync?page=${page + 1}`} className={styles.pageBtn} aria-disabled={page >= totalPages} tabIndex={page >= totalPages ? -1 : 0} style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1 }}>
+                  Next <ChevronRight size={16} />
+                </Link>
+              </div>
+            )}
+            </>
+          ) : (
+            <div className={styles.emptyMessage}>No recent sync events found.</div>
+          )}
         </section>
       </div>
     </AppShell>

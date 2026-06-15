@@ -34,8 +34,9 @@ Sync cloud:
 }
 ```
 
-- Al iniciar, `DesktopSyncService` envia snapshot de barberos/servicios locales si cambio, descarga citas y mappings, aplica no-shows vencidos y despacha el outbox.
+- En cada ciclo, `DesktopSyncService` descarga y aplica cambios cloud antes de encolar el snapshot local de barberos/servicios. El snapshot se compara por contenido operativo/catalogo y no por `updated_at`, para evitar loops donde un eco de Supabase vuelva a generar `catalog.snapshot` cada 60 segundos.
 - Las citas sincronizadas se guardan en `appointment_reservations` con `appointment_code`, cliente, servicio, hora de inicio/fin y estado local.
+- `AppointmentsPage` muestra las citas del dia como una lista operativa directa; las filas priorizan citas activas y conservan el QR/codigo visible para operacion.
 - Barber Panel acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.
 - Cash Box completa la cita solo al cerrar el cobro; ahi se marcan el turno y la reserva como completados y se suben `ticket.completed`, `payment.collected` y `appointment.completed`.
 - Appointment turns are operational records for Cash Box/Barber Panel, but are not ticket-dashboard rows.

@@ -117,7 +117,8 @@ public sealed class LocalTurnRepository
         }
 
         var normalized = ticketInput.Trim();
-        if (normalized.StartsWith("W", StringComparison.OrdinalIgnoreCase))
+        if (normalized.StartsWith("W", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("A", StringComparison.OrdinalIgnoreCase))
         {
             return GetByTicketNumber(normalized);
         }

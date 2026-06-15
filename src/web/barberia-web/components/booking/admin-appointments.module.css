@@ -208,6 +208,53 @@
   background: white;
 }
 
+.qrButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: block;
+  transition: transform 0.2s;
+}
+
+.qrButton:hover {
+  transform: scale(1.05);
+}
+
+.qrModalContent {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 90vw;
+}
+
+.qrModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.qrModalBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qrCodeTextLarge {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.1em;
+}
+
 .dateTime {
   display: flex;
   flex-direction: column;
@@ -552,4 +599,89 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .tableWrapper {
+    border: none;
+  }
+
+  .table, .table tbody, .table tr, .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-soft);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .table tr:hover {
+    background: var(--surface);
+  }
+
+  .table td {
+    border-bottom: 1px solid var(--line);
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    flex: 1;
+    margin-right: 1rem;
+  }
+
+  .table td:last-child {
+    border-bottom: none;
+    background: var(--surface-low);
+    justify-content: flex-end;
+  }
+
+  .table td:last-child::before {
+    display: none;
+  }
+
+  .avatarCell {
+    justify-content: flex-end;
+    flex: 2;
+  }
+
+  .customerInfo {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .dateTime {
+    align-items: flex-end;
+  }
+
+  .actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
 }

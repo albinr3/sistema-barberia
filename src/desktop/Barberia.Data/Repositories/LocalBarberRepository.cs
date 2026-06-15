@@ -55,7 +55,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage, updated_at
             FROM barbers
             WHERE id = $id;
             """;
@@ -70,7 +70,7 @@ public sealed class LocalBarberRepository
         using var command = _connection.CreateCommand();
         command.Transaction = _transaction;
         command.CommandText = """
-            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage, updated_at
             FROM barbers
             ORDER BY is_active DESC, COALESCE(station_number, 2147483647), display_name;
             """;
@@ -245,7 +245,8 @@ public sealed class LocalBarberRepository
             reader.IsDBNull(5) ? null : reader.GetInt32(5),
             reader.IsDBNull(7) ? null : reader.GetString(7),
             reader.GetInt32(8) == 1,
-            reader.GetInt32(9));
+            reader.GetInt32(9),
+            DateTimeOffset.Parse(reader.GetString(10)));
     }
 
     private static string? Format(DateTimeOffset? value)

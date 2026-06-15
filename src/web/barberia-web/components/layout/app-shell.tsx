@@ -29,7 +29,7 @@ const navItems: Record<AppShellProps["variant"], NavItem[]> = {
   admin: [
     { href: "/admin", label: "Dashboard", icon: ClipboardList },
     { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
-    { href: "/admin/catalog", label: "Catalog", icon: Scissors },
+    { href: "/admin/admin-dashboard", label: "Admin Dashboard", icon: Scissors },
     { href: "/admin/sync", label: "Sync", icon: Settings },
   ],
 };

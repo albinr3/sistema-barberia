@@ -4,6 +4,7 @@ export type BarberRow = {
   station_code: string | null;
   profile_image_path: string | null;
   is_active: boolean;
+  is_available_locally: boolean;
 };
 
 export type ServiceRow = {

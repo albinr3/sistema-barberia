@@ -98,7 +98,7 @@ export default async function AdminCatalogPage({ searchParams }: CatalogPageProp
   };
 
   return (
-    <AppShell title="Catalog" variant="admin">
+    <AppShell title="Admin Dashboard" variant="admin">
       <div className={styles.page}>
         <StatusMessage success={firstParam(params.success)} error={firstParam(params.error)} />
 

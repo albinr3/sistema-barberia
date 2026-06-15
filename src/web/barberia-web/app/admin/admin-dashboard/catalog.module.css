@@ -470,7 +470,13 @@
 
 @media (max-width: 760px) {
   .section {
-    padding: 16px;
+    padding: 16px 12px;
+  }
+  .rowSummary {
+    padding: 12px;
+  }
+  .editPanel {
+    padding: 12px;
   }
 
   .rowSummary {

@@ -694,6 +694,7 @@ public sealed class LocalAdminService
             }
 
             DateTimeOffset? checkedInAt = barber.CheckedInAt;
+            var effectiveUpdatedAt = now > barber.UpdatedAt ? now : barber.UpdatedAt.AddSeconds(1);
             if (state == BarberState.Available)
             {
                 var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
@@ -702,13 +703,13 @@ public sealed class LocalAdminService
                         ? existingCheckedInAt
                         : now;
 
-                barberRepository.SetStateAndCheckedInAt(barberId, state, checkedInAt.Value, now);
+                barberRepository.SetStateAndCheckedInAt(barberId, state, checkedInAt.Value, effectiveUpdatedAt);
                 new DailyRotationRepository(connection, sqliteTransaction)
-                    .EnsureQueued(businessDate, barberId, checkedInAt.Value, now);
+                    .EnsureQueued(businessDate, barberId, checkedInAt.Value, effectiveUpdatedAt);
             }
             else
             {
-                barberRepository.SetState(barberId, state, now);
+                barberRepository.SetState(barberId, state, effectiveUpdatedAt);
             }
 
             auditRepository.Add(new AuditEvent(

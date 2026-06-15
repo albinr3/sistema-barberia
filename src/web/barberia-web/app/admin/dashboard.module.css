@@ -179,4 +179,13 @@
   .panelsGrid {
     grid-template-columns: 1fr;
   }
+  .panel {
+    padding: 16px;
+  }
+  .metricCard {
+    padding: 16px;
+  }
+  .metricValue {
+    font-size: 32px;
+  }
 }

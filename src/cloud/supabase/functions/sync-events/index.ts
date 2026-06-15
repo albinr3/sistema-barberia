@@ -138,22 +138,73 @@ async function materializeCatalogSnapshot(
     const entityType = stringValue(item.entity_type);
     const localId = stringValue(item.local_id);
     const displayName = stringValue(item.display_name);
-    if (!entityType || !localId || !displayName) continue;
+    const updatedAt = stringValue(item.updated_at);
+    if (!entityType || !localId || !displayName || !updatedAt) continue;
+    if (entityType !== "barber" && entityType !== "service") continue;
 
-    await supabaseAdmin.from("synced_catalog_items").upsert(
-      {
-        source_device_id: deviceId,
-        entity_type: entityType,
-        local_id: localId,
+    if (entityType === "barber") {
+      const stationCode = stringValue(item.station_code);
+      const isAvailableLocally = booleanValue(item.is_available_locally, true);
+      const { data: existing } = await supabaseAdmin
+        .from("barbers")
+        .select("updated_at, display_name, station_code, is_available_locally")
+        .eq("id", localId)
+        .maybeSingle();
+
+      if (existing && new Date(existing.updated_at) >= new Date(updatedAt)) {
+        console.warn(`[Sync] Catalog snapshot updated_at (${updatedAt}) is not newer than cloud (${existing.updated_at}) for ${localId}. Skipping stale snapshot item.`);
+        continue;
+      }
+
+      if (
+        existing &&
+        existing.display_name === displayName &&
+        nullableString(existing.station_code) === stationCode &&
+        existing.is_available_locally === isAvailableLocally
+      ) {
+        continue;
+      }
+
+      const { error } = await supabaseAdmin.from("barbers").upsert({
+        id: localId,
         display_name: displayName,
-        station_code: stringValue(item.station_code),
-        price_cents: numberValue(item.price_cents),
-        is_active: booleanValue(item.is_active, true),
-        payload: item,
-        synced_at: new Date().toISOString(),
-      },
-      { onConflict: "source_device_id, entity_type, local_id" },
-    );
+        station_code: stationCode,
+        is_available_locally: isAvailableLocally,
+        updated_at: updatedAt,
+      });
+      if (error) throw new Error("Barber upsert failed: " + error.message);
+    } else if (entityType === "service") {
+      const priceCents = numberValue(item.price_cents) || 0;
+      const isActive = booleanValue(item.is_active, true);
+      const { data: existing } = await supabaseAdmin
+        .from("services")
+        .select("updated_at, name, base_price_cents, is_active")
+        .eq("id", localId)
+        .maybeSingle();
+
+      if (existing && new Date(existing.updated_at) >= new Date(updatedAt)) {
+        console.warn(`[Sync] Catalog snapshot updated_at (${updatedAt}) is not newer than cloud (${existing.updated_at}) for ${localId}. Skipping stale snapshot item.`);
+        continue;
+      }
+
+      if (
+        existing &&
+        existing.name === displayName &&
+        existing.base_price_cents === priceCents &&
+        existing.is_active === isActive
+      ) {
+        continue;
+      }
+
+      const { error } = await supabaseAdmin.from("services").upsert({
+        id: localId,
+        name: displayName,
+        base_price_cents: priceCents,
+        is_active: isActive,
+        updated_at: updatedAt,
+      });
+      if (error) throw new Error("Service upsert failed: " + error.message);
+    }
   }
 }
 
@@ -166,15 +217,8 @@ async function materializeTicketEvent(
 ) {
   const payload = event.payload;
   const localBarberId = stringValue(payload.barber_id) || stringValue(payload.assigned_barber_id);
-  const cloudBarberId = localBarberId ? await mapLocalId(supabaseAdmin, "barber", localBarberId) : null;
+  const cloudBarberId = localBarberId;
   const appointmentId = stringValue(payload.appointment_id);
-
-  if (localBarberId && !cloudBarberId) {
-    await insertSyncConflict(supabaseAdmin, syncEventId, "ticket", event.aggregate_id, {
-      conflict_type: "missing_barber_mapping",
-      local_payload: payload,
-    });
-  }
 
   await supabaseAdmin.from("synced_tickets").upsert(
     {
@@ -204,13 +248,7 @@ async function materializeTicketEvent(
         if (!isRecord(item)) continue;
 
         const localServiceId = stringValue(item.service_id);
-        const cloudServiceId = localServiceId ? await mapLocalId(supabaseAdmin, "service", localServiceId) : null;
-        if (localServiceId && !cloudServiceId) {
-          await insertSyncConflict(supabaseAdmin, syncEventId, "ticket", event.aggregate_id, {
-            conflict_type: "missing_service_mapping",
-            local_payload: item,
-          });
-        }
+        const cloudServiceId = localServiceId;
 
         await supabaseAdmin.from("synced_ticket_items").upsert(
           {
@@ -312,20 +350,7 @@ async function completeAppointment(
     .in("status", ["pending", "confirmed"]);
 }
 
-async function mapLocalId(
-  supabaseAdmin: ReturnType<typeof createClient>,
-  entityType: "barber" | "service",
-  localId: string,
-) {
-  const { data } = await supabaseAdmin
-    .from("desktop_catalog_mappings")
-    .select("cloud_id")
-    .eq("entity_type", entityType)
-    .eq("local_id", localId)
-    .maybeSingle();
 
-  return data?.cloud_id ?? null;
-}
 
 async function insertSyncConflict(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -367,6 +392,10 @@ function numberValue(value: unknown) {
 
 function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function nullableString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

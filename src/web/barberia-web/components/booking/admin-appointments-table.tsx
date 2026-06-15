@@ -20,6 +20,7 @@ export function AdminAppointmentsTable({ appointments, barbers }: { appointments
   const [selectedRescheduleSlot, setSelectedRescheduleSlot] = useState<any | null>(null);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [expandedQrCode, setExpandedQrCode] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLTableSectionElement>(null);
 
@@ -180,7 +181,7 @@ export function AdminAppointmentsTable({ appointments, barbers }: { appointments
 
                 return (
                   <tr key={app.id}>
-                    <td>
+                    <td data-label="Customer">
                       <div className={styles.avatarCell}>
                         <div className={styles.avatar}>{getInitials(customerName)}</div>
                         <div className={styles.customerInfo}>
@@ -201,11 +202,18 @@ export function AdminAppointmentsTable({ appointments, barbers }: { appointments
                           )}
                         </div>
                         {app.appointment_code && (
-                          <AppointmentQrCode className={styles.miniQr} size={56} value={app.appointment_code} />
+                          <button 
+                            className={styles.qrButton} 
+                            onClick={() => setExpandedQrCode(app.appointment_code)}
+                            type="button"
+                            title="Expand QR Code"
+                          >
+                            <AppointmentQrCode className={styles.miniQr} size={56} value={app.appointment_code} />
+                          </button>
                         )}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Service & Date">
                       <div className={styles.dateTime}>
                         <span className={styles.date}>{(app.service as any)?.name}</span>
                         <span className={styles.time}>
@@ -213,7 +221,7 @@ export function AdminAppointmentsTable({ appointments, barbers }: { appointments
                         </span>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Barber">
                       {reassigningId === app.id ? (
                         <div className={styles.reassignBox}>
                           <select 
@@ -233,12 +241,12 @@ export function AdminAppointmentsTable({ appointments, barbers }: { appointments
                         <span style={{ fontWeight: 500 }}>{(app.barber as any)?.display_name}</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span className={`${styles.badge} ${styles[app.status] || ''}`}>
                         {app.status.replace("_", " ")}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                       <div className={styles.actions}>
                         {app.status === 'confirmed' && (
                           <button 
@@ -383,6 +391,23 @@ export function AdminAppointmentsTable({ appointments, barbers }: { appointments
               >
                 {rescheduleLoading ? "Saving..." : "Save new time"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {expandedQrCode && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label="Expanded QR Code" onClick={() => setExpandedQrCode(null)}>
+          <div className={styles.qrModalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.qrModalHeader}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text)' }}>Appointment Code</h3>
+              <button className={styles.iconBtn} onClick={() => setExpandedQrCode(null)} type="button">
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className={styles.qrModalBody}>
+              <AppointmentQrCode size={256} value={expandedQrCode} />
+              <div className={styles.qrCodeTextLarge}>{expandedQrCode}</div>
             </div>
           </div>
         </div>

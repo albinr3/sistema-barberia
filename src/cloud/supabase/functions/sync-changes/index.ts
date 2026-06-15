@@ -39,7 +39,7 @@ serve(async (req: Request) => {
   const cursor = body.cursor || new Date(0).toISOString();
   const newCursor = new Date().toISOString();
 
-  const [{ data: barbers }, { data: services }, { data: appointments }, { data: mappings }] = await Promise.all([
+  const [{ data: barbers }, { data: services }, { data: appointments }] = await Promise.all([
     supabaseAdmin.from("barbers").select("*").gt("updated_at", cursor),
     supabaseAdmin.from("services").select("*").gt("updated_at", cursor),
     supabaseAdmin
@@ -53,17 +53,14 @@ serve(async (req: Request) => {
       `,
       )
       .gt("updated_at", cursor),
-    supabaseAdmin.from("desktop_catalog_mappings").select("*"),
   ]);
 
   const changes: {
     catalog: Array<{ type: string; data: unknown }>;
     appointments: Array<{ type: string; data: unknown }>;
-    mappings: unknown[];
   } = {
     catalog: [],
     appointments: [],
-    mappings: mappings || [],
   };
 
   for (const barber of barbers || []) {

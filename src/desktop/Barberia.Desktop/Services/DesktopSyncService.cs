@@ -11,7 +11,7 @@ namespace Barberia.Desktop.Services;
 internal sealed class DesktopSyncService : IDisposable
 {
     private const string CursorKey = "cloud_cursor";
-    private const string CatalogSnapshotKey = "catalog_snapshot_payload";
+    private const string CatalogSnapshotFingerprintKey = "catalog_snapshot_fingerprint";
     private static readonly TimeSpan NoShowGracePeriod = TimeSpan.FromMinutes(10);
 
     private readonly SqliteConnectionFactory _connectionFactory;
@@ -71,8 +71,6 @@ internal sealed class DesktopSyncService : IDisposable
     private async Task RunOnceAsync(DesktopSyncSettings settings, CancellationToken cancellationToken)
     {
         var now = OperationalClock.Now;
-        EnqueueCatalogSnapshotIfChanged(settings, now);
-
         using var httpClient = new HttpClient { BaseAddress = BuildBaseUri(settings.SupabaseUrl) };
         var pullService = new CloudPullService(httpClient, settings.DeviceId, settings.DeviceSecret);
         var cursor = GetSyncState(CursorKey) ?? new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).ToString("O");
@@ -84,6 +82,7 @@ internal sealed class DesktopSyncService : IDisposable
         }
 
         ApplyDueNoShows(now);
+        EnqueueCatalogSnapshotIfChanged(settings, now);
 
         var dispatcher = new SyncOutboxDispatcher(
             new LocalSyncOutboxStore(_connectionFactory),
@@ -97,8 +96,8 @@ internal sealed class DesktopSyncService : IDisposable
     {
         using var connection = _connectionFactory.OpenConnection();
         var stateRepository = new SyncStateRepository(connection);
-        var payload = BuildCatalogSnapshotPayload(connection);
-        if (string.Equals(stateRepository.GetValue(CatalogSnapshotKey), payload, StringComparison.Ordinal))
+        var snapshot = BuildCatalogSnapshot(connection);
+        if (string.Equals(stateRepository.GetValue(CatalogSnapshotFingerprintKey), snapshot.Fingerprint, StringComparison.Ordinal))
         {
             return;
         }
@@ -111,29 +110,57 @@ internal sealed class DesktopSyncService : IDisposable
                 "catalog.snapshot",
                 "catalog",
                 aggregateId,
-                payload,
+                snapshot.Payload,
                 settings.DeviceId),
             now);
-        stateRepository.SetValue(CatalogSnapshotKey, payload, now);
+        stateRepository.SetValue(CatalogSnapshotFingerprintKey, snapshot.Fingerprint, now);
     }
 
-    private static string BuildCatalogSnapshotPayload(Microsoft.Data.Sqlite.SqliteConnection connection)
+    private static CatalogSnapshot BuildCatalogSnapshot(Microsoft.Data.Sqlite.SqliteConnection connection)
     {
         var barbers = new LocalBarberRepository(connection)
             .ListAll()
             .OrderBy(barber => barber.Id)
+            .ToArray();
+
+        var services = new ServiceRepository(connection)
+            .ListAll()
+            .OrderBy(service => service.Id)
+            .ToArray();
+
+        var payloadBarbers = barbers
             .Select(barber => new
             {
                 entity_type = "barber",
                 local_id = barber.Id.ToString(),
                 display_name = barber.DisplayName,
                 station_code = barber.StationCode,
-                is_active = barber.IsActive
+                is_available_locally = barber.IsActive && barber.State != BarberState.Offline,
+                updated_at = barber.UpdatedAt.ToString("O")
             });
 
-        var services = new ServiceRepository(connection)
-            .ListAll()
-            .OrderBy(service => service.Id)
+        var payloadServices = services
+            .Select(service => new
+            {
+                entity_type = "service",
+                local_id = service.Id.ToString(),
+                display_name = service.Name,
+                price_cents = service.PriceCents,
+                is_active = service.IsActive,
+                updated_at = service.UpdatedAt.ToString("O")
+            });
+
+        var fingerprintBarbers = barbers
+            .Select(barber => new
+            {
+                entity_type = "barber",
+                local_id = barber.Id.ToString(),
+                display_name = barber.DisplayName,
+                station_code = barber.StationCode,
+                is_available_locally = barber.IsActive && barber.State != BarberState.Offline
+            });
+
+        var fingerprintServices = services
             .Select(service => new
             {
                 entity_type = "service",
@@ -143,7 +170,10 @@ internal sealed class DesktopSyncService : IDisposable
                 is_active = service.IsActive
             });
 
-        return JsonSerializer.Serialize(new { items = barbers.Cast<object>().Concat(services) });
+        // Fingerprints intentionally ignore updated_at, which changes when cloud echoes the same catalog row back.
+        return new CatalogSnapshot(
+            JsonSerializer.Serialize(new { items = payloadBarbers.Cast<object>().Concat(payloadServices) }),
+            JsonSerializer.Serialize(new { items = fingerprintBarbers.Cast<object>().Concat(fingerprintServices) }));
     }
 
     private void ApplyPulledChanges(DesktopSyncSettings settings, string changesJson, DateTimeOffset now)
@@ -156,14 +186,22 @@ internal sealed class DesktopSyncService : IDisposable
             return;
         }
 
-        var barberMappings = BuildMapping(changes, "barber");
-        var serviceMappings = BuildMapping(changes, "service");
-
         var transaction = new LocalDataTransaction(_connectionFactory);
         transaction.Execute((connection, sqliteTransaction) =>
         {
             var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+            var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
+            var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
+
+            if (changes.TryGetProperty("catalog", out var catalog)
+                && catalog.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var change in catalog.EnumerateArray())
+                {
+                    ApplyCatalogChange(barberRepository, serviceRepository, change);
+                }
+            }
 
             if (changes.TryGetProperty("appointments", out var appointments)
                 && appointments.ValueKind == JsonValueKind.Array)
@@ -174,8 +212,6 @@ internal sealed class DesktopSyncService : IDisposable
                         settings,
                         appointmentRepository,
                         syncRecorder,
-                        barberMappings,
-                        serviceMappings,
                         change,
                         now);
                 }
@@ -190,37 +226,91 @@ internal sealed class DesktopSyncService : IDisposable
         });
     }
 
-    private static Dictionary<string, string> BuildMapping(JsonElement changes, string entityType)
+    private static void ApplyCatalogChange(
+        LocalBarberRepository barberRepository,
+        ServiceRepository serviceRepository,
+        JsonElement change)
     {
-        var mappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (!changes.TryGetProperty("mappings", out var mappingsElement)
-            || mappingsElement.ValueKind != JsonValueKind.Array)
-        {
-            return mappings;
-        }
+        var type = GetString(change, "type");
+        if (!change.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+            return;
 
-        foreach (var mapping in mappingsElement.EnumerateArray())
+        if (type == "upsert_barber")
         {
-            var candidateType = GetString(mapping, "entity_type");
-            var localId = GetString(mapping, "local_id");
-            var cloudId = GetString(mapping, "cloud_id");
-            if (string.Equals(candidateType, entityType, StringComparison.OrdinalIgnoreCase)
-                && !string.IsNullOrWhiteSpace(localId)
-                && !string.IsNullOrWhiteSpace(cloudId))
+            var idStr = GetString(data, "id");
+            if (!Guid.TryParse(idStr, out var id)) return;
+            var updatedAtStr = GetString(data, "updated_at");
+            var updatedAt = ParseNullableDate(updatedAtStr) ?? DateTimeOffset.UtcNow;
+            
+            var existing = barberRepository.GetById(id);
+            if (existing is not null && existing.UpdatedAt >= updatedAt) return;
+
+            var isCloudActive = data.TryGetProperty("is_active", out var act) ? act.GetBoolean() : existing?.IsActive ?? true;
+            var isLocallyActive = data.TryGetProperty("is_available_locally", out var ia) ? ia.GetBoolean() : true;
+            var state = existing?.State ?? BarberState.Offline;
+            if (!isLocallyActive)
             {
-                mappings[cloudId] = localId;
+                state = BarberState.Offline;
+            }
+            else if (state == BarberState.Offline)
+            {
+                state = BarberState.NotCheckedIn;
+            }
+
+            var barber = new Barber(
+                id,
+                GetString(data, "display_name") ?? "Unknown",
+                state,
+                existing?.ClientsServedToday ?? 0,
+                existing?.RotationOrder ?? 0,
+                existing?.CheckedInAt,
+                GetString(data, "station_code")?.Replace("B-", "") is string sc && int.TryParse(sc, out var sn) ? sn : null,
+                existing?.ProfileImagePath,
+                isActive: isCloudActive,
+                existing?.CommissionPercentage ?? Barber.DefaultCommissionPercentage,
+                updatedAt
+            );
+            barberRepository.Upsert(barber, updatedAt);
+        }
+        else if (type == "upsert_service")
+        {
+            var idStr = GetString(data, "id");
+            if (!Guid.TryParse(idStr, out var id)) return;
+            var updatedAtStr = GetString(data, "updated_at");
+            var updatedAt = ParseNullableDate(updatedAtStr) ?? DateTimeOffset.UtcNow;
+
+            var existing = serviceRepository.GetById(id);
+            if (existing is not null && existing.UpdatedAt >= updatedAt) return;
+
+            data.TryGetProperty("base_price_cents", out var pcElement);
+            var pc = pcElement.ValueKind == JsonValueKind.Number ? pcElement.GetInt64() : 0;
+            var createdAtStr = GetString(data, "created_at");
+
+            var service = new Barberia.Data.Models.Service(
+                id,
+                GetString(data, "name") ?? "Unknown",
+                pc,
+                data.TryGetProperty("is_active", out var ia) ? ia.GetBoolean() : true,
+                existing?.DisplayOrder ?? 0,
+                ParseNullableDate(createdAtStr) ?? DateTimeOffset.UtcNow,
+                updatedAt
+            );
+
+            if (existing is null)
+            {
+                serviceRepository.Add(service);
+            }
+            else
+            {
+                serviceRepository.Update(service);
             }
         }
-
-        return mappings;
     }
 
     private static void ApplyAppointmentChange(
         DesktopSyncSettings settings,
         AppointmentReservationRepository appointmentRepository,
         SyncOutboxRecorder syncRecorder,
-        IReadOnlyDictionary<string, string> barberMappings,
-        IReadOnlyDictionary<string, string> serviceMappings,
         JsonElement change,
         DateTimeOffset now)
     {
@@ -239,8 +329,8 @@ internal sealed class DesktopSyncService : IDisposable
         var existing = appointmentRepository.GetById(appointmentId);
         var cloudBarberId = GetString(data, "barber_id");
         var cloudServiceId = GetString(data, "service_id");
-        var localBarberText = cloudBarberId is null ? null : GetMappedLocalId(barberMappings, cloudBarberId);
-        var localServiceText = cloudServiceId is null ? null : GetMappedLocalId(serviceMappings, cloudServiceId);
+        var localBarberText = cloudBarberId;
+        var localServiceText = cloudServiceId;
 
         if (localBarberText is null && existing is not null)
         {
@@ -371,10 +461,7 @@ internal sealed class DesktopSyncService : IDisposable
         return AppointmentState.Confirmed;
     }
 
-    private static string? GetMappedLocalId(IReadOnlyDictionary<string, string> mappings, string cloudId)
-    {
-        return mappings.TryGetValue(cloudId, out var localId) ? localId : null;
-    }
+
 
     private static DateTimeOffset? ParseNullableDate(string? value)
     {
@@ -416,4 +503,6 @@ internal sealed class DesktopSyncService : IDisposable
         {
         }
     }
+
+    private sealed record CatalogSnapshot(string Payload, string Fingerprint);
 }

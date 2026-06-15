@@ -20,7 +20,7 @@ export async function getAdminCatalogData(supabase: SupabaseClient): Promise<Adm
     await Promise.all([
       supabase
         .from("barbers")
-        .select("id, display_name, station_code, profile_image_path, is_active")
+        .select("id, display_name, station_code, profile_image_path, is_active, is_available_locally")
         .order("display_name", { ascending: true }),
       supabase
         .from("services")

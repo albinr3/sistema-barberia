@@ -133,7 +133,7 @@
 
   .content {
     width: 100%;
-    padding: 22px 16px;
+    padding: 16px 12px;
   }
 
   .header {
@@ -147,6 +147,6 @@
   }
 
   .admin .content {
-    padding: 22px 16px;
+    padding: 16px 12px;
   }
 }

@@ -78,87 +78,120 @@ public sealed partial class AppointmentsPage : Page
     {
         var row = new Grid
         {
-            ColumnSpacing = 12,
-            Padding = new Thickness(20, 16, 20, 16)
+            ColumnSpacing = 18,
+            Padding = new Thickness(18, 16, 18, 16)
         };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
 
-        // Time
-        var timeText = new TextBlock
+        var timePanel = new StackPanel
+        {
+            Spacing = 2,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        timePanel.Children.Add(new TextBlock
         {
             Text = item.Appointment.ScheduledFor.ToString("hh:mm tt"),
-            FontSize = 14,
+            FontSize = 20,
             FontWeight = FontWeights.SemiBold,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)),
+            TextWrapping = TextWrapping.NoWrap
+        });
+        timePanel.Children.Add(new TextBlock
+        {
+            Text = item.Appointment.ScheduledFor.ToString("MMM d"),
+            FontSize = 12,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116)),
+            TextWrapping = TextWrapping.NoWrap
+        });
+        row.Children.Add(timePanel);
+
+        var clientPanel = new StackPanel
+        {
+            Spacing = 4,
             VerticalAlignment = VerticalAlignment.Center
         };
-        row.Children.Add(timeText);
-
-        // Client
-        var clientText = new TextBlock
+        clientPanel.Children.Add(new TextBlock
         {
             Text = item.Appointment.CustomerName,
-            FontSize = 14,
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)),
-            TextWrapping = TextWrapping.WrapWholeWords,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        Grid.SetColumn(clientText, 1);
-        row.Children.Add(clientText);
-
-        // Barber
-        var barberText = new TextBlock
-        {
-            Text = item.Barber?.DisplayNameWithStation ?? "Any barber",
-            FontSize = 14,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85)),
-            TextWrapping = TextWrapping.WrapWholeWords,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        Grid.SetColumn(barberText, 2);
-        row.Children.Add(barberText);
-
-        // Service
-        var serviceText = new TextBlock
+            TextWrapping = TextWrapping.WrapWholeWords
+        });
+        clientPanel.Children.Add(new TextBlock
         {
             Text = item.Service?.Name ?? "-",
             FontSize = 14,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85)),
-            TextWrapping = TextWrapping.WrapWholeWords,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        Grid.SetColumn(serviceText, 3);
-        row.Children.Add(serviceText);
+            TextWrapping = TextWrapping.WrapWholeWords
+        });
+        Grid.SetColumn(clientPanel, 1);
+        row.Children.Add(clientPanel);
 
-        // Code
-        var codeText = new TextBlock
+        var assignmentPanel = new StackPanel
         {
-            Text = item.Appointment.AppointmentCode,
-            FontSize = 14,
-            FontFamily = new FontFamily("Consolas"),
-            FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 0, 19, 135)),
+            Spacing = 4,
             VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetColumn(codeText, 4);
-        row.Children.Add(codeText);
+        assignmentPanel.Children.Add(new TextBlock
+        {
+            Text = "Barber:",
+            FontSize = 14,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116))
+        });
+        assignmentPanel.Children.Add(new TextBlock
+        {
+            Text = item.Barber?.DisplayNameWithStation ?? "Any barber",
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)),
+            TextWrapping = TextWrapping.WrapWholeWords
+        });
+        Grid.SetColumn(assignmentPanel, 2);
+        row.Children.Add(assignmentPanel);
 
-        // Status
-        var statusBadge = CreateStatusBadge(item);
-        Grid.SetColumn(statusBadge, 5);
-        row.Children.Add(statusBadge);
+        var statusPanel = new StackPanel
+        {
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        statusPanel.Children.Add(CreateStatusBadge(item));
+        statusPanel.Children.Add(new TextBlock
+        {
+            Text = IsActiveState(item) ? "Operational" : "Closed",
+            FontSize = 12,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116)),
+            HorizontalAlignment = HorizontalAlignment.Right
+        });
+        Grid.SetColumn(statusPanel, 3);
+        row.Children.Add(statusPanel);
 
         return new Border
         {
-            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255)),
-            BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(255, 238, 238, 240)),
-            BorderThickness = new Thickness(0, 1, 0, 0),
+            Background = new SolidColorBrush(IsActiveState(item)
+                ? ColorHelper.FromArgb(255, 255, 255, 255)
+                : ColorHelper.FromArgb(255, 248, 249, 251)),
+            BorderBrush = new SolidColorBrush(IsActiveState(item)
+                ? ColorHelper.FromArgb(255, 197, 207, 221)
+                : ColorHelper.FromArgb(255, 226, 230, 235)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
             Child = row
+        };
+    }
+
+    private static TextBlock CreateMetaText(string label, string value)
+    {
+        return new TextBlock
+        {
+            Text = $"{label}: {value}",
+            FontSize = 14,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85)),
+            TextWrapping = TextWrapping.WrapWholeWords
         };
     }
 

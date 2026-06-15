@@ -8,9 +8,9 @@ import { requireAdmin } from "@/lib/auth/profile";
 import { centsFromDollarInput } from "@/lib/catalog/filters";
 import { createClient } from "@/lib/supabase/server";
 
-const catalogPath = "/admin/catalog";
+const catalogPath = "/admin/admin-dashboard";
 
-const optionalUuid = z.string().uuid().optional().or(z.literal(""));
+const optionalUuid = z.string().trim().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i, "Invalid UUID").optional().or(z.literal(""));
 
 const barberSchema = z.object({
   id: optionalUuid,
@@ -23,6 +23,7 @@ const barberSchema = z.object({
     .or(z.literal("")),
   profile_image_path: z.string().trim().optional(),
   is_active: z.boolean(),
+  is_available_locally: z.boolean(),
 });
 
 const serviceSchema = z.object({
@@ -37,7 +38,7 @@ const serviceSchema = z.object({
 
 const ruleSchema = z.object({
   id: optionalUuid,
-  barber_id: z.string().uuid(),
+  barber_id: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i, "Invalid Barber ID"),
   day_of_week: z.coerce.number().int().min(0).max(6),
   starts_at: z.string().regex(/^[0-9]{2}:[0-9]{2}$/),
   ends_at: z.string().regex(/^[0-9]{2}:[0-9]{2}$/),
@@ -47,7 +48,7 @@ const ruleSchema = z.object({
 
 const exceptionSchema = z.object({
   id: optionalUuid,
-  barber_id: z.string().uuid(),
+  barber_id: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i, "Invalid Barber ID"),
   exception_date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
@@ -91,6 +92,7 @@ export async function saveBarber(formData: FormData) {
       station_code: formData.get("station_code")?.toString() ?? "",
       profile_image_path: formData.get("profile_image_path")?.toString() ?? "",
       is_active: checked(formData, "is_active"),
+      is_available_locally: checked(formData, "is_available_locally"),
     });
 
     const payload = {
@@ -99,6 +101,7 @@ export async function saveBarber(formData: FormData) {
       station_code: values.station_code || null,
       profile_image_path: values.profile_image_path || null,
       is_active: values.is_active,
+      is_available_locally: values.is_available_locally,
     };
 
     const { error } = await supabase.from("barbers").upsert(payload);

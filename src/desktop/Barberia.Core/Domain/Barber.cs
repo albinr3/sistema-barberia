@@ -14,7 +14,8 @@ public sealed record Barber
         int? stationNumber = null,
         string? profileImagePath = null,
         bool isActive = true,
-        int commissionPercentage = DefaultCommissionPercentage)
+        int commissionPercentage = DefaultCommissionPercentage,
+        DateTimeOffset? updatedAt = null)
     {
         if (id == Guid.Empty)
         {
@@ -61,6 +62,7 @@ public sealed record Barber
         ProfileImagePath = string.IsNullOrWhiteSpace(profileImagePath) ? null : profileImagePath.Trim();
         IsActive = isActive;
         CommissionPercentage = commissionPercentage;
+        UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
     }
 
     public Guid Id { get; }
@@ -88,4 +90,6 @@ public sealed record Barber
     public int CommissionPercentage { get; }
 
     public decimal CommissionRate => CommissionPercentage / 100m;
+
+    public DateTimeOffset UpdatedAt { get; }
 }
