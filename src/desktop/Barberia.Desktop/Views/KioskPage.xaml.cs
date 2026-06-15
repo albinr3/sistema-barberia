@@ -469,8 +469,9 @@ public sealed partial class KioskPage : Page
     private void UpdateInteractionState()
     {
         var canSelect = CanSelectBarbers;
-        _anyBarberButton.IsEnabled = canSelect;
-        _anyBarberButton.Opacity = canSelect ? 1 : 0.5;
+        var hasBarbers = _barbers.Count > 0;
+        _anyBarberButton.IsEnabled = canSelect && hasBarbers;
+        _anyBarberButton.Opacity = _anyBarberButton.IsEnabled ? 1 : 0.5;
 
         foreach (var barber in _barbers)
         {
@@ -483,7 +484,7 @@ public sealed partial class KioskPage : Page
         }
 
         var hasSelection = _acceptsAnyBarber || _selectedBarberIds.Count > 0;
-        _printTicketButton.IsEnabled = canSelect && hasSelection;
+        _printTicketButton.IsEnabled = canSelect && hasSelection && hasBarbers;
     }
 
     private void UpdateSelectionVisuals()

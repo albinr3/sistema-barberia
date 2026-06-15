@@ -45,16 +45,11 @@ public sealed class LocalTicketHistoryRepository
             LEFT JOIN cash_payments p ON t.id = p.turn_id
             LEFT JOIN services s ON REPLACE(LOWER(p.service_id), '-', '') = REPLACE(LOWER(s.id), '-', '')
             WHERE t.ticket_date = $ticket_date
-              AND t.state IN ($completed, $cancelled, $noshow, $voided)
             ORDER BY COALESCE(t.updated_at, t.checked_in_at) DESC
             LIMIT $limit;
             """;
         
         command.AddText("$ticket_date", formattedTicketDate);
-        command.AddInteger("$completed", (int)TurnState.Completed);
-        command.AddInteger("$cancelled", (int)TurnState.Cancelled);
-        command.AddInteger("$noshow", (int)TurnState.NoShow);
-        command.AddInteger("$voided", (int)TurnState.Voided);
         command.AddInteger("$limit", limit);
 
         return ExecuteQuery(command);
@@ -75,14 +70,6 @@ public sealed class LocalTicketHistoryRepository
         {
             sql += "\n  AND t.state = $state";
             command.AddInteger("$state", (int)state.Value);
-        }
-        else
-        {
-            sql += "\n  AND t.state IN ($completed, $cancelled, $noshow, $voided)";
-            command.AddInteger("$completed", (int)TurnState.Completed);
-            command.AddInteger("$cancelled", (int)TurnState.Cancelled);
-            command.AddInteger("$noshow", (int)TurnState.NoShow);
-            command.AddInteger("$voided", (int)TurnState.Voided);
         }
 
         if (barberId.HasValue)
@@ -137,14 +124,6 @@ public sealed class LocalTicketHistoryRepository
         {
             sql += "\n  AND t.state = $state";
             command.AddInteger("$state", (int)state.Value);
-        }
-        else
-        {
-            sql += "\n  AND t.state IN ($completed, $cancelled, $noshow, $voided)";
-            command.AddInteger("$completed", (int)TurnState.Completed);
-            command.AddInteger("$cancelled", (int)TurnState.Cancelled);
-            command.AddInteger("$noshow", (int)TurnState.NoShow);
-            command.AddInteger("$voided", (int)TurnState.Voided);
         }
 
         if (barberId.HasValue)

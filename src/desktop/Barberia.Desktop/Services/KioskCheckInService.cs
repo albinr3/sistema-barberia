@@ -94,6 +94,12 @@ public sealed class KioskCheckInService
                 .ListAll()
                 .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
                 .ToArray();
+
+            if (barbers.Length == 0)
+            {
+                throw new InvalidOperationException("No barbers are currently available to take a new ticket.");
+            }
+
             var requestedBarbers = ResolveRequestedBarbers(acceptsAnyBarber, requestedIds, barbers);
             var ticketDate = OperationalClock.GetBusinessDate(now);
             var turn = new Turn(
