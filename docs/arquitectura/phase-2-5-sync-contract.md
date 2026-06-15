@@ -18,6 +18,11 @@ Authorization: Bearer <device_secret>
 x-device-id: <device_id>
 ```
 
+Las funciones `sync-events` y `sync-changes` se despliegan con `verify_jwt = false`
+en Supabase porque `Authorization` contiene el secreto del dispositivo, no un JWT
+de Supabase Auth. La validacion real ocurre dentro de cada funcion contra
+`sync_devices`.
+
 ## 3. Desktop a Cloud (Push Events)
 
 **Endpoint:** `POST /functions/v1/sync-events`
@@ -109,10 +114,16 @@ Desktop consulta cambios periódicamente, enviando el cursor (timestamp del últ
     "appointments": [
       { "type": "upsert_appointment", "data": { "id": "...", "start_time": "..." } },
       { "type": "cancel_appointment", "data": { "id": "..." } }
+    ],
+    "ticket_commands": [
+      { "type": "ticket.reassign", "data": { "id": "...", "local_ticket_id": "...", "target_barber_id": "..." } }
     ]
   }
 }
 ```
+
+### Acuse de Recibo (Ack)
+Una vez que Desktop procesa un comando de la lista `ticket_commands`, emite un evento normal hacia `POST /functions/v1/sync-events` con `event_type` = `ticket_admin_command.applied` o `ticket_admin_command.failed` y el `command_id` en el `payload`.
 
 ## 5. Resolución de Conflictos
 

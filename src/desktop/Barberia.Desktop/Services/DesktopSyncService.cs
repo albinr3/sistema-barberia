@@ -183,6 +183,7 @@ internal sealed class DesktopSyncService : IDisposable
         var changes = root.TryGetProperty("changes", out var changesElement) ? changesElement : default;
         if (changes.ValueKind != JsonValueKind.Object)
         {
+            Log("Cloud sync response did not include a valid changes object.");
             return;
         }
 
@@ -224,6 +225,21 @@ internal sealed class DesktopSyncService : IDisposable
                     .SetValue(CursorKey, cursorElement.GetString(), now);
             }
         });
+
+        if (changes.TryGetProperty("ticket_commands", out var ticketCommands)
+            && ticketCommands.ValueKind == JsonValueKind.Array)
+        {
+            Log($"Found {ticketCommands.GetArrayLength()} ticket command(s) in cloud sync payload.");
+            var localAdminService = new LocalAdminService(_connectionFactory);
+            foreach (var change in ticketCommands.EnumerateArray())
+            {
+                ApplyTicketCommand(settings, change, localAdminService, now);
+            }
+        }
+        else
+        {
+            Log("Cloud sync payload did not include a ticket_commands array.");
+        }
     }
 
     private static void ApplyCatalogChange(
@@ -264,7 +280,7 @@ internal sealed class DesktopSyncService : IDisposable
                 existing?.ClientsServedToday ?? 0,
                 existing?.RotationOrder ?? 0,
                 existing?.CheckedInAt,
-                GetString(data, "station_code")?.Replace("B-", "") is string sc && int.TryParse(sc, out var sn) ? sn : null,
+                GetString(data, "station_code")?.Replace("B-", "", StringComparison.OrdinalIgnoreCase).Trim() is string sc && int.TryParse(sc, out var sn) ? sn : null,
                 existing?.ProfileImagePath,
                 isActive: isCloudActive,
                 existing?.CommissionPercentage ?? Barber.DefaultCommissionPercentage,
@@ -304,6 +320,93 @@ internal sealed class DesktopSyncService : IDisposable
             {
                 serviceRepository.Update(service);
             }
+        }
+    }
+
+    private void ApplyTicketCommand(
+        DesktopSyncSettings settings,
+        JsonElement change,
+        LocalAdminService localAdminService,
+        DateTimeOffset now)
+    {
+        var type = GetString(change, "type");
+        Log($"Received ticket command type: {type ?? "(missing)"}.");
+
+        if (type != "ticket.reassign" || !change.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+        {
+            Log("Ticket command dropped because it is not ticket.reassign or has no data object.");
+            return;
+        }
+
+        var commandIdText = GetString(data, "id");
+        if (!Guid.TryParse(commandIdText, out var commandId))
+        {
+            Log($"Ticket command dropped because command id is invalid: '{commandIdText}'.");
+            return;
+        }
+
+        var syncStateKey = $"cloud_ticket_command:{commandId}";
+        if (GetSyncState(syncStateKey) is not null)
+        {
+            Log($"Ticket command {commandId} skipped because it was already processed.");
+            return;
+        }
+
+        var localTicketIdText = GetString(data, "local_ticket_id");
+        var targetBarberIdText = GetString(data, "target_barber_id");
+
+        Log($"Processing ticket command {commandId}. Ticket: {localTicketIdText}, Target barber: {targetBarberIdText}.");
+
+        if (!Guid.TryParse(localTicketIdText, out var turnId) || !Guid.TryParse(targetBarberIdText, out var targetBarberId))
+        {
+            Log($"Ticket command {commandId} dropped because ticket or target barber id is invalid.");
+            return;
+        }
+
+        bool success = false;
+        string? errorMessage = null;
+        try
+        {
+            localAdminService.ReassignTurn(turnId, targetBarberId);
+            success = true;
+            Log($"Ticket command {commandId} applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            success = false;
+            errorMessage = ex.Message;
+            Log($"Ticket command {commandId} failed: {ex.Message}");
+        }
+
+        try
+        {
+            var transaction = new LocalDataTransaction(_connectionFactory);
+            transaction.Execute((connection, sqliteTransaction) =>
+            {
+                new SyncStateRepository(connection, sqliteTransaction)
+                    .SetValue(syncStateKey, "processed", now);
+
+                var ackEvent = new LocalSyncEvent(
+                    Guid.NewGuid(),
+                    now,
+                    success ? "ticket_admin_command.applied" : "ticket_admin_command.failed",
+                    "ticket_admin_command",
+                    commandId,
+                    JsonSerializer.Serialize(new
+                    {
+                        command_id = commandId,
+                        status = success ? "applied" : "failed",
+                        error_message = errorMessage
+                    })
+                );
+
+                new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction)).Enqueue(ackEvent, now);
+            });
+            Log($"Ack enqueued for ticket command {commandId}.");
+        }
+        catch (Exception ex)
+        {
+            Log($"Error saving ack for ticket command {commandId}: {ex.Message}");
         }
     }
 
@@ -492,16 +595,16 @@ internal sealed class DesktopSyncService : IDisposable
     {
         try
         {
-            File.AppendAllText(
-                LocalAppPaths.ErrorLogPath,
-                $"[{OperationalClock.Now:O}] {message}{Environment.NewLine}");
+            var logMessage = $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}";
+            File.AppendAllText(LocalAppPaths.ErrorLogPath, logMessage);
         }
-        catch (IOException)
+        catch { }
+
+        try
         {
+            File.AppendAllText(@"C:\temp\sync_debug.log", $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}");
         }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        catch { }
     }
 
     private sealed record CatalogSnapshot(string Payload, string Fingerprint);

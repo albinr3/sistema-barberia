@@ -16,4 +16,9 @@ Desktop devices must send:
 - `x-device-id`: UUID from `sync_devices`.
 - `Authorization: Bearer <deviceSecret>`.
 
+`sync-events` and `sync-changes` must be deployed with JWT verification disabled
+(`verify_jwt = false` in `config.toml`) because the bearer token is the device
+secret, not a Supabase Auth JWT. Both functions validate the device credentials
+against `sync_devices` before processing requests.
+
 Catalog identity is not assumed. Windows sends local catalog snapshots; admins map local barber/service ids to cloud ids in `/admin/sync`.

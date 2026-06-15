@@ -18,3 +18,11 @@ additional_redirect_urls = ["http://localhost:3000", "http://localhost:3000/auth
 
 [storage]
 enabled = true
+
+[functions.sync-changes]
+enabled = true
+verify_jwt = false
+
+[functions.sync-events]
+enabled = true
+verify_jwt = false

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { CalendarDays, ClipboardList, Scissors, Settings, UserRound, Tv } from "lucide-react";
+import { CalendarDays, ClipboardList, Scissors, Settings, UserRound, Tv, Wrench } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 import styles from "./app-shell.module.css";
 
@@ -31,6 +31,7 @@ const navItems: Record<AppShellProps["variant"], NavItem[]> = {
     { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
     { href: "/admin/admin-dashboard" as Route, label: "Admin Dashboard", icon: Scissors },
     { href: "/admin/sync", label: "Sync", icon: Settings },
+    { href: "/admin/tickets" as Route, label: "Ticket Ops", icon: Wrench },
     { href: "/tickets-dashboard" as Route, label: "Tickets Dashboard", icon: Tv },
   ],
 };

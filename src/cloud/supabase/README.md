@@ -7,7 +7,7 @@ Fase 2 cloud foundation for Auth, PostgreSQL, RLS, booking and sync contracts.
 - `profiles` extends Supabase Auth users with domain profile data only.
 - Catalog and appointment tables are created with RLS enabled from the first migration.
 - Phase 2.2 adds catalog/availability indexes and the `public.get_available_slots` RPC for authenticated availability preview and future booking.
-- Sync tables now include desktop devices, POS ticket/payment materialization, local catalog snapshots, and catalog mappings.
+- Sync tables now include desktop devices, POS ticket/payment materialization, local catalog snapshots, and admin ticket commands.
 - Appointments include a stable `appointment_code` used as the customer QR payload for Barber Panel and Cash Box flow.
 
 ## Local Use
@@ -36,6 +36,7 @@ Rescheduling keeps the current barber and service, validates the same availabili
 
 Desktop devices authenticate to Edge Functions with `x-device-id` and bearer `deviceSecret`.
 
-- `sync-changes` returns catalog changes, appointment changes with `appointment_code`, customer/barber/service summaries, and all `desktop_catalog_mappings`.
-- `sync-events` accepts `catalog.snapshot`, `appointment.checked_in`, `appointment.no_show`, `appointment.completed`, POS ticket/payment events, and `sync.conflict`.
-- `desktop_catalog_mappings` translates local barber/service ids to cloud ids. Missing mappings should create sync conflicts instead of importing broken appointments.
+- `sync-changes` returns catalog changes, appointment changes with `appointment_code`, customer/barber/service summaries, and pending `ticket_admin_commands`.
+- `sync-events` accepts `catalog.snapshot`, `appointment.checked_in`, `appointment.no_show`, `appointment.completed`, POS ticket/payment events, `ticket_admin_command.applied`, `ticket_admin_command.failed` and `sync.conflict`.
+- `sync-changes` and `sync-events` run with `verify_jwt = false`; they authenticate desktop devices inside the function using `x-device-id` and `Authorization: Bearer <deviceSecret>`.
+- `ticket_admin_commands` orchestrate cross-device ticket operations initiated by admins on the web, executed locally by the Desktop authority, and acknowledged back.

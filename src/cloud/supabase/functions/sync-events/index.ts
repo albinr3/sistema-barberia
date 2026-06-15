@@ -100,6 +100,8 @@ serve(async (req: Request) => {
         await materializeTicketEvent(supabaseAdmin, device.id, insertedEvent.id, event, occurred_at);
       } else if (event_type === "payment.collected") {
         await materializePaymentEvent(supabaseAdmin, device.id, insertedEvent.id, aggregate_id, payload);
+      } else if (event_type === "ticket_admin_command.applied" || event_type === "ticket_admin_command.failed") {
+        await materializeTicketAdminCommandEvent(supabaseAdmin, event_type, aggregate_id, payload, occurred_at);
       }
 
       await supabaseAdmin
@@ -390,6 +392,32 @@ async function completeAppointment(
 }
 
 
+
+async function materializeTicketAdminCommandEvent(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  eventType: string,
+  aggregateId: string,
+  payload: Record<string, unknown>,
+  occurredAt?: string,
+) {
+  const status = eventType === "ticket_admin_command.applied" ? "applied" : "failed";
+  const errorMessage = stringValue(payload.error_message);
+  
+  const updateData: Record<string, unknown> = {
+    status,
+    applied_at: stringValue(payload.applied_at) || occurredAt || new Date().toISOString(),
+  };
+
+  if (errorMessage) {
+    updateData.error_message = errorMessage;
+  }
+
+  await supabaseAdmin
+    .from("ticket_admin_commands")
+    .update(updateData)
+    .eq("id", aggregateId)
+    .eq("status", "pending");
+}
 
 async function insertSyncConflict(
   supabaseAdmin: ReturnType<typeof createClient>,

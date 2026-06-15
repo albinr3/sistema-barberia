@@ -39,7 +39,7 @@ serve(async (req: Request) => {
   const cursor = body.cursor || new Date(0).toISOString();
   const newCursor = new Date().toISOString();
 
-  const [{ data: barbers }, { data: services }, { data: appointments }] = await Promise.all([
+  const [{ data: barbers }, { data: services }, { data: appointments }, { data: ticketCommands }] = await Promise.all([
     supabaseAdmin.from("barbers").select("*").gt("updated_at", cursor),
     supabaseAdmin.from("services").select("*").gt("updated_at", cursor),
     supabaseAdmin
@@ -53,14 +53,21 @@ serve(async (req: Request) => {
       `,
       )
       .gt("updated_at", cursor),
+    supabaseAdmin
+      .from("ticket_admin_commands")
+      .select("*")
+      .eq("source_device_id", device.id)
+      .eq("status", "pending"),
   ]);
 
   const changes: {
     catalog: Array<{ type: string; data: unknown }>;
     appointments: Array<{ type: string; data: unknown }>;
+    ticket_commands: Array<{ type: string; data: unknown }>;
   } = {
     catalog: [],
     appointments: [],
+    ticket_commands: [],
   };
 
   for (const barber of barbers || []) {
@@ -77,6 +84,10 @@ serve(async (req: Request) => {
     } else {
       changes.appointments.push({ type: "upsert_appointment", data: appointment });
     }
+  }
+
+  for (const command of ticketCommands || []) {
+    changes.ticket_commands.push({ type: "ticket.reassign", data: command });
   }
 
   return new Response(
