@@ -37,8 +37,26 @@ describe("tickets dashboard snapshot", () => {
 
     expect(snapshot.nowCalling.map((ticket) => ticket.id)).toEqual(["called-1"]);
     expect(snapshot.waiting.map((ticket) => ticket.id)).toEqual(["waiting-1", "waiting-2"]);
+    expect(snapshot.activeQueue.map((ticket) => ticket.id)).toEqual(["waiting-1", "called-1", "waiting-2"]);
     expect(snapshot.waitingTotal).toBe(2);
     expect(snapshot.isStale).toBe(false);
+  });
+
+  it("calculates alerts correctly", () => {
+    const snapshot = buildTicketsDashboardSnapshot({
+      loadedAt: new Date("2026-06-15T13:40:00.000Z"),
+      barbers: [baseBarber],
+      tickets: [
+        { ...baseTicket, id: "waiting-ok", display_ticket_number: 1, status: "waiting", checked_in_at: "2026-06-15T13:20:00.000Z", updated_at: "2026-06-15T13:20:00.000Z" },
+        { ...baseTicket, id: "waiting-alert", display_ticket_number: 2, status: "waiting", checked_in_at: "2026-06-15T13:00:00.000Z", updated_at: "2026-06-15T13:00:00.000Z" },
+        { ...baseTicket, id: "called-alert", display_ticket_number: 3, status: "called", updated_at: "2026-06-15T13:35:00.000Z" },
+      ],
+    });
+
+    expect(snapshot.alerts.map((alert) => [alert.ticketId, alert.type])).toEqual([
+      ["waiting-alert", "waiting_too_long"],
+      ["called-alert", "called_too_long"],
+    ]);
   });
 
   it("uses the visible ticket number before the internal ticket id", () => {

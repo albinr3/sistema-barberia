@@ -5,6 +5,12 @@ import { adminReassignTicket } from "@/app/actions/admin-tickets";
 import styles from "./tickets.module.css";
 import type { TicketDashboardBarberRow, TicketDashboardTicketRow } from "@/lib/tickets-dashboard";
 
+type ReassignState = {
+  error?: string;
+  success?: boolean;
+  commandId?: string;
+} | null;
+
 export function ReassignForm({ 
   ticket, 
   barbers 
@@ -12,7 +18,7 @@ export function ReassignForm({
   ticket: TicketDashboardTicketRow; 
   barbers: TicketDashboardBarberRow[]; 
 }) {
-  const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
+  const [state, formAction, isPending] = useActionState<ReassignState, FormData>(async (_previousState, formData) => {
     const targetBarberId = formData.get("targetBarberId") as string;
     if (!targetBarberId) return { error: "Select a barber" };
     return adminReassignTicket(ticket.id, targetBarberId);

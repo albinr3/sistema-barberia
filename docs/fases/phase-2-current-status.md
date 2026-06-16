@@ -111,4 +111,14 @@ Extension de Tickets Dashboard web implementada a nivel de codigo:
 - La sincronizacion de tickets ahora materializa `ticket.called`, `display_ticket_number`, `ticket_date` y `checked_in_at` para conservar el numero visible del dashboard.
 - Los tickets asociados a `appointment_id` no se muestran como filas normales del dashboard publico.
 
-La Fase 2.5 de sincronización Windows-Supabase ha sido implementada a nivel de código, incluyendo el contrato técnico en `docs/arquitectura/phase-2-5-sync-contract.md`, tablas POS cloud en la base de datos (e.g. `synced_tickets`, `synced_payments`), Edge Functions (`sync-events`, `sync-changes`) y el dashboard web `/admin/sync`. También se modificó el Desktop para enviar los eventos a través de un Outbox hacia la nube.
+Historial de Tickets (Ticket History) implementado a nivel de código:
+- `/admin/ticket-history` emula la vista Desktop con una tabla paginada y filtrable (por fechas, estatus, y barbero) de tickets pasados.
+- Las vistas de detalle replican la información del POS (`receipt_number`, `payment_reference`, `collected_at`) y el timeline visual del ticket.
+
+Alertas Web y Active Queue Monitor implementado a nivel de codigo:
+- `/admin` muestra una sección de **Active Alerts** con tickets que llevan esperando más de 30 minutos o llamados por más de 4 minutos sin iniciar servicio, emulando el comportamiento de alertas del Desktop.
+- `/admin/tickets` (Active Queue Monitor) permite visualizar todos los tickets en `waiting`, `called`, o `in_progress` del día de hoy.
+- Se ha evolucionado el sistema de `ticket_admin_commands` para soportar **Cancelación Remota** (`command_type = 'cancel'`) y **Reasignación Remota** (`command_type = 'reassign'`).
+- Los comandos de la nube son procesados por el `DesktopSyncService` de Desktop, aplicando de manera local y encolando la actualización resultante.
+
+La Fase 2.5 de sincronización Windows-Supabase ha sido implementada a nivel de código, incluyendo el contrato técnico en `docs/arquitectura/phase-2-5-sync-contract.md`, tablas POS cloud en la base de datos (e.g. `synced_tickets`, `synced_payments`), Edge Functions (`sync-events`, `sync-changes`), operaciones y comandos remotos para Active Queue, y el dashboard web `/admin/sync`. También se modificó el Desktop para enviar los eventos a través de un Outbox hacia la nube.

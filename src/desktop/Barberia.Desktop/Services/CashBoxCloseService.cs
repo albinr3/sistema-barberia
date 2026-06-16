@@ -239,7 +239,10 @@ public sealed class CashBoxCloseService
                     ticket_id = turn.Id,
                     appointment_id = turn.AppointmentId,
                     payment_method = paymentMethod.ToString().ToLower(),
-                    amount_cents = Money.ToCents(amount)
+                    amount_cents = Money.ToCents(amount),
+                    receipt_number = receiptNumber,
+                    payment_reference = paymentReference,
+                    collected_at = now
                 }),
                 deviceId), now);
 

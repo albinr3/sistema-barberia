@@ -39,7 +39,7 @@ serve(async (req: Request) => {
   const cursor = body.cursor || new Date(0).toISOString();
   const newCursor = new Date().toISOString();
 
-  const [{ data: barbers }, { data: services }, { data: appointments }, { data: ticketCommands }] = await Promise.all([
+  const [{ data: barbers }, { data: services }, { data: appointments }, { data: ticketCommands }, { data: payrollCommands }] = await Promise.all([
     supabaseAdmin.from("barbers").select("*").gt("updated_at", cursor),
     supabaseAdmin.from("services").select("*").gt("updated_at", cursor),
     supabaseAdmin
@@ -58,16 +58,24 @@ serve(async (req: Request) => {
       .select("*")
       .eq("source_device_id", device.id)
       .eq("status", "pending"),
+    supabaseAdmin
+      .from("payroll_admin_commands")
+      .select("*")
+      .eq("source_device_id", device.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true }),
   ]);
 
   const changes: {
     catalog: Array<{ type: string; data: unknown }>;
     appointments: Array<{ type: string; data: unknown }>;
     ticket_commands: Array<{ type: string; data: unknown }>;
+    payroll_commands: Array<{ type: string; data: unknown }>;
   } = {
     catalog: [],
     appointments: [],
     ticket_commands: [],
+    payroll_commands: [],
   };
 
   for (const barber of barbers || []) {
@@ -87,7 +95,13 @@ serve(async (req: Request) => {
   }
 
   for (const command of ticketCommands || []) {
-    changes.ticket_commands.push({ type: "ticket.reassign", data: command });
+    const commandType = (command as any).command_type || "reassign";
+    changes.ticket_commands.push({ type: `ticket.${commandType}`, data: command });
+  }
+
+  for (const command of payrollCommands || []) {
+    const commandType = (command as any).command_type;
+    changes.payroll_commands.push({ type: `payroll.${commandType}`, data: command });
   }
 
   return new Response(

@@ -32,10 +32,18 @@ export type TicketDashboardDeviceRow = {
   last_sync_at: string | null;
 };
 
+export type TicketAlert = {
+  ticketId: string;
+  type: "waiting_too_long" | "called_too_long";
+  message: string;
+};
+
 export type TicketDashboardSnapshot = {
   loadedAt: Date;
   nowCalling: TicketDashboardTicketRow[];
   waiting: TicketDashboardTicketRow[];
+  activeQueue: TicketDashboardTicketRow[];
+  alerts: TicketAlert[];
   barbers: TicketDashboardBarber[];
   waitingTotal: number;
   lastSyncAt: string | null;
@@ -121,13 +129,39 @@ export function buildTicketsDashboardSnapshot(input: {
   const orderedTickets = [...todayTickets].sort(compareTicketsByArrival);
   const nowCalling = orderedTickets.filter((ticket) => ticket.status === "called").slice(0, 4);
   const waiting = orderedTickets.filter((ticket) => ticket.status === "waiting");
+  const activeQueue = orderedTickets.filter((ticket) => ["waiting", "called", "in_progress"].includes(ticket.status));
   const activeTicketsByBarber = getActiveTicketsByBarber(orderedTickets);
   const lastSyncAt = getLastSyncAt(input.devices ?? []);
+
+  const alerts: TicketAlert[] = [];
+  for (const ticket of orderedTickets) {
+    if (ticket.status === "waiting") {
+      const waitTimeMinutes = (input.loadedAt.getTime() - Date.parse(ticket.checked_in_at ?? ticket.created_at)) / 60000;
+      if (waitTimeMinutes >= 30) {
+        alerts.push({
+          ticketId: ticket.id,
+          type: "waiting_too_long",
+          message: `Ticket ${formatTicketNumber(ticket)} has been waiting for ${Math.floor(waitTimeMinutes)} minutes.`,
+        });
+      }
+    } else if (ticket.status === "called") {
+      const calledTimeMinutes = (input.loadedAt.getTime() - Date.parse(ticket.updated_at)) / 60000;
+      if (calledTimeMinutes >= 4) {
+        alerts.push({
+          ticketId: ticket.id,
+          type: "called_too_long",
+          message: `Ticket ${formatTicketNumber(ticket)} has been called for ${Math.floor(calledTimeMinutes)} minutes.`,
+        });
+      }
+    }
+  }
 
   return {
     loadedAt: input.loadedAt,
     nowCalling,
     waiting,
+    activeQueue,
+    alerts,
     waitingTotal: waiting.length,
     barbers: [...input.barbers].sort(compareBarbers).map((barber) => {
       const activeTicket = activeTicketsByBarber.get(barber.id) ?? null;
@@ -221,7 +255,7 @@ function ticketPriority(ticket: TicketDashboardTicketRow) {
 }
 
 function getLocalTodayString(date: Date) {
-  const options = { timeZone: "America/Santo_Domingo", year: "numeric", month: "2-digit", day: "2-digit" } as const;
+  const options = { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" } as const;
   const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(date);
   const year = parts.find((p) => p.type === "year")?.value;
   const month = parts.find((p) => p.type === "month")?.value;

@@ -87,6 +87,19 @@ public sealed class SyncOutboxRepository
         return ReadAll(command);
     }
 
+    public int CountPending()
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM sync_outbox_events
+            WHERE state = $pending;
+            """;
+        command.AddInteger("$pending", (int)SyncOutboxEventState.Pending);
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
     public void MarkSynced(Guid id, DateTimeOffset syncedAt)
     {
         using var command = _connection.CreateCommand();

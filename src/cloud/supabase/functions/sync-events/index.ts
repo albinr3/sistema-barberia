@@ -86,6 +86,10 @@ serve(async (req: Request) => {
     try {
       if (event_type === "catalog.snapshot") {
         await materializeCatalogSnapshot(supabaseAdmin, device.id, payload);
+      } else if (event_type === "desktop.sync_heartbeat") {
+        await materializeSyncHeartbeat(supabaseAdmin, device.id, payload);
+      } else if (event_type === "payroll.snapshot") {
+        await materializePayrollSnapshot(supabaseAdmin, device.id, payload);
       } else if (event_type === "sync.conflict") {
         await insertSyncConflict(supabaseAdmin, insertedEvent.id, aggregate_type, aggregate_id, payload);
       } else if (event_type.startsWith("appointment.")) {
@@ -102,6 +106,8 @@ serve(async (req: Request) => {
         await materializePaymentEvent(supabaseAdmin, device.id, insertedEvent.id, aggregate_id, payload);
       } else if (event_type === "ticket_admin_command.applied" || event_type === "ticket_admin_command.failed") {
         await materializeTicketAdminCommandEvent(supabaseAdmin, event_type, aggregate_id, payload, occurred_at);
+      } else if (event_type === "payroll_admin_command.applied" || event_type === "payroll_admin_command.failed") {
+        await materializePayrollAdminCommandEvent(supabaseAdmin, event_type, aggregate_id, payload, occurred_at);
       }
 
       await supabaseAdmin
@@ -128,6 +134,20 @@ serve(async (req: Request) => {
     headers: { "Content-Type": "application/json" },
   });
 });
+
+async function materializeSyncHeartbeat(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  deviceId: string,
+  payload: Record<string, unknown>,
+) {
+  await supabaseAdmin
+    .from("sync_devices")
+    .update({
+      last_sync_at: new Date().toISOString(),
+      pending_outbox_count: numberValue(payload.pending_outbox_count) ?? 0,
+    })
+    .eq("id", deviceId);
+}
 
 async function materializeCatalogSnapshot(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -211,6 +231,93 @@ async function materializeCatalogSnapshot(
   }
 }
 
+async function materializePayrollSnapshot(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  deviceId: string,
+  payload: Record<string, unknown>,
+) {
+  if (!isRecord(payload.period)) {
+    throw new Error("Payroll snapshot period is required");
+  }
+
+  const period = payload.period;
+  const startDate = dateOnlyValue(period.start_date);
+  const endDate = dateOnlyValue(period.end_date);
+  const localPeriodId = stringValue(period.id);
+  if (!startDate || !endDate || !localPeriodId) {
+    throw new Error("Payroll snapshot period id, start_date and end_date are required");
+  }
+
+  const { data: periodRecord, error: periodError } = await supabaseAdmin
+    .from("synced_payroll_periods")
+    .upsert(
+      {
+        source_device_id: deviceId,
+        local_period_id: localPeriodId,
+        start_date: startDate,
+        end_date: endDate,
+        state: stringValue(period.state) || "draft",
+        total_services: numberValue(period.total_services) ?? 0,
+        total_commission_cents: numberValue(period.total_commission_cents) ?? 0,
+        total_adjustments_cents: numberValue(period.total_adjustments_cents) ?? 0,
+        total_to_pay_cents: numberValue(period.total_to_pay_cents) ?? 0,
+        payment_method: stringValue(period.payment_method),
+        payment_reference: stringValue(period.payment_reference),
+        notes: stringValue(period.notes),
+        generated_at: stringValue(period.generated_at) || new Date().toISOString(),
+        paid_at: stringValue(period.paid_at),
+        loaded_at: stringValue(payload.loaded_at) || new Date().toISOString(),
+      },
+      { onConflict: "source_device_id,start_date,end_date" },
+    )
+    .select("id")
+    .single();
+
+  if (periodError) throw new Error("Payroll period upsert failed: " + periodError.message);
+  if (!periodRecord) throw new Error("Payroll period upsert returned no row");
+
+  await supabaseAdmin.from("synced_payroll_lines").delete().eq("payroll_period_id", periodRecord.id);
+  await supabaseAdmin.from("synced_payroll_adjustments").delete().eq("payroll_period_id", periodRecord.id);
+
+  const lines = Array.isArray(payload.lines) ? payload.lines : [];
+  const lineRows = lines
+    .filter(isRecord)
+    .map((line) => ({
+      payroll_period_id: periodRecord.id,
+      local_line_id: stringValue(line.id) || crypto.randomUUID(),
+      barber_id: stringValue(line.barber_id),
+      barber_name: stringValue(line.barber_name) || "Local barber",
+      station_number: numberValue(line.station_number),
+      closed_services_count: numberValue(line.closed_services_count) ?? 0,
+      sales_generated_cents: numberValue(line.sales_generated_cents) ?? 0,
+      commission_cents: numberValue(line.commission_cents) ?? 0,
+      adjustments_cents: numberValue(line.adjustments_cents) ?? 0,
+      total_cents: numberValue(line.total_cents) ?? 0,
+    }));
+
+  if (lineRows.length > 0) {
+    const { error } = await supabaseAdmin.from("synced_payroll_lines").insert(lineRows);
+    if (error) throw new Error("Payroll lines insert failed: " + error.message);
+  }
+
+  const adjustments = Array.isArray(payload.adjustments) ? payload.adjustments : [];
+  const adjustmentRows = adjustments
+    .filter(isRecord)
+    .map((adjustment) => ({
+      payroll_period_id: periodRecord.id,
+      local_adjustment_id: stringValue(adjustment.id) || crypto.randomUUID(),
+      barber_id: stringValue(adjustment.barber_id),
+      amount_cents: numberValue(adjustment.amount_cents) ?? 0,
+      reason: stringValue(adjustment.reason) || "Adjustment",
+      created_at: stringValue(adjustment.created_at) || new Date().toISOString(),
+    }));
+
+  if (adjustmentRows.length > 0) {
+    const { error } = await supabaseAdmin.from("synced_payroll_adjustments").insert(adjustmentRows);
+    if (error) throw new Error("Payroll adjustments insert failed: " + error.message);
+  }
+}
+
 async function materializeTicketEvent(
   supabaseAdmin: ReturnType<typeof createClient>,
   deviceId: string,
@@ -219,8 +326,6 @@ async function materializeTicketEvent(
   occurredAt?: string,
 ) {
   const payload = event.payload;
-  const localBarberId = stringValue(payload.barber_id) || stringValue(payload.assigned_barber_id);
-  const cloudBarberId = localBarberId;
   const appointmentId = stringValue(payload.appointment_id);
   const ticketRecord: Record<string, unknown> = {
     local_ticket_id: event.aggregate_id,
@@ -233,8 +338,10 @@ async function materializeTicketEvent(
     ticketRecord.customer_name = customerName;
   }
 
-  if (cloudBarberId) {
-    ticketRecord.barber_id = cloudBarberId;
+  if (payload.barber_id !== undefined) {
+    ticketRecord.barber_id = stringValue(payload.barber_id);
+  } else if (payload.assigned_barber_id !== undefined) {
+    ticketRecord.barber_id = stringValue(payload.assigned_barber_id);
   }
 
   if (appointmentId) {
@@ -338,6 +445,9 @@ async function materializePaymentEvent(
       source_device_id: deviceId,
       payment_method: stringValue(payload.payment_method) || "cash",
       amount_cents: centsValue(payload.amount_cents, payload.amount),
+      receipt_number: stringValue(payload.receipt_number),
+      payment_reference: stringValue(payload.payment_reference),
+      collected_at: stringValue(payload.collected_at) || new Date().toISOString(),
     },
     { onConflict: "local_payment_id" },
   );
@@ -392,6 +502,32 @@ async function completeAppointment(
 }
 
 
+
+async function materializePayrollAdminCommandEvent(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  eventType: string,
+  aggregateId: string,
+  payload: Record<string, unknown>,
+  occurredAt?: string,
+) {
+  const status = eventType === "payroll_admin_command.applied" ? "applied" : "failed";
+  const errorMessage = stringValue(payload.error_message);
+
+  const updateData: Record<string, unknown> = {
+    status,
+    applied_at: stringValue(payload.applied_at) || occurredAt || new Date().toISOString(),
+  };
+
+  if (errorMessage) {
+    updateData.error_message = errorMessage;
+  }
+
+  await supabaseAdmin
+    .from("payroll_admin_commands")
+    .update(updateData)
+    .eq("id", aggregateId)
+    .eq("status", "pending");
+}
 
 async function materializeTicketAdminCommandEvent(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -456,6 +592,13 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function dateOnlyValue(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.includes("T") ? trimmed.slice(0, 10) : trimmed;
 }
 
 function booleanValue(value: unknown, fallback: boolean) {

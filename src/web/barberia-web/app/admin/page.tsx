@@ -2,6 +2,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireAdmin } from "@/lib/auth/profile";
 import { getAdminDashboardStats } from "@/lib/booking/queries";
+import { getTicketsDashboardSnapshot } from "@/lib/tickets-dashboard";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import styles from "./dashboard.module.css";
@@ -10,7 +11,10 @@ export default async function AdminPage() {
   const supabase = await createClient();
   await requireAdmin(supabase);
 
-  const stats = await getAdminDashboardStats(supabase);
+  const [stats, snapshot] = await Promise.all([
+    getAdminDashboardStats(supabase),
+    getTicketsDashboardSnapshot(supabase)
+  ]);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -24,6 +28,26 @@ export default async function AdminPage() {
         <header className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Operational Summary</h1>
         </header>
+
+        {snapshot.alerts.length > 0 && (
+          <section className={styles.alertsSection}>
+            <div className={styles.panelHeader}>
+              <h2 className={`${styles.panelTitle} ${styles.metricValueDanger}`}>Active Alerts</h2>
+            </div>
+            <ul className={styles.list}>
+              {snapshot.alerts.map((alert, index) => (
+                <li key={index} className={styles.listItem}>
+                  <div className={styles.itemHeader}>
+                    <span className={`${styles.itemTitle} ${styles.itemTitleDanger}`}>
+                      {alert.type === "waiting_too_long" ? "Long Wait" : "Call Timeout"}
+                    </span>
+                  </div>
+                  <p className={styles.itemDescription}>{alert.message}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className={styles.metricsGrid}>
           <article className={styles.metricCard}>

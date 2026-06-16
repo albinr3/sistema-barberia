@@ -73,6 +73,22 @@ public sealed class XamlArchitectureTests
     }
 
     [Fact]
+    public void PublicDisplayRefreshesLocalSnapshotFrequently()
+    {
+        var publicDisplayPath = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "desktop",
+            "Barberia.Desktop",
+            "Views",
+            "PublicDisplayPage.xaml.cs");
+        var source = File.ReadAllText(publicDisplayPath);
+
+        Assert.Contains("SnapshotRefreshInterval = TimeSpan.FromSeconds(5)", source, StringComparison.Ordinal);
+        Assert.Contains("_refreshTimer.Interval = SnapshotRefreshInterval;", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void KioskDesktopLayoutTargetsTwelveBarbersWithoutScroll()
     {
         var kioskCodePath = Path.Combine(

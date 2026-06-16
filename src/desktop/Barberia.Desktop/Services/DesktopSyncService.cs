@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Text.Json;
 using Barberia.ApiClient.Sync;
 using Barberia.Core.Domain;
 using Barberia.Data;
+using Barberia.Data.Models;
 using Barberia.Data.Repositories;
 using Barberia.Data.Sync;
 using Barberia.Sync.Outbox;
@@ -12,6 +14,7 @@ internal sealed class DesktopSyncService : IDisposable
 {
     private const string CursorKey = "cloud_cursor";
     private const string CatalogSnapshotFingerprintKey = "catalog_snapshot_fingerprint";
+    private const string PayrollSnapshotFingerprintPrefix = "payroll_snapshot_fingerprint:";
     private static readonly TimeSpan NoShowGracePeriod = TimeSpan.FromMinutes(10);
 
     private readonly SqliteConnectionFactory _connectionFactory;
@@ -83,10 +86,13 @@ internal sealed class DesktopSyncService : IDisposable
 
         ApplyDueNoShows(now);
         EnqueueCatalogSnapshotIfChanged(settings, now);
+        EnqueueCurrentPayrollSnapshotIfChanged(settings, now);
 
         var dispatcher = new SyncOutboxDispatcher(
             new LocalSyncOutboxStore(_connectionFactory),
             new HttpCloudSyncClient(httpClient, settings.DeviceId, settings.DeviceSecret));
+        await dispatcher.DispatchDueAsync(now);
+        EnqueueHeartbeat(settings, now);
         await dispatcher.DispatchDueAsync(now);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -176,6 +182,117 @@ internal sealed class DesktopSyncService : IDisposable
             JsonSerializer.Serialize(new { items = fingerprintBarbers.Cast<object>().Concat(fingerprintServices) }));
     }
 
+    private void EnqueueCurrentPayrollSnapshotIfChanged(DesktopSyncSettings settings, DateTimeOffset now)
+    {
+        try
+        {
+            var payrollService = new PayrollService(_connectionFactory);
+            var range = payrollService.GetWeekRange(now);
+            var adjustments = ListPendingPayrollAdjustments(range);
+            var snapshot = payrollService.LoadOrGenerate(range.Start, adjustments);
+            EnqueuePayrollSnapshotIfChanged(settings, snapshot, now);
+        }
+        catch (Exception exception)
+        {
+            Log($"Payroll snapshot skipped: {exception.Message}");
+        }
+    }
+
+    private void EnqueuePayrollSnapshotIfChanged(DesktopSyncSettings settings, PayrollSnapshot snapshot, DateTimeOffset now)
+    {
+        using var connection = _connectionFactory.OpenConnection();
+        var stateRepository = new SyncStateRepository(connection);
+        var payload = PayrollSyncPayload.CreateSnapshot(snapshot);
+        var fingerprint = BuildPayrollSnapshotFingerprint(snapshot);
+        var fingerprintKey = $"{PayrollSnapshotFingerprintPrefix}{snapshot.Period.StartDate:yyyy-MM-dd}";
+        if (string.Equals(stateRepository.GetValue(fingerprintKey), fingerprint, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        EnqueuePayrollSnapshot(connection, snapshot, payload, settings.DeviceId, now);
+        stateRepository.SetValue(fingerprintKey, fingerprint, now);
+    }
+
+    private static string BuildPayrollSnapshotFingerprint(PayrollSnapshot snapshot)
+    {
+        return JsonSerializer.Serialize(new
+        {
+            period = new
+            {
+                start_date = snapshot.Period.StartDate.ToString("yyyy-MM-dd"),
+                end_date = snapshot.Period.EndDate.ToString("yyyy-MM-dd"),
+                state = snapshot.Period.State.ToString(),
+                total_services = snapshot.Period.TotalServices,
+                total_commission_cents = snapshot.Period.TotalCommissionCents,
+                total_adjustments_cents = snapshot.Period.TotalAdjustmentsCents,
+                total_to_pay_cents = snapshot.Period.TotalToPayCents,
+                payment_method = snapshot.Period.PaymentMethod?.ToString(),
+                payment_reference = snapshot.Period.PaymentReference,
+                paid_at = snapshot.Period.PaidAt?.ToString("O")
+            },
+            lines = snapshot.Lines
+                .OrderBy(line => line.BarberId)
+                .Select(line => new
+                {
+                    barber_id = line.BarberId,
+                    barber_name = line.BarberName,
+                    station_number = line.StationNumber,
+                    closed_services_count = line.ClosedServicesCount,
+                    sales_generated_cents = line.SalesGeneratedCents,
+                    commission_cents = line.CommissionCents,
+                    adjustments_cents = line.AdjustmentsCents,
+                    total_cents = line.TotalCents
+                }),
+            adjustments = snapshot.Adjustments
+                .OrderBy(adjustment => adjustment.Id)
+                .Select(adjustment => new
+                {
+                    id = adjustment.Id,
+                    barber_id = adjustment.BarberId,
+                    amount_cents = adjustment.AmountCents,
+                    reason = adjustment.Reason,
+                    created_at = adjustment.CreatedAt.ToString("O")
+                })
+        });
+    }
+
+    private static void EnqueuePayrollSnapshot(
+        Microsoft.Data.Sqlite.SqliteConnection connection,
+        PayrollSnapshot snapshot,
+        string payload,
+        string deviceId,
+        DateTimeOffset now,
+        Microsoft.Data.Sqlite.SqliteTransaction? transaction = null)
+    {
+        new SyncOutboxRecorder(new SyncOutboxRepository(connection, transaction)).Enqueue(
+            new LocalSyncEvent(
+                Guid.NewGuid(),
+                now,
+                "payroll.snapshot",
+                "payroll_period",
+                snapshot.Period.Id,
+                payload,
+                deviceId),
+            now);
+    }
+
+    private void EnqueueHeartbeat(DesktopSyncSettings settings, DateTimeOffset now)
+    {
+        using var connection = _connectionFactory.OpenConnection();
+        var pendingOutboxCount = new SyncOutboxRepository(connection).CountPending();
+        new SyncOutboxRecorder(new SyncOutboxRepository(connection)).Enqueue(
+            new LocalSyncEvent(
+                Guid.NewGuid(),
+                now,
+                "desktop.sync_heartbeat",
+                "sync_device",
+                Guid.TryParse(settings.DeviceId, out var deviceGuid) ? deviceGuid : Guid.NewGuid(),
+                PayrollSyncPayload.CreateHeartbeat(pendingOutboxCount, now),
+                settings.DeviceId),
+            now);
+    }
+
     private void ApplyPulledChanges(DesktopSyncSettings settings, string changesJson, DateTimeOffset now)
     {
         using var document = JsonDocument.Parse(changesJson);
@@ -239,6 +356,20 @@ internal sealed class DesktopSyncService : IDisposable
         else
         {
             Log("Cloud sync payload did not include a ticket_commands array.");
+        }
+
+        if (changes.TryGetProperty("payroll_commands", out var payrollCommands)
+            && payrollCommands.ValueKind == JsonValueKind.Array)
+        {
+            Log($"Found {payrollCommands.GetArrayLength()} payroll command(s) in cloud sync payload.");
+            foreach (var change in payrollCommands.EnumerateArray())
+            {
+                ApplyPayrollCommand(settings, change, now);
+            }
+        }
+        else
+        {
+            Log("Cloud sync payload did not include a payroll_commands array.");
         }
     }
 
@@ -332,9 +463,9 @@ internal sealed class DesktopSyncService : IDisposable
         var type = GetString(change, "type");
         Log($"Received ticket command type: {type ?? "(missing)"}.");
 
-        if (type != "ticket.reassign" || !change.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+        if (type is not ("ticket.reassign" or "ticket.cancel") || !change.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
         {
-            Log("Ticket command dropped because it is not ticket.reassign or has no data object.");
+            Log("Ticket command dropped because it is not ticket.reassign or ticket.cancel or has no data object.");
             return;
         }
 
@@ -357,9 +488,9 @@ internal sealed class DesktopSyncService : IDisposable
 
         Log($"Processing ticket command {commandId}. Ticket: {localTicketIdText}, Target barber: {targetBarberIdText}.");
 
-        if (!Guid.TryParse(localTicketIdText, out var turnId) || !Guid.TryParse(targetBarberIdText, out var targetBarberId))
+        if (!Guid.TryParse(localTicketIdText, out var turnId))
         {
-            Log($"Ticket command {commandId} dropped because ticket or target barber id is invalid.");
+            Log($"Ticket command {commandId} dropped because ticket id is invalid.");
             return;
         }
 
@@ -367,7 +498,18 @@ internal sealed class DesktopSyncService : IDisposable
         string? errorMessage = null;
         try
         {
-            localAdminService.ReassignTurn(turnId, targetBarberId);
+            if (type == "ticket.cancel")
+            {
+                localAdminService.CancelTurn(turnId);
+            }
+            else
+            {
+                if (!Guid.TryParse(targetBarberIdText, out var targetBarberId))
+                {
+                    throw new InvalidOperationException("Target barber id is invalid.");
+                }
+                localAdminService.ReassignTurn(turnId, targetBarberId);
+            }
             success = true;
             Log($"Ticket command {commandId} applied successfully.");
         }
@@ -473,6 +615,189 @@ internal sealed class DesktopSyncService : IDisposable
         appointmentRepository.Upsert(appointment, now);
     }
 
+    private void ApplyPayrollCommand(
+        DesktopSyncSettings settings,
+        JsonElement change,
+        DateTimeOffset now)
+    {
+        var type = GetString(change, "type");
+        Log($"Received payroll command type: {type ?? "(missing)"}.");
+
+        if (type is not ("payroll.snapshot_requested" or "payroll.adjustment_added" or "payroll.pay_requested")
+            || !change.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Object)
+        {
+            Log("Payroll command dropped because it has no supported type or data object.");
+            return;
+        }
+
+        var commandIdText = GetString(data, "id");
+        if (!Guid.TryParse(commandIdText, out var commandId))
+        {
+            Log($"Payroll command dropped because command id is invalid: '{commandIdText}'.");
+            return;
+        }
+
+        var syncStateKey = $"cloud_payroll_command:{commandId}";
+        if (GetSyncState(syncStateKey) is not null)
+        {
+            Log($"Payroll command {commandId} skipped because it was already processed.");
+            return;
+        }
+
+        var success = false;
+        string? errorMessage = null;
+        PayrollSnapshot? snapshot = null;
+
+        try
+        {
+            var range = ParsePayrollRange(data);
+            if (type == "payroll.adjustment_added")
+            {
+                AddPayrollPendingAdjustment(commandId, range, data, now);
+            }
+            else if (type == "payroll.pay_requested")
+            {
+                EnsurePayrollCanBePaidLocally(range, now);
+            }
+
+            var adjustments = ListPendingPayrollAdjustments(range);
+            var payrollService = new PayrollService(_connectionFactory);
+            if (type == "payroll.pay_requested")
+            {
+                snapshot = payrollService.PayPeriod(
+                    range,
+                    adjustments,
+                    ParsePayrollPaymentMethod(GetPayloadString(data, "payment_method")),
+                    GetPayloadString(data, "payment_reference"),
+                    GetPayloadString(data, "notes"),
+                    now);
+                ClearPayrollPendingAdjustments(range);
+            }
+            else
+            {
+                snapshot = payrollService.LoadOrGenerate(range.Start, adjustments);
+            }
+
+            success = true;
+            Log($"Payroll command {commandId} applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            Log($"Payroll command {commandId} failed: {ex.Message}");
+        }
+
+        try
+        {
+            var transaction = new LocalDataTransaction(_connectionFactory);
+            transaction.Execute((connection, sqliteTransaction) =>
+            {
+                new SyncStateRepository(connection, sqliteTransaction)
+                    .SetValue(syncStateKey, "processed", now);
+
+                if (snapshot is not null)
+                {
+                    EnqueuePayrollSnapshot(
+                        connection,
+                        snapshot,
+                        PayrollSyncPayload.CreateSnapshot(snapshot),
+                        settings.DeviceId,
+                        now,
+                        sqliteTransaction);
+                }
+
+                var ackEvent = new LocalSyncEvent(
+                    Guid.NewGuid(),
+                    now,
+                    success ? "payroll_admin_command.applied" : "payroll_admin_command.failed",
+                    "payroll_admin_command",
+                    commandId,
+                    PayrollSyncPayload.CreateCommandAck(commandId, success, errorMessage),
+                    settings.DeviceId);
+
+                new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction)).Enqueue(ackEvent, now);
+            });
+            Log($"Ack enqueued for payroll command {commandId}.");
+        }
+        catch (Exception ex)
+        {
+            Log($"Error saving ack for payroll command {commandId}: {ex.Message}");
+        }
+    }
+
+    private void AddPayrollPendingAdjustment(
+        Guid commandId,
+        PayrollWeekRange range,
+        JsonElement commandData,
+        DateTimeOffset now)
+    {
+        var barberIdText = GetPayloadString(commandData, "barber_id");
+        if (!Guid.TryParse(barberIdText, out var barberId))
+        {
+            throw new InvalidOperationException("Barber id is invalid.");
+        }
+
+        var amountCents = GetPayloadInt64(commandData, "amount_cents")
+            ?? throw new InvalidOperationException("Adjustment amount is invalid.");
+        var reason = GetPayloadString(commandData, "reason");
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("Adjustment reason is required.");
+        }
+
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            var barber = new LocalBarberRepository(connection, sqliteTransaction).GetById(barberId);
+            if (barber is null)
+            {
+                throw new InvalidOperationException("Barber was not found locally.");
+            }
+
+            new PayrollPendingAdjustmentRepository(connection, sqliteTransaction).Add(
+                new PayrollPendingAdjustment(
+                    commandId,
+                    commandId,
+                    range.Start,
+                    range.End,
+                    barberId,
+                    amountCents,
+                    reason.Trim(),
+                    now));
+        });
+    }
+
+    private void EnsurePayrollCanBePaidLocally(PayrollWeekRange range, DateTimeOffset now)
+    {
+        if (range.End > now)
+        {
+            throw new InvalidOperationException("Payroll period has not closed yet.");
+        }
+
+        using var connection = _connectionFactory.OpenConnection();
+        var pendingOutboxCount = new SyncOutboxRepository(connection).CountPending();
+        if (pendingOutboxCount > 0)
+        {
+            throw new InvalidOperationException("Desktop has pending sync events. Payroll payment must wait until sync is clean.");
+        }
+    }
+
+    private IReadOnlyList<PayrollAdjustment> ListPendingPayrollAdjustments(PayrollWeekRange range)
+    {
+        using var connection = _connectionFactory.OpenConnection();
+        return new PayrollPendingAdjustmentRepository(connection)
+            .ListByRange(range.Start, range.End)
+            .Select(adjustment => adjustment.ToAdjustment(Guid.Empty))
+            .ToList();
+    }
+
+    private void ClearPayrollPendingAdjustments(PayrollWeekRange range)
+    {
+        using var connection = _connectionFactory.OpenConnection();
+        new PayrollPendingAdjustmentRepository(connection).ClearRange(range.Start, range.End);
+    }
+
     private void ApplyDueNoShows(DateTimeOffset now)
     {
         var transaction = new LocalDataTransaction(_connectionFactory);
@@ -562,6 +887,90 @@ internal sealed class DesktopSyncService : IDisposable
         }
 
         return AppointmentState.Confirmed;
+    }
+
+    private static PayrollWeekRange ParsePayrollRange(JsonElement data)
+    {
+        var startDateText = GetString(data, "start_date") ?? GetPayloadString(data, "start_date");
+        var endDateText = GetString(data, "end_date") ?? GetPayloadString(data, "end_date");
+        if (string.IsNullOrWhiteSpace(startDateText) || string.IsNullOrWhiteSpace(endDateText))
+        {
+            throw new InvalidOperationException("Payroll command must include start_date and end_date.");
+        }
+
+        var startDate = ParsePayrollDate(startDateText);
+        var endDate = ParsePayrollDate(endDateText);
+        if (endDate <= startDate)
+        {
+            throw new InvalidOperationException("Payroll command date range is invalid.");
+        }
+
+        return new PayrollWeekRange(startDate, endDate);
+    }
+
+    private static DateTimeOffset ParsePayrollDate(string value)
+    {
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timestamp)
+            && value.Contains('T', StringComparison.Ordinal))
+        {
+            return new DateTimeOffset(timestamp.Date, timestamp.Offset);
+        }
+
+        var date = DateTime.Parse(value, CultureInfo.InvariantCulture).Date;
+        return new DateTimeOffset(date, OperationalClock.Now.Offset);
+    }
+
+    private static PayrollPaymentMethod ParsePayrollPaymentMethod(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "transfer" => PayrollPaymentMethod.Transfer,
+            "other" => PayrollPaymentMethod.Other,
+            _ => PayrollPaymentMethod.Cash
+        };
+    }
+
+    private static string? GetPayloadString(JsonElement data, string propertyName)
+    {
+        if (data.TryGetProperty("payload", out var payload)
+            && payload.ValueKind == JsonValueKind.Object
+            && payload.TryGetProperty(propertyName, out var value)
+            && value.ValueKind == JsonValueKind.String)
+        {
+            return value.GetString();
+        }
+
+        return GetString(data, propertyName);
+    }
+
+    private static long? GetPayloadInt64(JsonElement data, string propertyName)
+    {
+        if (data.TryGetProperty("payload", out var payload)
+            && payload.ValueKind == JsonValueKind.Object
+            && payload.TryGetProperty(propertyName, out var value))
+        {
+            return ReadInt64(value);
+        }
+
+        return data.TryGetProperty(propertyName, out var topLevelValue)
+            ? ReadInt64(topLevelValue)
+            : null;
+    }
+
+    private static long? ReadInt64(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number))
+        {
+            return number;
+        }
+
+        if (value.ValueKind == JsonValueKind.String
+            && long.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
     }
 
 

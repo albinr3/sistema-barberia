@@ -30,11 +30,15 @@ Sync cloud:
   "supabaseUrl": "https://your-project-ref.supabase.co",
   "deviceId": "00000000-0000-0000-0000-000000000000",
   "deviceSecret": "replace-with-device-secret",
-  "pollSeconds": 60
+  "pollSeconds": 30
 }
 ```
 
-- En cada ciclo, `DesktopSyncService` descarga y aplica cambios cloud antes de encolar el snapshot local de barberos/servicios. El snapshot se compara por contenido operativo/catalogo y no por `updated_at`, para evitar loops donde un eco de Supabase vuelva a generar `catalog.snapshot` cada 60 segundos.
+- En cada ciclo, `DesktopSyncService` descarga y aplica cambios cloud antes de encolar snapshots locales de barberos/servicios y nomina. Los snapshots se comparan por contenido operativo/catalogo y no por `updated_at`, para evitar loops donde un eco de Supabase vuelva a generar eventos cada 60 segundos.
+- Los comandos administrativos web, como `ticket.reassign`, se aplican cuando `DesktopSyncService` hace pull de `sync-changes`; `PublicDisplayPage` vuelve a leer SQLite local cada 5 segundos mientras esta visible. Con `pollSeconds` en 30, el Ticket Dashboard local debe reflejar reasignaciones web sin navegar fuera de la pagina en una ventana normal de 30 a 60 segundos.
+- No hay Realtime/socket directo entre Web y Desktop en esta fase; Desktop sigue siendo offline-first y la pantalla local solo redibuja el estado que ya fue aplicado en SQLite.
+- Payroll web usa comandos (`snapshot_requested`, `adjustment_added`, `pay_requested`) que Desktop aplica localmente. `pay_requested` vuelve a calcular contra SQLite antes de llamar `PayPeriod`; si hay eventos pendientes en `sync_outbox_events`, si el periodo aun no cerro o si ya fue pagado, Desktop responde `payroll_admin_command.failed`.
+- Desktop emite `desktop.sync_heartbeat` con `pending_outbox_count`; web bloquea el boton `Pay Payroll` si ese contador es mayor que cero o si `last_sync_at` esta viejo.
 - Las citas sincronizadas se guardan en `appointment_reservations` con `appointment_code`, cliente, servicio, hora de inicio/fin y estado local.
 - `AppointmentsPage` muestra las citas del dia como una lista operativa directa; las filas priorizan citas activas y conservan el QR/codigo visible para operacion.
 - Barber Panel acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.

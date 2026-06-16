@@ -17,6 +17,7 @@ public sealed partial class PublicDisplayPage : Page
     private const int WaitingGridRows = 12;
     private const int BarberGridColumns = 2;
     private const int NowCallingGridColumns = 2;
+    private static readonly TimeSpan SnapshotRefreshInterval = TimeSpan.FromSeconds(5);
 
     private readonly PublicDisplaySnapshotService _snapshotService = new();
     private readonly DispatcherTimer _refreshTimer = new();
@@ -29,7 +30,7 @@ public sealed partial class PublicDisplayPage : Page
 
         AddTemporaryMenuButtonOverlay();
         _displayScrollViewer.SizeChanged += OnDisplayViewportSizeChanged;
-        _refreshTimer.Interval = TimeSpan.FromSeconds(30);
+        _refreshTimer.Interval = SnapshotRefreshInterval;
         _refreshTimer.Tick += (_, _) => LoadSnapshot();
     }
 

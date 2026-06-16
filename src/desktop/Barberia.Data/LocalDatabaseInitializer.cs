@@ -222,6 +222,18 @@ public sealed class LocalDatabaseInitializer
                 FOREIGN KEY (payment_id) REFERENCES cash_payments(id)
             );
 
+            CREATE TABLE IF NOT EXISTS payroll_pending_adjustments (
+                id TEXT NOT NULL PRIMARY KEY,
+                command_id TEXT NOT NULL UNIQUE,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                barber_id TEXT NOT NULL,
+                amount_cents INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (barber_id) REFERENCES barbers(id)
+            );
+
             CREATE UNIQUE INDEX IF NOT EXISTS idx_payroll_periods_range
                 ON payroll_periods(start_date, end_date);
 
@@ -236,6 +248,9 @@ public sealed class LocalDatabaseInitializer
 
             CREATE UNIQUE INDEX IF NOT EXISTS idx_payroll_payment_items_payment
                 ON payroll_payment_items(payment_id);
+
+            CREATE INDEX IF NOT EXISTS idx_payroll_pending_adjustments_range
+                ON payroll_pending_adjustments(start_date, end_date);
             """;
         command.ExecuteNonQuery();
 

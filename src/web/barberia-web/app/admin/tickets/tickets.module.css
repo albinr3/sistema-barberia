@@ -131,3 +131,67 @@
   color: #38a169;
   font-size: 12px;
 }
+
+.cancelForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cancelButton {
+  padding: 8px 16px;
+  background: var(--surface);
+  color: #e53e3e;
+  border: 1px solid #e53e3e;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+  width: 100%;
+}
+
+.cancelButton:hover {
+  background: #fff5f5;
+  opacity: 0.9;
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.queueTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.queueTable th,
+.queueTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.queueTable th {
+  background: var(--bg);
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.queueTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.actionsCell {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
