@@ -111,6 +111,22 @@
   font-weight: 900;
 }
 
+.kpiWithAction {
+  position: relative;
+}
+
+.kpiHeader {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.kpiHeader button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
 .filtersBar {
   min-height: 58px;
   display: grid;
@@ -124,10 +140,15 @@
 }
 
 .dateForm,
-.inlineAction,
-.payForm {
+.inlineAction {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.payForm {
+  display: flex;
+  align-items: flex-end;
   gap: 8px;
 }
 
@@ -136,7 +157,7 @@
 .adjustmentForm select,
 .payForm input,
 .payForm select,
-.payrollFooter input {
+.referenceLabel input {
   min-height: 38px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -160,16 +181,17 @@
 }
 
 .actionsGrid {
-  display: grid;
-  grid-template-columns: minmax(160px, auto) minmax(320px, 1fr) minmax(360px, auto);
-  align-items: start;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.adjustmentForm {
-  display: grid;
-  grid-template-columns: minmax(130px, 1.1fr) minmax(90px, 0.7fr) minmax(140px, 1fr) auto;
-  gap: 8px;
+.adjustmentFormModal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .primaryButton,
@@ -208,8 +230,8 @@
 .primaryButton:disabled,
 .secondaryButton:disabled,
 .iconButton:disabled,
-.adjustmentForm input:disabled,
-.adjustmentForm select:disabled,
+.adjustmentFormModal input:disabled,
+.adjustmentFormModal select:disabled,
 .payForm input:disabled,
 .payForm select:disabled {
   opacity: 0.55;
@@ -251,7 +273,7 @@
 .payrollTable,
 .historyTable {
   width: 100%;
-  min-width: 820px;
+  min-width: 900px;
   border-collapse: collapse;
 }
 
@@ -334,17 +356,13 @@
   font-weight: 800;
 }
 
-.payrollFooter {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.payrollFooter label {
+.referenceLabel {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+  margin-right: 12px;
 }
 
 .modalOverlay {
@@ -454,8 +472,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .actionsGrid,
-  .adjustmentForm {
+  .adjustmentFormModal {
     grid-template-columns: 1fr;
   }
 

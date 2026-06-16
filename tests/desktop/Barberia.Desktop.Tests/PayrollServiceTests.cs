@@ -76,6 +76,52 @@ public sealed class PayrollServiceTests
     }
 
     [Fact]
+    public void PendingAdjustments_PersistUntilPeriodIsPaid()
+    {
+        using var database = TestDatabase.Create();
+        var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
+        var anaId = Guid.NewGuid();
+        var range = new PayrollWeekRange(friday, friday.AddDays(7));
+        SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
+        var service = new PayrollService(database.ConnectionFactory);
+
+        service.AddPendingAdjustment(range, anaId, -500, "Correccion", friday.AddDays(1).AddMinutes(1));
+
+        var reloadedAdjustments = service.ListPendingAdjustments(range);
+        var preview = service.GeneratePreview(range, reloadedAdjustments, friday.AddDays(1).AddMinutes(2));
+        var line = Assert.Single(preview.Lines);
+        Assert.Equal(-500, line.AdjustmentsCents);
+        Assert.Equal(1100, line.TotalCents);
+
+        service.PayPeriod(range, reloadedAdjustments, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7));
+
+        Assert.Empty(service.ListPendingAdjustments(range));
+    }
+
+    [Fact]
+    public void GetBarberDailyBreakdown_IncludesManualAdjustments()
+    {
+        using var database = TestDatabase.Create();
+        var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
+        var anaId = Guid.NewGuid();
+        var range = new PayrollWeekRange(friday, friday.AddDays(7));
+        SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
+        var service = new PayrollService(database.ConnectionFactory);
+        var adjustments = new[]
+        {
+            new PayrollAdjustment(Guid.NewGuid(), Guid.Empty, anaId, -500, "Correccion", friday.AddHours(12))
+        };
+        var snapshot = service.GeneratePreview(range, adjustments, friday.AddDays(1));
+
+        var breakdown = service.GetBarberDailyBreakdown(snapshot, anaId);
+
+        var day = Assert.Single(breakdown);
+        Assert.Equal(1600, day.CommissionCents);
+        Assert.Equal(-500, day.AdjustmentsCents);
+        Assert.Equal(1100, day.TotalEarningsCents);
+    }
+
+    [Fact]
     public void PayPeriod_MarksPeriodPaidAndAuditsEvent()
     {
         using var database = TestDatabase.Create();

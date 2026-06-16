@@ -70,6 +70,7 @@ public sealed partial class PayrollPage : Page
     {
         TryRun(() =>
         {
+            LoadPendingAdjustments(_currentRange);
             _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, OperationalClock.Now);
             RenderSnapshot("Week recalculated.");
         });
@@ -153,16 +154,14 @@ public sealed partial class PayrollPage : Page
                 throw new InvalidOperationException("The adjustment amount is invalid.");
             }
 
-            var adjustment = new PayrollAdjustment(
-                Guid.NewGuid(),
-                Guid.Empty,
+            _payrollService.AddPendingAdjustment(
+                _currentRange,
                 barberId,
                 Money.ToCents(amount),
-                reasonBox.Text.Trim(),
+                reasonBox.Text,
                 OperationalClock.Now);
 
-            _tempAdjustments.Add(adjustment);
-
+            LoadPendingAdjustments(_currentRange);
             _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, OperationalClock.Now);
             RenderSnapshot("Adjustment added.");
         });
@@ -209,6 +208,7 @@ public sealed partial class PayrollPage : Page
                 reference,
                 null,
                 OperationalClock.Now);
+            _tempAdjustments.Clear();
             RenderSnapshot("Week marked as paid.");
             success = true;
         });
@@ -232,7 +232,7 @@ public sealed partial class PayrollPage : Page
 
         try
         {
-            var breakdown = _payrollService.GetBarberDailyBreakdown(_snapshot.Period.Id, line.BarberId);
+            var breakdown = _payrollService.GetBarberDailyBreakdown(_snapshot, line.BarberId);
             var dialog = new PayrollDetailsDialog(_snapshot, line, breakdown)
             {
                 XamlRoot = XamlRoot
@@ -260,10 +260,16 @@ public sealed partial class PayrollPage : Page
         TryRun(() =>
         {
             _currentRange = _payrollService.GetWeekRange(reference);
-            _tempAdjustments.Clear();
+            LoadPendingAdjustments(_currentRange);
             _snapshot = _payrollService.LoadOrGenerate(reference, _tempAdjustments);
             RenderSnapshot("Week loaded.");
         });
+    }
+
+    private void LoadPendingAdjustments(PayrollWeekRange range)
+    {
+        _tempAdjustments.Clear();
+        _tempAdjustments.AddRange(_payrollService.ListPendingAdjustments(range));
     }
 
     private void RenderSnapshot(string message)

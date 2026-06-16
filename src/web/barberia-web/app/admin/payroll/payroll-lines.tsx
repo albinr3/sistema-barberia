@@ -23,6 +23,7 @@ export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
               <th>Services</th>
               <th>Sales</th>
               <th>Comm. $</th>
+              <th>Adjustments</th>
               <th>Net Pay</th>
               <th>Actions</th>
             </tr>
@@ -44,6 +45,7 @@ export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
                 <td className={styles.numeric}>{line.closed_services_count}</td>
                 <td className={styles.numeric}>{formatCurrency(line.sales_generated_cents)}</td>
                 <td className={styles.numeric}>{formatCurrency(line.commission_cents)}</td>
+                <td className={styles.numeric}>{formatCurrency(line.adjustments_cents)}</td>
                 <td className={styles.netCell}>{formatCurrency(line.total_cents)}</td>
                 <td className={styles.actionCell}>
                   <button type="button" className={styles.iconButton} onClick={() => setSelectedLine(line)} title="View details">
@@ -81,7 +83,7 @@ function LineDetailsModal({
       <div className={styles.modal}>
         <header className={styles.modalHeader}>
           <div>
-            <h2>{line.barber_name}</h2>
+            <h2>Earnings Breakdown - {line.barber_name}</h2>
             <p>{line.station_number ? `Station B-${line.station_number}` : "No station"}</p>
           </div>
           <button type="button" className={styles.iconButton} onClick={onClose} title="Close">

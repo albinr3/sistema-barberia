@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { CircleDollarSign, Plus, RefreshCw } from "lucide-react";
-import { addPayrollAdjustment, requestPayrollPayment, requestPayrollSnapshot } from "@/app/actions/admin-payroll";
+import { CircleDollarSign, RefreshCw } from "lucide-react";
+import { requestPayrollPayment, requestPayrollSnapshot } from "@/app/actions/admin-payroll";
 import type { PayrollBarber, PayrollWeekRange } from "@/lib/payroll";
 import styles from "./payroll.module.css";
 
@@ -19,6 +19,7 @@ type PayrollActionsProps = {
   canRequestCommand: boolean;
   canPay: boolean;
   payBlockReason: string | null;
+  reference: string;
 };
 
 export function PayrollActions({
@@ -28,13 +29,10 @@ export function PayrollActions({
   canRequestCommand,
   canPay,
   payBlockReason,
+  reference,
 }: PayrollActionsProps) {
   const [snapshotState, snapshotAction, snapshotPending] = useActionState<ActionState, FormData>(
     requestPayrollSnapshot,
-    null,
-  );
-  const [adjustmentState, adjustmentAction, adjustmentPending] = useActionState<ActionState, FormData>(
-    addPayrollAdjustment,
     null,
   );
   const [paymentState, paymentAction, paymentPending] = useActionState<ActionState, FormData>(
@@ -61,46 +59,15 @@ export function PayrollActions({
         <ActionMessage state={snapshotState} successText="Recalculate request sent." />
       </form>
 
-      <form action={adjustmentAction} className={styles.adjustmentForm}>
-        <HiddenCommandFields sourceDeviceId={sourceDeviceId} range={range} />
-        <select name="barberId" required disabled={commandDisabled || adjustmentPending}>
-          <option value="">Barber</option>
-          {barbers.map((barber) => (
-            <option key={barber.id} value={barber.id}>
-              {barber.display_name ?? "Local barber"} {barber.station_code ? `(${barber.station_code})` : ""}
-            </option>
-          ))}
-        </select>
-        <input
-          name="amount"
-          type="number"
-          step="0.01"
-          placeholder="0.00"
-          required
-          disabled={commandDisabled || adjustmentPending}
-        />
-        <input
-          name="reason"
-          type="text"
-          placeholder="Reason"
-          required
-          disabled={commandDisabled || adjustmentPending}
-        />
-        <button type="submit" disabled={commandDisabled || adjustmentPending} className={styles.secondaryButton}>
-          <Plus size={16} aria-hidden="true" />
-          {adjustmentPending ? "Adding" : "Add Adjustment"}
-        </button>
-        <ActionMessage state={adjustmentState} successText="Adjustment request sent." />
-      </form>
-
       <form action={paymentAction} className={styles.payForm}>
         <HiddenCommandFields sourceDeviceId={sourceDeviceId} range={range} />
-        <select name="paymentMethod" defaultValue="cash" disabled={!canPay || paymentPending}>
-          <option value="cash">Cash</option>
-          <option value="transfer">Transfer</option>
-          <option value="other">Other</option>
-        </select>
-        <input name="paymentReference" type="text" placeholder="Reference" disabled={!canPay || paymentPending} />
+        
+        <label className={styles.referenceLabel}>
+          <span>Payroll Reference</span>
+          <input value={reference} readOnly tabIndex={-1} />
+        </label>
+
+        <input type="hidden" name="paymentMethod" value="cash" />
         <button type="submit" disabled={!canPay || paymentPending} className={styles.primaryButton} title={payBlockReason ?? "Pay Payroll"}>
           <CircleDollarSign size={18} aria-hidden="true" />
           {paymentPending ? "Requesting" : "Pay Payroll"}

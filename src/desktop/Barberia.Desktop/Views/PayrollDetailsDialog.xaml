@@ -7,11 +7,11 @@
     mc:Ignorable="d"
     Background="#FFFFFFFF"
     CornerRadius="12"
-    MaxWidth="800"
+    MaxWidth="980"
     CloseButtonText="Close">
 
     <ContentDialog.Resources>
-        <x:Double x:Key="ContentDialogMaxWidth">800</x:Double>
+        <x:Double x:Key="ContentDialogMaxWidth">980</x:Double>
         <SolidColorBrush x:Key="PayrollSurfaceContainerHighestBrush" Color="#FFE2E2E5" />
         <SolidColorBrush x:Key="PayrollSurfaceContainerLowBrush" Color="#FFF3F3F6" />
         <SolidColorBrush x:Key="PayrollTextBrush" Color="#FF1A1C1E" />
@@ -19,7 +19,7 @@
         <SolidColorBrush x:Key="PayrollPrimaryBrush" Color="#FF001387" />
     </ContentDialog.Resources>
 
-    <Grid MinWidth="750" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+    <Grid MinWidth="920" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -42,6 +42,8 @@
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="1.5*" />
+                        <ColumnDefinition Width="1.5*" />
+                        <ColumnDefinition Width="1.5*" />
                         <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="1.5*" />
                     </Grid.ColumnDefinitions>
@@ -51,6 +53,8 @@
                     <TextBlock Grid.Column="2" Text="DAILY SALES" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
                     <TextBlock Grid.Column="3" Text="COMM. %" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
                     <TextBlock Grid.Column="4" Text="COMMISSION($)" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="5" Text="ADJUSTMENTS" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="6" Text="EARNINGS" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
                 </Grid>
                 
                 <StackPanel x:Name="_linesPanel" />

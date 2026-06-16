@@ -112,9 +112,54 @@ public sealed class PayrollService
                 NormalizeOptionalText(notes),
                 paidAt,
                 DeviceId);
+
+            new PayrollPendingAdjustmentRepository(connection, transaction)
+                .ClearRange(range.Start, range.End);
         });
 
         return Load(range);
+    }
+
+    public IReadOnlyList<PayrollAdjustment> ListPendingAdjustments(PayrollWeekRange range)
+    {
+        using var connection = _connectionFactory.OpenConnection();
+        return new PayrollPendingAdjustmentRepository(connection)
+            .ListByRange(range.Start, range.End)
+            .Select(adjustment => adjustment.ToAdjustment(Guid.Empty))
+            .ToList();
+    }
+
+    public PayrollAdjustment AddPendingAdjustment(
+        PayrollWeekRange range,
+        Guid barberId,
+        long amountCents,
+        string reason,
+        DateTimeOffset createdAt)
+    {
+        PayrollPendingAdjustment? pending = null;
+        new LocalDataTransaction(_connectionFactory).Execute((connection, transaction) =>
+        {
+            var barber = new LocalBarberRepository(connection, transaction).GetById(barberId);
+            if (barber is null)
+            {
+                throw new InvalidOperationException("Barber was not found locally.");
+            }
+
+            pending = new PayrollPendingAdjustment(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                range.Start,
+                range.End,
+                barberId,
+                amountCents,
+                NormalizeRequiredText(reason, "Adjustment reason is required."),
+                createdAt);
+
+            new PayrollPendingAdjustmentRepository(connection, transaction).Add(pending);
+        });
+
+        return pending?.ToAdjustment(Guid.Empty)
+            ?? throw new InvalidOperationException("Payroll adjustment could not be saved.");
     }
 
     public PayrollSnapshot Load(PayrollWeekRange range)
@@ -151,23 +196,39 @@ public sealed class PayrollService
         return new PayrollRepository(connection).ListPeriods();
     }
 
-    public IReadOnlyList<PayrollDailyBreakdown> GetBarberDailyBreakdown(Guid periodId, Guid barberId)
+    public IReadOnlyList<PayrollDailyBreakdown> GetBarberDailyBreakdown(PayrollSnapshot snapshot, Guid barberId)
     {
         using var connection = _connectionFactory.OpenConnection();
         var repository = new PayrollRepository(connection);
-        var period = repository.GetPeriod(periodId) 
-            ?? throw new InvalidOperationException("Payroll period was not found.");
+        var payments = repository.GetPaymentsForPeriod(snapshot.Period, barberId);
+        var adjustments = snapshot.Adjustments
+            .Where(adjustment => adjustment.BarberId == barberId)
+            .ToList();
 
-        var payments = repository.GetPaymentsForPeriod(period, barberId);
+        var dates = payments
+            .Select(payment => payment.CollectedAt.Date)
+            .Concat(adjustments.Select(adjustment => adjustment.CreatedAt.Date))
+            .Distinct()
+            .OrderBy(date => date)
+            .ToList();
 
-        var grouped = payments.GroupBy(p => p.CollectedAt.Date)
-            .Select(g => new PayrollDailyBreakdown(
-                new DateTimeOffset(g.Key, period.StartDate.Offset),
-                g.Count(),
-                g.Sum(p => p.AmountCents),
-                g.Sum(p => p.CommissionCents ?? 0)
-            ))
-            .OrderBy(b => b.Date)
+        var grouped = dates
+            .Select(date =>
+            {
+                var dayPayments = payments.Where(payment => payment.CollectedAt.Date == date).ToList();
+                var adjustmentTotal = adjustments
+                    .Where(adjustment => adjustment.CreatedAt.Date == date)
+                    .Sum(adjustment => adjustment.AmountCents);
+                var commissionTotal = dayPayments.Sum(payment => payment.CommissionCents ?? 0);
+
+                return new PayrollDailyBreakdown(
+                    new DateTimeOffset(date, snapshot.Period.StartDate.Offset),
+                    dayPayments.Count,
+                    dayPayments.Sum(payment => payment.AmountCents),
+                    commissionTotal,
+                    adjustmentTotal,
+                    commissionTotal + adjustmentTotal);
+            })
             .ToList();
 
         return grouped;
@@ -215,6 +276,16 @@ public sealed class PayrollService
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
+
+    private static string NormalizeRequiredText(string? value, string errorMessage)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException(errorMessage);
+        }
+
+        return value.Trim();
+    }
 }
 
 public sealed record PayrollWeekRange(DateTimeOffset Start, DateTimeOffset End);
@@ -231,4 +302,6 @@ public sealed record PayrollDailyBreakdown(
     DateTimeOffset Date,
     int ServicesCount,
     long SalesCents,
-    long CommissionCents);
+    long CommissionCents,
+    long AdjustmentsCents,
+    long TotalEarningsCents);
