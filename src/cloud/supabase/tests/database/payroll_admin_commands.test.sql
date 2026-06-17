@@ -18,19 +18,19 @@ select lives_ok(
 );
 
 select throws_ok(
-  $$ select public.admin_add_payroll_adjustment('11111111-1111-1111-1111-111111111111', '2026-06-05', '2026-06-12', '22222222-2222-2222-2222-222222222222', 500, 'Bonus') $$,
+  $$ select public.admin_request_payroll_snapshot('11111111-1111-1111-1111-111111111111', '2026-06-05', '2026-06-12') $$,
   'A payroll command is already pending for this period',
   'Prevents two pending payroll commands for the same period'
 );
 
 update public.payroll_admin_commands set status = 'applied';
 
-select lives_ok(
+select throws_ok(
   $$ select public.admin_add_payroll_adjustment('11111111-1111-1111-1111-111111111111', '2026-06-05', '2026-06-12', '22222222-2222-2222-2222-222222222222', 500, 'Bonus') $$,
-  'Can request a payroll adjustment'
+  'Manual payroll adjustments are no longer supported',
+  'Blocks manual payroll adjustments'
 );
 
-update public.payroll_admin_commands set status = 'applied';
 update public.sync_devices set last_sync_at = now() - interval '20 minutes';
 
 select throws_ok(

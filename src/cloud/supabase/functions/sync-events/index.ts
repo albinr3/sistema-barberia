@@ -277,7 +277,6 @@ async function materializePayrollSnapshot(
   if (!periodRecord) throw new Error("Payroll period upsert returned no row");
 
   await supabaseAdmin.from("synced_payroll_lines").delete().eq("payroll_period_id", periodRecord.id);
-  await supabaseAdmin.from("synced_payroll_adjustments").delete().eq("payroll_period_id", periodRecord.id);
 
   const lines = Array.isArray(payload.lines) ? payload.lines : [];
   const lineRows = lines
@@ -298,23 +297,6 @@ async function materializePayrollSnapshot(
   if (lineRows.length > 0) {
     const { error } = await supabaseAdmin.from("synced_payroll_lines").insert(lineRows);
     if (error) throw new Error("Payroll lines insert failed: " + error.message);
-  }
-
-  const adjustments = Array.isArray(payload.adjustments) ? payload.adjustments : [];
-  const adjustmentRows = adjustments
-    .filter(isRecord)
-    .map((adjustment) => ({
-      payroll_period_id: periodRecord.id,
-      local_adjustment_id: stringValue(adjustment.id) || crypto.randomUUID(),
-      barber_id: stringValue(adjustment.barber_id),
-      amount_cents: numberValue(adjustment.amount_cents) ?? 0,
-      reason: stringValue(adjustment.reason) || "Adjustment",
-      created_at: stringValue(adjustment.created_at) || new Date().toISOString(),
-    }));
-
-  if (adjustmentRows.length > 0) {
-    const { error } = await supabaseAdmin.from("synced_payroll_adjustments").insert(adjustmentRows);
-    if (error) throw new Error("Payroll adjustments insert failed: " + error.message);
   }
 }
 

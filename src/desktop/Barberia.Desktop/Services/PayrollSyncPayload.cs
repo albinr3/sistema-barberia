@@ -37,14 +37,6 @@ internal static class PayrollSyncPayload
                 adjustments_cents = line.AdjustmentsCents,
                 total_cents = line.TotalCents
             }),
-            adjustments = snapshot.Adjustments.Select(adjustment => new
-            {
-                id = adjustment.Id,
-                barber_id = adjustment.BarberId,
-                amount_cents = adjustment.AmountCents,
-                reason = adjustment.Reason,
-                created_at = adjustment.CreatedAt.ToString("O")
-            }),
             loaded_at = snapshot.LoadedAt.ToString("O")
         });
     }

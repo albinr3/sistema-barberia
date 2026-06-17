@@ -63,6 +63,7 @@ serve(async (req: Request) => {
       .select("*")
       .eq("source_device_id", device.id)
       .eq("status", "pending")
+      .neq("command_type", "adjustment_added")
       .order("created_at", { ascending: true }),
   ]);
 

@@ -34,7 +34,7 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, luisId, "Luis", 2, friday.AddHours(13), 3000, null);
 
         var snapshot = new PayrollService(database.ConnectionFactory)
-            .GeneratePreview(new PayrollWeekRange(friday, friday.AddDays(7)), [], friday.AddDays(1));
+            .GeneratePreview(new PayrollWeekRange(friday, friday.AddDays(7)), friday.AddDays(1));
 
         Assert.Equal(3, snapshot.Period.TotalServices);
         Assert.Equal(4450, snapshot.Period.TotalCommissionCents);
@@ -57,7 +57,7 @@ public sealed class PayrollServiceTests
     }
 
     [Fact]
-    public void GeneratePreview_IncludesTempAdjustments()
+    public void GeneratePreview_AlwaysUsesZeroAdjustments()
     {
         using var database = TestDatabase.Create();
         var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
@@ -66,17 +66,17 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        var adjustments = new[] { new PayrollAdjustment(Guid.NewGuid(), Guid.Empty, anaId, -500, "Correccion", friday.AddDays(1).AddMinutes(1)) };
-        var snapshot = service.GeneratePreview(range, adjustments, friday.AddDays(1).AddMinutes(2));
+        var snapshot = service.GeneratePreview(range, friday.AddDays(1).AddMinutes(2));
 
         var line = Assert.Single(snapshot.Lines);
-        Assert.Equal(-500, line.AdjustmentsCents);
-        Assert.Equal(1100, line.TotalCents);
-        Assert.Equal(1100, snapshot.Period.TotalToPayCents);
+        Assert.Equal(0, line.AdjustmentsCents);
+        Assert.Equal(1600, line.TotalCents);
+        Assert.Equal(0, snapshot.Period.TotalAdjustmentsCents);
+        Assert.Equal(1600, snapshot.Period.TotalToPayCents);
     }
 
     [Fact]
-    public void PendingAdjustments_PersistUntilPeriodIsPaid()
+    public void GetBarberDailyBreakdown_UsesCommissionOnly()
     {
         using var database = TestDatabase.Create();
         var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
@@ -85,40 +85,14 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        service.AddPendingAdjustment(range, anaId, -500, "Correccion", friday.AddDays(1).AddMinutes(1));
-
-        var reloadedAdjustments = service.ListPendingAdjustments(range);
-        var preview = service.GeneratePreview(range, reloadedAdjustments, friday.AddDays(1).AddMinutes(2));
-        var line = Assert.Single(preview.Lines);
-        Assert.Equal(-500, line.AdjustmentsCents);
-        Assert.Equal(1100, line.TotalCents);
-
-        service.PayPeriod(range, reloadedAdjustments, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7));
-
-        Assert.Empty(service.ListPendingAdjustments(range));
-    }
-
-    [Fact]
-    public void GetBarberDailyBreakdown_IncludesManualAdjustments()
-    {
-        using var database = TestDatabase.Create();
-        var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
-        var anaId = Guid.NewGuid();
-        var range = new PayrollWeekRange(friday, friday.AddDays(7));
-        SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
-        var service = new PayrollService(database.ConnectionFactory);
-        var adjustments = new[]
-        {
-            new PayrollAdjustment(Guid.NewGuid(), Guid.Empty, anaId, -500, "Correccion", friday.AddHours(12))
-        };
-        var snapshot = service.GeneratePreview(range, adjustments, friday.AddDays(1));
+        var snapshot = service.GeneratePreview(range, friday.AddDays(1));
 
         var breakdown = service.GetBarberDailyBreakdown(snapshot, anaId);
 
         var day = Assert.Single(breakdown);
         Assert.Equal(1600, day.CommissionCents);
-        Assert.Equal(-500, day.AdjustmentsCents);
-        Assert.Equal(1100, day.TotalEarningsCents);
+        Assert.Equal(0, day.AdjustmentsCents);
+        Assert.Equal(1600, day.TotalEarningsCents);
     }
 
     [Fact]
@@ -131,7 +105,7 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        var snapshot = service.PayPeriod(range, [], PayrollPaymentMethod.Transfer, "TR-1", null, friday.AddDays(7));
+        var snapshot = service.PayPeriod(range, PayrollPaymentMethod.Transfer, "TR-1", null, friday.AddDays(7));
 
         Assert.Equal(PayrollPeriodState.Paid, snapshot.Period.State);
         Assert.Equal(PayrollPaymentMethod.Transfer, snapshot.Period.PaymentMethod);
@@ -150,10 +124,65 @@ public sealed class PayrollServiceTests
         SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
         var service = new PayrollService(database.ConnectionFactory);
 
-        service.PayPeriod(range, [], PayrollPaymentMethod.Cash, null, null, friday.AddDays(7));
+        service.PayPeriod(range, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7));
 
-        Assert.Throws<InvalidOperationException>(() => service.GeneratePreview(range, [], friday.AddDays(7).AddMinutes(1)));
-        Assert.Throws<InvalidOperationException>(() => service.PayPeriod(range, [], PayrollPaymentMethod.Cash, null, null, friday.AddDays(7).AddMinutes(3)));
+        Assert.Throws<InvalidOperationException>(() => service.GeneratePreview(range, friday.AddDays(7).AddMinutes(1)));
+        Assert.Throws<InvalidOperationException>(() => service.PayPeriod(range, PayrollPaymentMethod.Cash, null, null, friday.AddDays(7).AddMinutes(3)));
+    }
+
+    [Fact]
+    public void AutoPayLastClosedPeriod_PaysPreviousWeekAndIsIdempotent()
+    {
+        using var database = TestDatabase.Create();
+        var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
+        var cutoff = friday.AddDays(7);
+        var anaId = Guid.NewGuid();
+        SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
+        var service = new PayrollService(database.ConnectionFactory);
+
+        var snapshot = service.AutoPayLastClosedPeriod(cutoff);
+        var secondRun = service.AutoPayLastClosedPeriod(cutoff.AddMinutes(1));
+
+        Assert.NotNull(snapshot);
+        Assert.Null(secondRun);
+        Assert.Equal(PayrollPeriodState.Paid, snapshot.Period.State);
+        Assert.Equal(PayrollPaymentMethod.Cash, snapshot.Period.PaymentMethod);
+        Assert.Equal(1600, snapshot.Period.TotalToPayCents);
+        Assert.StartsWith("NOM-260605-", snapshot.Period.PaymentReference);
+
+        using var connection = database.ConnectionFactory.OpenConnection();
+        Assert.Single(new AuditEventRepository(connection).ListAll(), audit => audit.EventType == "PayrollPeriodPaid");
+        Assert.Empty(new PayrollRepository(connection).GetUnpaidPayments(friday, friday.AddDays(7)));
+    }
+
+    [Fact]
+    public void AutoPayLastClosedPeriod_DoesNotPayCurrentOpenWeek()
+    {
+        using var database = TestDatabase.Create();
+        var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
+        var anaId = Guid.NewGuid();
+        SeedBarberTurnAndPayment(database, anaId, "Ana", 1, friday.AddHours(10), 2500, 1600);
+        var service = new PayrollService(database.ConnectionFactory);
+
+        service.AutoPayLastClosedPeriod(friday.AddDays(6));
+
+        using var connection = database.ConnectionFactory.OpenConnection();
+        Assert.Null(new PayrollRepository(connection).GetPeriodByDates(friday, friday.AddDays(7)));
+    }
+
+    [Fact]
+    public void AutoPayLastClosedPeriod_CreatesZeroPaidPeriodWhenNoCommissionsExist()
+    {
+        using var database = TestDatabase.Create();
+        var friday = DateTimeOffset.Parse("2026-06-05T00:00:00Z");
+        var service = new PayrollService(database.ConnectionFactory);
+
+        var snapshot = service.AutoPayLastClosedPeriod(friday.AddDays(7));
+
+        Assert.NotNull(snapshot);
+        Assert.Equal(PayrollPeriodState.Paid, snapshot.Period.State);
+        Assert.Equal(0, snapshot.Period.TotalToPayCents);
+        Assert.Empty(snapshot.Lines);
     }
 
     private static void SeedBarberTurnAndPayment(

@@ -188,8 +188,7 @@ internal sealed class DesktopSyncService : IDisposable
         {
             var payrollService = new PayrollService(_connectionFactory);
             var range = payrollService.GetWeekRange(now);
-            var adjustments = ListPendingPayrollAdjustments(range);
-            var snapshot = payrollService.LoadOrGenerate(range.Start, adjustments);
+            var snapshot = payrollService.LoadOrGenerate(range.Start);
             EnqueuePayrollSnapshotIfChanged(settings, snapshot, now);
         }
         catch (Exception exception)
@@ -244,16 +243,6 @@ internal sealed class DesktopSyncService : IDisposable
                     adjustments_cents = line.AdjustmentsCents,
                     total_cents = line.TotalCents
                 }),
-            adjustments = snapshot.Adjustments
-                .OrderBy(adjustment => adjustment.Id)
-                .Select(adjustment => new
-                {
-                    id = adjustment.Id,
-                    barber_id = adjustment.BarberId,
-                    amount_cents = adjustment.AmountCents,
-                    reason = adjustment.Reason,
-                    created_at = adjustment.CreatedAt.ToString("O")
-                })
         });
     }
 
@@ -654,29 +643,26 @@ internal sealed class DesktopSyncService : IDisposable
             var range = ParsePayrollRange(data);
             if (type == "payroll.adjustment_added")
             {
-                AddPayrollPendingAdjustment(commandId, range, data, now);
+                throw new InvalidOperationException("Manual payroll adjustments are no longer supported.");
             }
             else if (type == "payroll.pay_requested")
             {
                 EnsurePayrollCanBePaidLocally(range, now);
             }
 
-            var adjustments = ListPendingPayrollAdjustments(range);
             var payrollService = new PayrollService(_connectionFactory);
             if (type == "payroll.pay_requested")
             {
                 snapshot = payrollService.PayPeriod(
                     range,
-                    adjustments,
                     ParsePayrollPaymentMethod(GetPayloadString(data, "payment_method")),
                     GetPayloadString(data, "payment_reference"),
                     GetPayloadString(data, "notes"),
                     now);
-                ClearPayrollPendingAdjustments(range);
             }
             else
             {
-                snapshot = payrollService.LoadOrGenerate(range.Start, adjustments);
+                snapshot = payrollService.LoadOrGenerate(range.Start);
             }
 
             success = true;
@@ -726,48 +712,6 @@ internal sealed class DesktopSyncService : IDisposable
         }
     }
 
-    private void AddPayrollPendingAdjustment(
-        Guid commandId,
-        PayrollWeekRange range,
-        JsonElement commandData,
-        DateTimeOffset now)
-    {
-        var barberIdText = GetPayloadString(commandData, "barber_id");
-        if (!Guid.TryParse(barberIdText, out var barberId))
-        {
-            throw new InvalidOperationException("Barber id is invalid.");
-        }
-
-        var amountCents = GetPayloadInt64(commandData, "amount_cents")
-            ?? throw new InvalidOperationException("Adjustment amount is invalid.");
-        var reason = GetPayloadString(commandData, "reason");
-        if (string.IsNullOrWhiteSpace(reason))
-        {
-            throw new InvalidOperationException("Adjustment reason is required.");
-        }
-
-        var transaction = new LocalDataTransaction(_connectionFactory);
-        transaction.Execute((connection, sqliteTransaction) =>
-        {
-            var barber = new LocalBarberRepository(connection, sqliteTransaction).GetById(barberId);
-            if (barber is null)
-            {
-                throw new InvalidOperationException("Barber was not found locally.");
-            }
-
-            new PayrollPendingAdjustmentRepository(connection, sqliteTransaction).Add(
-                new PayrollPendingAdjustment(
-                    commandId,
-                    commandId,
-                    range.Start,
-                    range.End,
-                    barberId,
-                    amountCents,
-                    reason.Trim(),
-                    now));
-        });
-    }
-
     private void EnsurePayrollCanBePaidLocally(PayrollWeekRange range, DateTimeOffset now)
     {
         if (range.End > now)
@@ -781,21 +725,6 @@ internal sealed class DesktopSyncService : IDisposable
         {
             throw new InvalidOperationException("Desktop has pending sync events. Payroll payment must wait until sync is clean.");
         }
-    }
-
-    private IReadOnlyList<PayrollAdjustment> ListPendingPayrollAdjustments(PayrollWeekRange range)
-    {
-        using var connection = _connectionFactory.OpenConnection();
-        return new PayrollPendingAdjustmentRepository(connection)
-            .ListByRange(range.Start, range.End)
-            .Select(adjustment => adjustment.ToAdjustment(Guid.Empty))
-            .ToList();
-    }
-
-    private void ClearPayrollPendingAdjustments(PayrollWeekRange range)
-    {
-        using var connection = _connectionFactory.OpenConnection();
-        new PayrollPendingAdjustmentRepository(connection).ClearRange(range.Start, range.End);
     }
 
     private void ApplyDueNoShows(DateTimeOffset now)
@@ -942,38 +871,6 @@ internal sealed class DesktopSyncService : IDisposable
 
         return GetString(data, propertyName);
     }
-
-    private static long? GetPayloadInt64(JsonElement data, string propertyName)
-    {
-        if (data.TryGetProperty("payload", out var payload)
-            && payload.ValueKind == JsonValueKind.Object
-            && payload.TryGetProperty(propertyName, out var value))
-        {
-            return ReadInt64(value);
-        }
-
-        return data.TryGetProperty(propertyName, out var topLevelValue)
-            ? ReadInt64(topLevelValue)
-            : null;
-    }
-
-    private static long? ReadInt64(JsonElement value)
-    {
-        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number))
-        {
-            return number;
-        }
-
-        if (value.ValueKind == JsonValueKind.String
-            && long.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-        {
-            return parsed;
-        }
-
-        return null;
-    }
-
-
 
     private static DateTimeOffset? ParseNullableDate(string? value)
     {

@@ -129,20 +129,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border x:Name="_adjustmentsCard" Grid.Column="2" Style="{StaticResource PayrollCardStyle}">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,16">
-                                    <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
-                                        <FontIcon Glyph="&#xE710;" Foreground="{StaticResource PayrollPrimaryBrush}" FontSize="20" />
-                                    </Border>
-                                    <Button x:Name="_btnAddAdjustment" Content="+" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,4" Click="OnAddAdjustmentClick" ToolTipService.ToolTip="Add adjustment" />
-                                </Grid>
-                                <TextBlock Text="Manual Adjustments" FontSize="14" FontWeight="Medium" Foreground="{StaticResource PayrollMutedTextBrush}" Margin="0,0,0,4" />
-                                <TextBlock x:Name="_totalAdjustmentsText" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PayrollTextBrush}" Text="$0.00" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border x:Name="_netPayCard" Grid.Column="3" Style="{StaticResource PayrollCardStyle}">
+                        <Border x:Name="_netPayCard" Grid.Column="2" Style="{StaticResource PayrollCardStyle}">
                             <StackPanel>
                                 <Grid Margin="0,0,0,16">
                                     <Border HorizontalAlignment="Left" Background="{StaticResource PayrollSurfaceContainerLowBrush}" CornerRadius="8" Padding="8">
@@ -226,12 +213,6 @@
                             <TextBlock Text="Payroll Reference" FontSize="12" Foreground="{StaticResource PayrollMutedTextBrush}" FontWeight="Medium" />
                             <TextBox x:Name="_referenceTextBox" Width="200" IsEnabled="False" Text="N/A" />
                         </StackPanel>
-                        <Button x:Name="_btnPay" Background="{StaticResource PayrollPrimaryBrush}" BorderThickness="0" CornerRadius="8" Padding="32,16" VerticalAlignment="Bottom" Click="OnPayClick">
-                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE8D7;" FontSize="18" Foreground="White" />
-                                <TextBlock Text="Pay Payroll" Foreground="White" FontWeight="SemiBold" FontSize="16" />
-                            </StackPanel>
-                        </Button>
                     </StackPanel>
 
                     <Grid Height="48" />

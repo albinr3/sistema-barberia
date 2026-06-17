@@ -50,7 +50,7 @@ public class DesktopSyncServiceTests : IDisposable
     public void ApplyTicketCommand_Success_ReassignsTurnAndEnqueuesAck()
     {
         // Setup
-        var now = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
+        var now = OperationalClock.Now;
         var ticketId = Guid.NewGuid();
         var targetBarberId = Guid.NewGuid();
         var commandId = Guid.NewGuid();
@@ -107,7 +107,7 @@ public class DesktopSyncServiceTests : IDisposable
     public void ApplyTicketCommand_TurnNotFound_EnqueuesFailedAck()
     {
         // Setup
-        var now = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
+        var now = OperationalClock.Now;
         var targetBarberId = Guid.NewGuid();
         var commandId = Guid.NewGuid();
 
@@ -151,7 +151,7 @@ public class DesktopSyncServiceTests : IDisposable
     public void ApplyTicketCommand_Idempotency_SkipsAlreadyProcessed()
     {
         // Setup
-        var now = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
+        var now = OperationalClock.Now;
         var commandId = Guid.NewGuid();
 
         using (var connection = _connectionFactory.OpenConnection())
@@ -186,7 +186,7 @@ public class DesktopSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public void ApplyPayrollCommand_AdjustmentAdded_StoresPendingAdjustmentAndEnqueuesSnapshotAck()
+    public void ApplyPayrollCommand_AdjustmentAdded_RejectsLegacyAdjustmentCommand()
     {
         var now = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var friday = new DateTimeOffset(new DateTime(2026, 6, 12), OperationalClock.Now.Offset);
@@ -222,14 +222,19 @@ public class DesktopSyncServiceTests : IDisposable
 
         using (var connection = _connectionFactory.OpenConnection())
         {
-            var pending = new PayrollPendingAdjustmentRepository(connection).ListByRange(friday, friday.AddDays(7));
-            var adjustment = Assert.Single(pending);
-            Assert.Equal(commandId, adjustment.CommandId);
-            Assert.Equal(-500, adjustment.AmountCents);
+            using var pendingCommand = connection.CreateCommand();
+            pendingCommand.CommandText = """
+                SELECT COUNT(*)
+                FROM payroll_pending_adjustments
+                WHERE start_date = $start_date AND end_date = $end_date;
+                """;
+            pendingCommand.Parameters.AddWithValue("$start_date", friday.ToString("O"));
+            pendingCommand.Parameters.AddWithValue("$end_date", friday.AddDays(7).ToString("O"));
+            Assert.Equal(0L, (long)pendingCommand.ExecuteScalar()!);
 
             var outboxEvents = new SyncOutboxRepository(connection).ListAll();
-            Assert.Contains(outboxEvents, e => e.EventType == "payroll.snapshot");
-            Assert.Contains(outboxEvents, e => e.EventType == "payroll_admin_command.applied" && e.AggregateId == commandId);
+            var failedAck = Assert.Single(outboxEvents, e => e.EventType == "payroll_admin_command.failed" && e.AggregateId == commandId);
+            Assert.Contains("Manual payroll adjustments are no longer supported", failedAck.Payload);
         }
     }
 
@@ -272,7 +277,7 @@ public class DesktopSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public void ApplyPayrollCommand_PayRequest_PaysAndClearsPendingAdjustments()
+    public void ApplyPayrollCommand_PayRequest_PaysPeriod()
     {
         var friday = new DateTimeOffset(new DateTime(2026, 6, 12), OperationalClock.Now.Offset);
         var now = friday.AddDays(7).AddHours(12);
@@ -281,11 +286,6 @@ public class DesktopSyncServiceTests : IDisposable
         var settings = new DesktopSyncSettings("http://test", Guid.NewGuid().ToString(), "secret", 60);
 
         SeedBarberTurnAndPayment(barberId, "Ana", 1, friday.AddHours(10), 2500, 1600);
-        using (var connection = _connectionFactory.OpenConnection())
-        {
-            new PayrollPendingAdjustmentRepository(connection).Add(
-                new PayrollPendingAdjustment(Guid.NewGuid(), Guid.NewGuid(), friday, friday.AddDays(7), barberId, 200, "Bonus", friday.AddDays(1)));
-        }
 
         var json = $$"""
         {
@@ -311,7 +311,6 @@ public class DesktopSyncServiceTests : IDisposable
             Assert.NotNull(period);
             Assert.Equal(PayrollPeriodState.Paid, period.State);
             Assert.Equal("WEB-1", period.PaymentReference);
-            Assert.Empty(new PayrollPendingAdjustmentRepository(connection).ListByRange(friday, friday.AddDays(7)));
 
             var outboxEvents = new SyncOutboxRepository(connection).ListAll();
             Assert.Contains(outboxEvents, e => e.EventType == "payroll.snapshot");

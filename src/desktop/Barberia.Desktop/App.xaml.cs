@@ -7,6 +7,7 @@ public sealed partial class App : Application
 {
     private Window? _mainWindow;
     private DesktopSyncService? _desktopSyncService;
+    private PayrollAutoPayService? _payrollAutoPayService;
 
     public static Window? MainWindowInstance { get; private set; }
 
@@ -18,6 +19,9 @@ public sealed partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        _payrollAutoPayService = new PayrollAutoPayService();
+        _payrollAutoPayService.Start();
+
         _desktopSyncService = new DesktopSyncService();
         _desktopSyncService.Start();
 

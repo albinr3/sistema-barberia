@@ -44,7 +44,6 @@ public sealed partial class PayrollDetailsDialog : ContentDialog
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
 
         var dateText = day.Date.ToString("ddd, MMM d, yyyy");
@@ -55,8 +54,7 @@ public sealed partial class PayrollDetailsDialog : ContentDialog
         AddCell(grid, $"${day.SalesCents / 100m:0.00}", 2, TextAlignment.Right, Microsoft.UI.Text.FontWeights.Normal, new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)));
         AddCell(grid, commPercentage, 3, TextAlignment.Right, Microsoft.UI.Text.FontWeights.Normal, new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)));
         AddCell(grid, $"${day.CommissionCents / 100m:0.00}", 4, TextAlignment.Right, Microsoft.UI.Text.FontWeights.SemiBold, new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)));
-        AddCell(grid, $"${day.AdjustmentsCents / 100m:0.00}", 5, TextAlignment.Right, Microsoft.UI.Text.FontWeights.SemiBold, new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)));
-        AddCell(grid, $"${day.TotalEarningsCents / 100m:0.00}", 6, TextAlignment.Right, Microsoft.UI.Text.FontWeights.Bold, new SolidColorBrush(ColorHelper.FromArgb(255, 0, 19, 135)));
+        AddCell(grid, $"${day.TotalEarningsCents / 100m:0.00}", 5, TextAlignment.Right, Microsoft.UI.Text.FontWeights.Bold, new SolidColorBrush(ColorHelper.FromArgb(255, 0, 19, 135)));
 
         return grid;
     }

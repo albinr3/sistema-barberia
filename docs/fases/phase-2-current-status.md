@@ -122,3 +122,9 @@ Alertas Web y Active Queue Monitor implementado a nivel de codigo:
 - Los comandos de la nube son procesados por el `DesktopSyncService` de Desktop, aplicando de manera local y encolando la actualización resultante.
 
 La Fase 2.5 de sincronización Windows-Supabase ha sido implementada a nivel de código, incluyendo el contrato técnico en `docs/arquitectura/phase-2-5-sync-contract.md`, tablas POS cloud en la base de datos (e.g. `synced_tickets`, `synced_payments`), Edge Functions (`sync-events`, `sync-changes`), operaciones y comandos remotos para Active Queue, y el dashboard web `/admin/sync`. También se modificó el Desktop para enviar los eventos a través de un Outbox hacia la nube.
+
+Payroll web/cloud actualizado a nivel de codigo:
+- `/admin/payroll` ya no expone `Pay Payroll` ni ajustes manuales; solo solicita recalculo y muestra el snapshot sincronizado desde Desktop.
+- Desktop paga automaticamente el ultimo periodo viernes-jueves cerrado y sube `payroll.snapshot` con `state = paid`.
+- `sync-changes` no emite nuevos comandos `adjustment_added`; la RPC legacy de ajustes queda deshabilitada por migracion no destructiva.
+- Revalidacion 2026-06-17: `npm run typecheck` paso; `npm test` paso 4 archivos / 12 tests. La primera corrida de `npm test` en sandbox fallo por `spawn EPERM`, y se reejecuto fuera del sandbox.

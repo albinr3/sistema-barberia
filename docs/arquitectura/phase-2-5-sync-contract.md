@@ -109,7 +109,7 @@ Una vez que Desktop procesa un comando de la lista `ticket_commands`, emite un e
 
 ### Payroll Web Con Autoridad Desktop
 
-La ruta `/admin/payroll` permite operar nomina desde web, pero no convierte a Supabase en autoridad de pago. Web crea comandos en `payroll_admin_commands`; Desktop los descarga en `sync-changes`, recalcula contra SQLite local y confirma con eventos hacia `sync-events`.
+La ruta `/admin/payroll` permite consultar nomina y pedir recalculo desde web, pero no convierte a Supabase en autoridad de pago. Desktop marca automaticamente como pagado el ultimo periodo viernes-jueves cerrado desde el viernes 12:00am `America/New_York` y confirma con eventos hacia `sync-events`. Web no crea pagos ni ajustes manuales.
 
 `sync-changes` incluye:
 
@@ -118,7 +118,7 @@ La ruta `/admin/payroll` permite operar nomina desde web, pero no convierte a Su
   "changes": {
     "payroll_commands": [
       {
-        "type": "payroll.snapshot_requested | payroll.adjustment_added | payroll.pay_requested",
+        "type": "payroll.snapshot_requested",
         "data": {
           "id": "uuid-del-comando",
           "source_device_id": "uuid-del-dispositivo",
@@ -134,19 +134,17 @@ La ruta `/admin/payroll` permite operar nomina desde web, pero no convierte a Su
 
 Desktop responde con:
 
-- `payroll.snapshot`: materializa `synced_payroll_periods`, `synced_payroll_lines` y `synced_payroll_adjustments`.
+- `payroll.snapshot`: materializa `synced_payroll_periods` y `synced_payroll_lines`. La tabla legacy `synced_payroll_adjustments` puede existir por compatibilidad, pero no se alimenta con nuevos snapshots.
 - `payroll_admin_command.applied`: marca el comando web como aplicado.
 - `payroll_admin_command.failed`: marca el comando web como fallido y conserva `error_message`.
 - `desktop.sync_heartbeat`: actualiza `sync_devices.last_sync_at` y `pending_outbox_count`.
 
-Reglas de seguridad para `payroll.pay_requested`:
+Reglas de seguridad de nomina:
 
-- Web solo crea el comando si `last_sync_at` esta fresco.
-- Web bloquea el pago si `pending_outbox_count` es mayor que cero.
-- Web bloquea el pago si ya existe un comando `pending` para el mismo periodo.
-- Web bloquea el pago si el periodo viernes-jueves aun no ha cerrado en `America/New_York`.
-- Desktop vuelve a validar: si hay eventos locales pendientes, si el periodo esta abierto o si ya fue pagado, responde `failed`.
-- Web nunca muestra `Paid` por optimismo; espera `payroll_admin_command.applied` y un `payroll.snapshot` con `state = "paid"`.
+- Web solo solicita `snapshot_requested` cuando no hay otro comando pendiente para el periodo.
+- Web nunca muestra `Paid` por optimismo; espera un `payroll.snapshot` con `state = "paid"` emitido por Desktop.
+- Desktop responde comandos legacy `payroll.adjustment_added` como `failed` y no crea ajustes.
+- Las RPC legacy de ajuste quedan deshabilitadas y `sync-changes` no emite nuevos comandos `adjustment_added`.
 
 ## 5. Resolución de Conflictos
 

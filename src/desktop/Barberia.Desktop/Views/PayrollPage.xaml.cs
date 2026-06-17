@@ -9,7 +9,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -29,7 +28,6 @@ public sealed partial class PayrollPage : Page
     private PayrollWeekRange _currentRange = new(DateTimeOffset.MinValue, DateTimeOffset.MinValue);
     private PayrollSnapshot? _snapshot;
     private bool _isInitializing;
-    private readonly List<PayrollAdjustment> _tempAdjustments = new();
 
     public event EventHandler? ShellMenuRequested;
 
@@ -70,160 +68,9 @@ public sealed partial class PayrollPage : Page
     {
         TryRun(() =>
         {
-            LoadPendingAdjustments(_currentRange);
-            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, OperationalClock.Now);
+            _snapshot = _payrollService.GeneratePreview(_currentRange, OperationalClock.Now);
             RenderSnapshot("Week recalculated.");
         });
-    }
-
-    private async void OnAddAdjustmentClick(object sender, RoutedEventArgs e)
-    {
-        if (_snapshot?.Period.State == PayrollPeriodState.Paid)
-        {
-            ShowMessage("Cannot add adjustments to a paid week.", isError: true);
-            return;
-        }
-
-        var barbers = _payrollService.ListBarbers();
-        if (barbers.Count == 0)
-        {
-            ShowMessage("No barbers registered to assign the adjustment.", isError: true);
-            return;
-        }
-
-        var barberComboBox = new ComboBox
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            PlaceholderText = "Select a barber"
-        };
-        foreach (var barber in barbers)
-        {
-            barberComboBox.Items.Add(new ComboBoxItem { Content = barber.DisplayName, Tag = barber.Id });
-        }
-        barberComboBox.SelectedIndex = 0;
-
-        var amountBox = new TextBox
-        {
-            Header = "Amount (+/-)",
-            PlaceholderText = "e.g. 10.00 or -5.00",
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        var reasonBox = new TextBox
-        {
-            Header = "Reason",
-            PlaceholderText = "Reason required",
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-
-        var content = new StackPanel
-        {
-            Spacing = 12,
-            Children =
-            {
-                barberComboBox,
-                amountBox,
-                reasonBox
-            }
-        };
-
-        var dialog = new ContentDialog
-        {
-            Title = "Add manual adjustment",
-            Content = content,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary)
-        {
-            return;
-        }
-
-        TryRun(() =>
-        {
-            if (barberComboBox.SelectedItem is not ComboBoxItem item || item.Tag is not Guid barberId)
-            {
-                throw new InvalidOperationException("Please select a barber.");
-            }
-
-            if (!decimal.TryParse(amountBox.Text, out var amount))
-            {
-                throw new InvalidOperationException("The adjustment amount is invalid.");
-            }
-
-            _payrollService.AddPendingAdjustment(
-                _currentRange,
-                barberId,
-                Money.ToCents(amount),
-                reasonBox.Text,
-                OperationalClock.Now);
-
-            LoadPendingAdjustments(_currentRange);
-            _snapshot = _payrollService.GeneratePreview(_currentRange, _tempAdjustments, OperationalClock.Now);
-            RenderSnapshot("Adjustment added.");
-        });
-    }
-
-    private async void OnPayClick(object sender, RoutedEventArgs e)
-    {
-        if (_snapshot is null)
-        {
-            ShowMessage("Generate the week before paying.", isError: true);
-            return;
-        }
-
-        if (_snapshot.Period.State == PayrollPeriodState.Paid)
-        {
-            ShowMessage("This week was already paid.", isError: true);
-            return;
-        }
-
-        var reference = $"NOM-{_snapshot.Period.StartDate:yyMMdd}-{_snapshot.Period.Id.ToString().Substring(0, 4).ToUpper()}";
-
-        var confirmation = new ContentDialog
-        {
-            Title = "Process All Payments",
-            Content = $"The week will be marked as paid for {FormatMoney(_snapshot.Period.TotalToPayCents)}.\nReference: {reference}",
-            PrimaryButtonText = "Register payment (Cash)",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot
-        };
-
-        if (await confirmation.ShowAsync() != ContentDialogResult.Primary)
-        {
-            return;
-        }
-
-        bool success = false;
-        TryRun(() =>
-        {
-            _snapshot = _payrollService.PayPeriod(
-                _currentRange,
-                _tempAdjustments,
-                PayrollPaymentMethod.Cash,
-                reference,
-                null,
-                OperationalClock.Now);
-            _tempAdjustments.Clear();
-            RenderSnapshot("Week marked as paid.");
-            success = true;
-        });
-
-        if (success)
-        {
-            var successDialog = new ContentDialog
-            {
-                Title = "Payment successful",
-                Content = "The payroll has been paid and registered successfully.",
-                CloseButtonText = "OK",
-                XamlRoot = XamlRoot
-            };
-            await successDialog.ShowAsync();
-        }
     }
 
     private async void OnViewDetailsClick(PayrollLine line)
@@ -260,16 +107,9 @@ public sealed partial class PayrollPage : Page
         TryRun(() =>
         {
             _currentRange = _payrollService.GetWeekRange(reference);
-            LoadPendingAdjustments(_currentRange);
-            _snapshot = _payrollService.LoadOrGenerate(reference, _tempAdjustments);
+            _snapshot = _payrollService.LoadOrGenerate(reference);
             RenderSnapshot("Week loaded.");
         });
-    }
-
-    private void LoadPendingAdjustments(PayrollWeekRange range)
-    {
-        _tempAdjustments.Clear();
-        _tempAdjustments.AddRange(_payrollService.ListPendingAdjustments(range));
     }
 
     private void RenderSnapshot(string message)
@@ -295,7 +135,6 @@ public sealed partial class PayrollPage : Page
 
         _totalServicesText.Text = period.TotalServices.ToString();
         _totalCommissionText.Text = FormatMoney(period.TotalCommissionCents);
-        _totalAdjustmentsText.Text = FormatMoney(period.TotalAdjustmentsCents);
         _totalToPayText.Text = FormatMoney(period.TotalToPayCents);
 
         _linesPanel.Children.Clear();
@@ -319,8 +158,6 @@ public sealed partial class PayrollPage : Page
 
         var isPaid = period.State == PayrollPeriodState.Paid;
         _btnRecalculate.IsEnabled = !isPaid;
-        _btnAddAdjustment.IsEnabled = !isPaid;
-        _btnPay.IsEnabled = !isPaid;
 
         var reference = $"NOM-{period.StartDate:yyMMdd}-{period.Id.ToString().Substring(0, 4).ToUpper()}";
         if (_referenceTextBox != null)
@@ -422,8 +259,7 @@ public sealed partial class PayrollPage : Page
             SetKpiColumns(1);
             SetKpiPosition(_servicesCard, 0, 0);
             SetKpiPosition(_commissionCard, 1, 0);
-            SetKpiPosition(_adjustmentsCard, 2, 0);
-            SetKpiPosition(_netPayCard, 3, 0);
+            SetKpiPosition(_netPayCard, 2, 0);
             return;
         }
 
@@ -432,16 +268,14 @@ public sealed partial class PayrollPage : Page
             SetKpiColumns(2);
             SetKpiPosition(_servicesCard, 0, 0);
             SetKpiPosition(_commissionCard, 0, 1);
-            SetKpiPosition(_adjustmentsCard, 1, 0);
-            SetKpiPosition(_netPayCard, 1, 1);
+            SetKpiPosition(_netPayCard, 1, 0);
             return;
         }
 
-        SetKpiColumns(4);
+        SetKpiColumns(3);
         SetKpiPosition(_servicesCard, 0, 0);
         SetKpiPosition(_commissionCard, 0, 1);
-        SetKpiPosition(_adjustmentsCard, 0, 2);
-        SetKpiPosition(_netPayCard, 0, 3);
+        SetKpiPosition(_netPayCard, 0, 2);
     }
 
     private void ApplyFiltersLayout(bool useNarrowLayout)
@@ -460,8 +294,8 @@ public sealed partial class PayrollPage : Page
     {
         _kpiColumn0.Width = new GridLength(1, GridUnitType.Star);
         _kpiColumn1.Width = visibleColumns >= 2 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        _kpiColumn2.Width = visibleColumns >= 4 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        _kpiColumn3.Width = visibleColumns >= 4 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        _kpiColumn2.Width = visibleColumns >= 3 ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        _kpiColumn3.Width = new GridLength(0);
     }
 
     private static void SetKpiPosition(FrameworkElement element, int row, int column)

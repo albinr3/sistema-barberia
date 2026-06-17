@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate, getPayrollDashboard, payrollReference } from "@/lib/payroll";
 import { PayrollActions } from "./payroll-actions";
 import { PayrollLines } from "./payroll-lines";
-import { ManualAdjustmentKpi } from "./manual-adjustment-kpi";
 import styles from "./payroll.module.css";
 
 export const dynamic = "force-dynamic";
@@ -54,13 +53,6 @@ export default async function AdminPayrollPage({
         <section className={styles.kpiGrid}>
           <Kpi label="Total Services" value={(period?.total_services ?? 0).toString()} />
           <Kpi label="Total Commission" value={formatCurrency(period?.total_commission_cents ?? 0)} />
-          <ManualAdjustmentKpi
-            value={formatCurrency(period?.total_adjustments_cents ?? 0)}
-            sourceDeviceId={device?.id ?? null}
-            range={range}
-            barbers={dashboard.barbers}
-            canRequestCommand={dashboard.canRequestCommand}
-          />
           <Kpi label="Net Pay (Total)" value={formatCurrency(period?.total_to_pay_cents ?? 0)} highlight />
         </section>
 
@@ -87,10 +79,7 @@ export default async function AdminPayrollPage({
         <PayrollActions
           sourceDeviceId={device?.id ?? null}
           range={range}
-          barbers={dashboard.barbers}
           canRequestCommand={dashboard.canRequestCommand}
-          canPay={dashboard.canPay}
-          payBlockReason={dashboard.payBlockReason}
           reference={payrollReference(period, range)}
         />
 

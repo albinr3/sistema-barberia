@@ -20,15 +20,6 @@ export type PayrollLine = {
   total_cents: number;
 };
 
-export type PayrollAdjustment = {
-  id: string;
-  local_adjustment_id: string;
-  barber_id: string | null;
-  amount_cents: number;
-  reason: string;
-  created_at: string;
-};
-
 export type PayrollPeriod = {
   id: string;
   local_period_id: string;
@@ -46,22 +37,15 @@ export type PayrollPeriod = {
   paid_at: string | null;
   loaded_at: string;
   lines: PayrollLine[];
-  adjustments: PayrollAdjustment[];
 };
 
 export type PayrollCommand = {
   id: string;
-  command_type: "snapshot_requested" | "adjustment_added" | "pay_requested";
+  command_type: "snapshot_requested" | "pay_requested";
   status: "pending" | "applied" | "failed";
   error_message: string | null;
   created_at: string;
   applied_at: string | null;
-};
-
-export type PayrollBarber = {
-  id: string;
-  display_name: string | null;
-  station_code: string | null;
 };
 
 export type PayrollDashboard = {
@@ -70,13 +54,10 @@ export type PayrollDashboard = {
   period: PayrollPeriod | null;
   pendingCommand: PayrollCommand | null;
   lastCommand: PayrollCommand | null;
-  barbers: PayrollBarber[];
   isSyncStale: boolean;
   hasPendingOutbox: boolean;
   isClosed: boolean;
   canRequestCommand: boolean;
-  canPay: boolean;
-  payBlockReason: string | null;
 };
 
 export type PayrollWeekRange = {
@@ -94,10 +75,7 @@ export async function getPayrollDashboard(
   referenceDate?: string,
 ): Promise<PayrollDashboard> {
   const range = getPayrollWeekRange(referenceDate);
-  const [device, barbers] = await Promise.all([
-    getLatestPayrollDevice(supabase),
-    getPayrollBarbers(supabase),
-  ]);
+  const device = await getLatestPayrollDevice(supabase);
 
   if (!device) {
     return {
@@ -106,13 +84,10 @@ export async function getPayrollDashboard(
       period: null,
       pendingCommand: null,
       lastCommand: null,
-      barbers,
       isSyncStale: true,
       hasPendingOutbox: false,
       isClosed: isPayrollRangeClosed(range),
       canRequestCommand: false,
-      canPay: false,
-      payBlockReason: "No active desktop sync device.",
     };
   }
 
@@ -127,13 +102,6 @@ export async function getPayrollDashboard(
   const isClosed = isPayrollRangeClosed(range);
   const isPaid = period?.state === "paid";
   const canRequestCommand = !pendingCommand && !isPaid;
-  const payBlockReason = getPayBlockReason({
-    period,
-    pendingCommand,
-    isSyncStale,
-    hasPendingOutbox,
-    isClosed,
-  });
 
   return {
     device,
@@ -141,13 +109,10 @@ export async function getPayrollDashboard(
     period,
     pendingCommand,
     lastCommand,
-    barbers,
     isSyncStale,
     hasPendingOutbox,
     isClosed,
     canRequestCommand,
-    canPay: payBlockReason === null,
-    payBlockReason,
   };
 }
 
@@ -162,8 +127,7 @@ export async function getPayrollHistory(supabase: SupabaseClient) {
     .select(
       `
         *,
-        lines:synced_payroll_lines(*),
-        adjustments:synced_payroll_adjustments(*)
+        lines:synced_payroll_lines(*)
       `,
     )
     .eq("source_device_id", device.id)
@@ -214,22 +178,6 @@ export function payrollReference(period: PayrollPeriod | null, range: PayrollWee
   return `NOM-${compactDate}-${period.local_period_id.slice(0, 4).toUpperCase()}`;
 }
 
-function getPayBlockReason(input: {
-  period: PayrollPeriod | null;
-  pendingCommand: PayrollCommand | null;
-  isSyncStale: boolean;
-  hasPendingOutbox: boolean;
-  isClosed: boolean;
-}) {
-  if (!input.period) return "Request a desktop recalculation first.";
-  if (input.period.state === "paid") return "This payroll period is already paid.";
-  if (input.pendingCommand) return "A payroll command is pending sync.";
-  if (input.isSyncStale) return "Desktop sync is stale.";
-  if (input.hasPendingOutbox) return "Desktop has pending sync events.";
-  if (!input.isClosed) return "Payroll period has not closed yet.";
-  return null;
-}
-
 async function getLatestPayrollDevice(supabase: SupabaseClient): Promise<PayrollDevice | null> {
   const { data, error } = await supabase
     .from("sync_devices")
@@ -243,17 +191,6 @@ async function getLatestPayrollDevice(supabase: SupabaseClient): Promise<Payroll
   return data as PayrollDevice | null;
 }
 
-async function getPayrollBarbers(supabase: SupabaseClient): Promise<PayrollBarber[]> {
-  const { data, error } = await supabase
-    .from("barbers")
-    .select("id, display_name, station_code")
-    .eq("is_active", true)
-    .order("display_name");
-
-  if (error) throw new Error("Failed to load barbers: " + error.message);
-  return (data ?? []) as PayrollBarber[];
-}
-
 async function getPayrollPeriod(
   supabase: SupabaseClient,
   sourceDeviceId: string,
@@ -264,8 +201,7 @@ async function getPayrollPeriod(
     .select(
       `
         *,
-        lines:synced_payroll_lines(*),
-        adjustments:synced_payroll_adjustments(*)
+        lines:synced_payroll_lines(*)
       `,
     )
     .eq("source_device_id", sourceDeviceId)
@@ -324,7 +260,6 @@ function normalizePayrollPeriods(rows: unknown[]): PayrollPeriod[] {
       lines: normalizeArray<PayrollLine>(typed.lines).sort((left, right) =>
         left.barber_name.localeCompare(right.barber_name),
       ),
-      adjustments: normalizeArray<PayrollAdjustment>(typed.adjustments),
     } as PayrollPeriod;
   });
 }

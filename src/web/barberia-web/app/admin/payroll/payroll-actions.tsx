@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { CircleDollarSign, RefreshCw } from "lucide-react";
-import { requestPayrollPayment, requestPayrollSnapshot } from "@/app/actions/admin-payroll";
-import type { PayrollBarber, PayrollWeekRange } from "@/lib/payroll";
+import { RefreshCw } from "lucide-react";
+import { requestPayrollSnapshot } from "@/app/actions/admin-payroll";
+import type { PayrollWeekRange } from "@/lib/payroll";
 import styles from "./payroll.module.css";
 
 type ActionState = {
@@ -15,34 +15,18 @@ type ActionState = {
 type PayrollActionsProps = {
   sourceDeviceId: string | null;
   range: PayrollWeekRange;
-  barbers: PayrollBarber[];
   canRequestCommand: boolean;
-  canPay: boolean;
-  payBlockReason: string | null;
   reference: string;
 };
 
 export function PayrollActions({
   sourceDeviceId,
   range,
-  barbers,
   canRequestCommand,
-  canPay,
-  payBlockReason,
   reference,
 }: PayrollActionsProps) {
   const [snapshotState, snapshotAction, snapshotPending] = useActionState<ActionState, FormData>(
     requestPayrollSnapshot,
-    null,
-  );
-  const [paymentState, paymentAction, paymentPending] = useActionState<ActionState, FormData>(
-    async (previousState, formData) => {
-      if (!confirm("Request payroll payment from desktop?")) {
-        return previousState;
-      }
-
-      return requestPayrollPayment(previousState, formData);
-    },
     null,
   );
 
@@ -59,22 +43,13 @@ export function PayrollActions({
         <ActionMessage state={snapshotState} successText="Recalculate request sent." />
       </form>
 
-      <form action={paymentAction} className={styles.payForm}>
-        <HiddenCommandFields sourceDeviceId={sourceDeviceId} range={range} />
-        
+      <div className={styles.payForm}>
         <label className={styles.referenceLabel}>
           <span>Payroll Reference</span>
           <input value={reference} readOnly tabIndex={-1} />
         </label>
-
-        <input type="hidden" name="paymentMethod" value="cash" />
-        <button type="submit" disabled={!canPay || paymentPending} className={styles.primaryButton} title={payBlockReason ?? "Pay Payroll"}>
-          <CircleDollarSign size={18} aria-hidden="true" />
-          {paymentPending ? "Requesting" : "Pay Payroll"}
-        </button>
-        {payBlockReason && <span className={styles.blockReason}>{payBlockReason}</span>}
-        <ActionMessage state={paymentState} successText="Payment request sent." />
-      </form>
+        <span className={styles.blockReason}>Desktop marks closed payroll periods as paid automatically.</span>
+      </div>
     </div>
   );
 }

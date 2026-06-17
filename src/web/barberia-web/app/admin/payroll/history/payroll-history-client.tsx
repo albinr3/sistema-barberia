@@ -86,7 +86,6 @@ function HistoryDetails({ period, onClose }: { period: PayrollPeriod; onClose: (
                 <th>Services</th>
                 <th>Sales</th>
                 <th>Commission</th>
-                <th>Adjustments</th>
                 <th>Net Pay</th>
               </tr>
             </thead>
@@ -97,7 +96,6 @@ function HistoryDetails({ period, onClose }: { period: PayrollPeriod; onClose: (
                   <td className={styles.numeric}>{line.closed_services_count}</td>
                   <td className={styles.numeric}>{formatCurrency(line.sales_generated_cents)}</td>
                   <td className={styles.numeric}>{formatCurrency(line.commission_cents)}</td>
-                  <td className={styles.numeric}>{formatCurrency(line.adjustments_cents)}</td>
                   <td className={styles.netCell}>{formatCurrency(line.total_cents)}</td>
                 </tr>
               ))}

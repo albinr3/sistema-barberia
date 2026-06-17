@@ -22,7 +22,7 @@ public sealed class PayrollService
         return new PayrollWeekRange(start, start.AddDays(7));
     }
 
-    public PayrollSnapshot LoadOrGenerate(DateTimeOffset reference, IReadOnlyList<PayrollAdjustment> tempAdjustments)
+    public PayrollSnapshot LoadOrGenerate(DateTimeOffset reference)
     {
         var range = GetWeekRange(reference);
 
@@ -35,14 +35,13 @@ public sealed class PayrollService
             return new PayrollSnapshot(
                 existingPeriod,
                 repository.ListLines(existingPeriod.Id),
-                repository.ListAdjustments(existingPeriod.Id),
                 OperationalClock.Now);
         }
 
-        return GeneratePreview(range, tempAdjustments, OperationalClock.Now);
+        return GeneratePreview(range, OperationalClock.Now);
     }
 
-    public PayrollSnapshot GeneratePreview(PayrollWeekRange range, IReadOnlyList<PayrollAdjustment> tempAdjustments, DateTimeOffset generatedAt)
+    public PayrollSnapshot GeneratePreview(PayrollWeekRange range, DateTimeOffset generatedAt)
     {
         PayrollSnapshot? snapshot = null;
         using var connection = _connectionFactory.OpenConnection();
@@ -58,8 +57,7 @@ public sealed class PayrollService
         var payments = repository.GetUnpaidPayments(range.Start, range.End);
         var barbers = new LocalBarberRepository(connection).ListAll();
         
-        var periodAdjustments = tempAdjustments.Select(adj => adj with { PeriodId = periodId }).ToList();
-        var lines = BuildLines(periodId, payments, periodAdjustments, barbers);
+        var lines = BuildLines(periodId, payments, barbers);
 
         var period = new PayrollPeriod(
             periodId,
@@ -76,20 +74,19 @@ public sealed class PayrollService
             generatedAt,
             null);
 
-        snapshot = new PayrollSnapshot(period, lines, periodAdjustments, generatedAt);
+        snapshot = new PayrollSnapshot(period, lines, generatedAt);
 
         return snapshot ?? throw new InvalidOperationException("Payroll snapshot could not be generated.");
     }
 
     public PayrollSnapshot PayPeriod(
         PayrollWeekRange range,
-        IReadOnlyList<PayrollAdjustment> tempAdjustments,
         PayrollPaymentMethod method,
         string? reference,
         string? notes,
         DateTimeOffset paidAt)
     {
-        var snapshot = GeneratePreview(range, tempAdjustments, paidAt);
+        var snapshot = GeneratePreview(range, paidAt);
         if (snapshot.Period.State == PayrollPeriodState.Paid)
         {
             throw new InvalidOperationException("Payroll period is already paid.");
@@ -100,10 +97,6 @@ public sealed class PayrollService
             var repository = new PayrollRepository(connection, transaction);
             
             repository.SavePeriod(snapshot.Period, snapshot.Lines);
-            foreach (var adj in snapshot.Adjustments)
-            {
-                repository.AddAdjustment(adj);
-            }
 
             repository.MarkAsPaid(
                 snapshot.Period.Id,
@@ -112,54 +105,9 @@ public sealed class PayrollService
                 NormalizeOptionalText(notes),
                 paidAt,
                 DeviceId);
-
-            new PayrollPendingAdjustmentRepository(connection, transaction)
-                .ClearRange(range.Start, range.End);
         });
 
         return Load(range);
-    }
-
-    public IReadOnlyList<PayrollAdjustment> ListPendingAdjustments(PayrollWeekRange range)
-    {
-        using var connection = _connectionFactory.OpenConnection();
-        return new PayrollPendingAdjustmentRepository(connection)
-            .ListByRange(range.Start, range.End)
-            .Select(adjustment => adjustment.ToAdjustment(Guid.Empty))
-            .ToList();
-    }
-
-    public PayrollAdjustment AddPendingAdjustment(
-        PayrollWeekRange range,
-        Guid barberId,
-        long amountCents,
-        string reason,
-        DateTimeOffset createdAt)
-    {
-        PayrollPendingAdjustment? pending = null;
-        new LocalDataTransaction(_connectionFactory).Execute((connection, transaction) =>
-        {
-            var barber = new LocalBarberRepository(connection, transaction).GetById(barberId);
-            if (barber is null)
-            {
-                throw new InvalidOperationException("Barber was not found locally.");
-            }
-
-            pending = new PayrollPendingAdjustment(
-                Guid.NewGuid(),
-                Guid.NewGuid(),
-                range.Start,
-                range.End,
-                barberId,
-                amountCents,
-                NormalizeRequiredText(reason, "Adjustment reason is required."),
-                createdAt);
-
-            new PayrollPendingAdjustmentRepository(connection, transaction).Add(pending);
-        });
-
-        return pending?.ToAdjustment(Guid.Empty)
-            ?? throw new InvalidOperationException("Payroll adjustment could not be saved.");
     }
 
     public PayrollSnapshot Load(PayrollWeekRange range)
@@ -172,8 +120,34 @@ public sealed class PayrollService
         return new PayrollSnapshot(
             period,
             repository.ListLines(period.Id),
-            repository.ListAdjustments(period.Id),
             OperationalClock.Now);
+    }
+
+    public PayrollSnapshot? AutoPayLastClosedPeriod(DateTimeOffset now)
+    {
+        var currentRange = GetWeekRange(now);
+        var closedRange = new PayrollWeekRange(currentRange.Start.AddDays(-7), currentRange.Start);
+        if (closedRange.End > now)
+        {
+            return null;
+        }
+
+        using (var connection = _connectionFactory.OpenConnection())
+        {
+            var existingPeriod = new PayrollRepository(connection).GetPeriodByDates(closedRange.Start, closedRange.End);
+            if (existingPeriod?.State == PayrollPeriodState.Paid)
+            {
+                return null;
+            }
+        }
+
+        var preview = GeneratePreview(closedRange, now);
+        return PayPeriod(
+            closedRange,
+            PayrollPaymentMethod.Cash,
+            BuildAutomaticReference(preview.Period),
+            "Auto-paid by desktop weekly cutoff.",
+            now);
     }
 
     public IReadOnlyList<PayrollBarberOption> ListBarbers()
@@ -201,13 +175,9 @@ public sealed class PayrollService
         using var connection = _connectionFactory.OpenConnection();
         var repository = new PayrollRepository(connection);
         var payments = repository.GetPaymentsForPeriod(snapshot.Period, barberId);
-        var adjustments = snapshot.Adjustments
-            .Where(adjustment => adjustment.BarberId == barberId)
-            .ToList();
 
         var dates = payments
             .Select(payment => payment.CollectedAt.Date)
-            .Concat(adjustments.Select(adjustment => adjustment.CreatedAt.Date))
             .Distinct()
             .OrderBy(date => date)
             .ToList();
@@ -216,9 +186,6 @@ public sealed class PayrollService
             .Select(date =>
             {
                 var dayPayments = payments.Where(payment => payment.CollectedAt.Date == date).ToList();
-                var adjustmentTotal = adjustments
-                    .Where(adjustment => adjustment.CreatedAt.Date == date)
-                    .Sum(adjustment => adjustment.AmountCents);
                 var commissionTotal = dayPayments.Sum(payment => payment.CommissionCents ?? 0);
 
                 return new PayrollDailyBreakdown(
@@ -226,8 +193,8 @@ public sealed class PayrollService
                     dayPayments.Count,
                     dayPayments.Sum(payment => payment.AmountCents),
                     commissionTotal,
-                    adjustmentTotal,
-                    commissionTotal + adjustmentTotal);
+                    0,
+                    commissionTotal);
             })
             .ToList();
 
@@ -237,11 +204,9 @@ public sealed class PayrollService
     private static IReadOnlyList<PayrollLine> BuildLines(
         Guid periodId,
         IReadOnlyList<CashPayment> payments,
-        IReadOnlyList<PayrollAdjustment> adjustments,
         IReadOnlyList<Core.Domain.Barber> barbers)
     {
         var barberIds = payments.Select(payment => payment.BarberId)
-            .Concat(adjustments.Select(adjustment => adjustment.BarberId))
             .Distinct()
             .ToList();
 
@@ -250,9 +215,6 @@ public sealed class PayrollService
             {
                 var barber = barbers.FirstOrDefault(candidate => candidate.Id == barberId);
                 var barberPayments = payments.Where(payment => payment.BarberId == barberId).ToList();
-                var adjustmentTotal = adjustments
-                    .Where(adjustment => adjustment.BarberId == barberId)
-                    .Sum(adjustment => adjustment.AmountCents);
                 var commissionTotal = barberPayments.Sum(payment => payment.CommissionCents ?? 0);
 
                 return new PayrollLine(
@@ -265,11 +227,16 @@ public sealed class PayrollService
                     barberPayments.Count,
                     barberPayments.Sum(payment => payment.AmountCents),
                     commissionTotal,
-                    adjustmentTotal,
-                    commissionTotal + adjustmentTotal);
+                    0,
+                    commissionTotal);
             })
             .OrderBy(line => line.BarberName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static string BuildAutomaticReference(PayrollPeriod period)
+    {
+        return $"NOM-{period.StartDate:yyMMdd}-{period.Id.ToString()[..4].ToUpperInvariant()}";
     }
 
     private static string? NormalizeOptionalText(string? value)
@@ -277,15 +244,6 @@ public sealed class PayrollService
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static string NormalizeRequiredText(string? value, string errorMessage)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException(errorMessage);
-        }
-
-        return value.Trim();
-    }
 }
 
 public sealed record PayrollWeekRange(DateTimeOffset Start, DateTimeOffset End);
@@ -293,7 +251,6 @@ public sealed record PayrollWeekRange(DateTimeOffset Start, DateTimeOffset End);
 public sealed record PayrollSnapshot(
     PayrollPeriod Period,
     IReadOnlyList<PayrollLine> Lines,
-    IReadOnlyList<PayrollAdjustment> Adjustments,
     DateTimeOffset LoadedAt);
 
 public sealed record PayrollBarberOption(Guid Id, string DisplayName);

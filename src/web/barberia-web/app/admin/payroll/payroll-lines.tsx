@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, X } from "lucide-react";
-import { formatCurrency, type PayrollAdjustment, type PayrollLine, type PayrollPeriod } from "@/lib/payroll";
+import { formatCurrency, formatDate, type PayrollLine, type PayrollPeriod } from "@/lib/payroll";
+import { fetchLineDailyBreakdown, type DailyBreakdownRow } from "@/app/actions/admin-payroll";
 import styles from "./payroll.module.css";
 
 export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
@@ -23,7 +24,6 @@ export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
               <th>Services</th>
               <th>Sales</th>
               <th>Comm. $</th>
-              <th>Adjustments</th>
               <th>Net Pay</th>
               <th>Actions</th>
             </tr>
@@ -45,7 +45,6 @@ export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
                 <td className={styles.numeric}>{line.closed_services_count}</td>
                 <td className={styles.numeric}>{formatCurrency(line.sales_generated_cents)}</td>
                 <td className={styles.numeric}>{formatCurrency(line.commission_cents)}</td>
-                <td className={styles.numeric}>{formatCurrency(line.adjustments_cents)}</td>
                 <td className={styles.netCell}>{formatCurrency(line.total_cents)}</td>
                 <td className={styles.actionCell}>
                   <button type="button" className={styles.iconButton} onClick={() => setSelectedLine(line)} title="View details">
@@ -61,7 +60,7 @@ export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
       {selectedLine && (
         <LineDetailsModal
           line={selectedLine}
-          adjustments={period.adjustments.filter((adjustment) => adjustment.barber_id === selectedLine.barber_id)}
+          period={period}
           onClose={() => setSelectedLine(null)}
         />
       )}
@@ -71,57 +70,101 @@ export function PayrollLines({ period }: { period: PayrollPeriod | null }) {
 
 function LineDetailsModal({
   line,
-  adjustments,
+  period,
   onClose,
 }: {
   line: PayrollLine;
-  adjustments: PayrollAdjustment[];
+  period: PayrollPeriod;
   onClose: () => void;
 }) {
+  const [breakdown, setBreakdown] = useState<DailyBreakdownRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!line.barber_id) {
+      setBreakdown([]);
+      return;
+    }
+    
+    fetchLineDailyBreakdown(
+      line.barber_id,
+      period.start_date,
+      period.end_date,
+      line.sales_generated_cents,
+      line.commission_cents
+    ).then((result) => {
+      if (result.success) {
+        setBreakdown(result.data);
+      } else {
+        setError(result.error);
+      }
+    });
+  }, [line, period]);
+
+  const formatDayDate = (isoString: string) => {
+    const d = new Date(isoString + "T00:00:00Z");
+    return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(d);
+  };
+
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label={`${line.barber_name} payroll details`}>
-      <div className={styles.modal}>
+      <div className={styles.modalWide}>
         <header className={styles.modalHeader}>
           <div>
             <h2>Earnings Breakdown - {line.barber_name}</h2>
-            <p>{line.station_number ? `Station B-${line.station_number}` : "No station"}</p>
+            <p className={styles.modalSubtitle}>{formatDate(period.start_date)} - {formatDate(period.end_date)}</p>
           </div>
           <button type="button" className={styles.iconButton} onClick={onClose} title="Close">
             <X size={18} aria-hidden="true" />
           </button>
         </header>
-        <div className={styles.detailGrid}>
-          <Detail label="Services" value={line.closed_services_count.toString()} />
-          <Detail label="Sales" value={formatCurrency(line.sales_generated_cents)} />
-          <Detail label="Commission" value={formatCurrency(line.commission_cents)} />
-          <Detail label="Adjustments" value={formatCurrency(line.adjustments_cents)} />
-          <Detail label="Net Pay" value={formatCurrency(line.total_cents)} strong />
-        </div>
-        <section className={styles.adjustmentsList}>
-          <h3>Manual Adjustments</h3>
-          {adjustments.length === 0 ? (
-            <p>No adjustments for this barber.</p>
+        
+        <div className={styles.modalBodyScroller}>
+          {error ? (
+            <div className={styles.emptyState}>Error loading breakdown: {error}</div>
+          ) : !breakdown ? (
+            <div className={styles.emptyState}>Loading daily breakdown...</div>
+          ) : breakdown.length === 0 ? (
+            <div className={styles.emptyState}>No activity recorded for this period.</div>
           ) : (
-            <ul>
-              {adjustments.map((adjustment) => (
-                <li key={adjustment.id}>
-                  <span>{adjustment.reason}</span>
-                  <strong>{formatCurrency(adjustment.amount_cents)}</strong>
-                </li>
-              ))}
-            </ul>
+            <div className={styles.breakdownTableContainer}>
+              <table className={styles.breakdownTable}>
+                <thead>
+                  <tr>
+                    <th className={styles.textLeft}>DATE</th>
+                    <th className={styles.textRight}>SERVICES</th>
+                    <th className={styles.textRight}>DAILY SALES</th>
+                    <th className={styles.textRight}>COMM. %</th>
+                    <th className={styles.textRight}>COMMISSION($)</th>
+                    <th className={styles.textRight}>EARNINGS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakdown.map((row) => (
+                    <tr key={row.date}>
+                      <td className={styles.textLeft}>{formatDayDate(row.date)}</td>
+                      <td className={styles.textRight}>
+                        <span className={styles.servicesBadge}>{row.services}</span>
+                      </td>
+                      <td className={styles.textRight}>{formatCurrency(row.salesCents)}</td>
+                      <td className={styles.textRight}>
+                        <span className={styles.commBadge}>{(row.commissionPercentage * 100).toFixed(0)}%</span>
+                      </td>
+                      <td className={styles.textRight} style={{ fontWeight: 600 }}>{formatCurrency(row.commissionCents)}</td>
+                      <td className={styles.textRight} style={{ fontWeight: 800, color: "var(--accent-strong)" }}>{formatCurrency(row.earningsCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </section>
-      </div>
-    </div>
-  );
-}
+        </div>
 
-function Detail({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className={styles.detailItem}>
-      <span>{label}</span>
-      <strong className={strong ? styles.detailStrong : undefined}>{value}</strong>
+        <footer className={styles.modalFooter}>
+          <div className={styles.footerTotalLabel}>Total Period Earnings</div>
+          <div className={styles.footerTotalValue}>{formatCurrency(line.total_cents)}</div>
+        </footer>
+      </div>
     </div>
   );
 }

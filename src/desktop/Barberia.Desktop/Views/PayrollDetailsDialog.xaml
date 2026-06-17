@@ -44,7 +44,6 @@
                         <ColumnDefinition Width="1.5*" />
                         <ColumnDefinition Width="1.5*" />
                         <ColumnDefinition Width="1.5*" />
-                        <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="1.5*" />
                     </Grid.ColumnDefinitions>
                     
@@ -53,8 +52,7 @@
                     <TextBlock Grid.Column="2" Text="DAILY SALES" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
                     <TextBlock Grid.Column="3" Text="COMM. %" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
                     <TextBlock Grid.Column="4" Text="COMMISSION($)" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
-                    <TextBlock Grid.Column="5" Text="ADJUSTMENTS" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
-                    <TextBlock Grid.Column="6" Text="EARNINGS" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="5" Text="EARNINGS" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PayrollMutedTextBrush}" TextAlignment="Right" />
                 </Grid>
                 
                 <StackPanel x:Name="_linesPanel" />

@@ -26,7 +26,6 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
@@ -40,11 +39,6 @@
             </StackPanel>
 
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Total Adjustments" FontSize="12" Foreground="#444655" />
-                <TextBlock x:Name="_kpiAdjustments" FontSize="18" FontWeight="SemiBold" Foreground="#1A1C1E" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="3">
                 <TextBlock Text="Net Payout" FontSize="12" Foreground="#444655" />
                 <TextBlock x:Name="_kpiTotal" FontSize="18" FontWeight="Bold" Foreground="#001387" />
             </StackPanel>
@@ -56,13 +50,6 @@
                     <TextBlock Text="Barber Payouts" FontWeight="SemiBold" FontSize="16" Foreground="#1A1C1E" />
                     <Border BorderBrush="#EEEEF0" BorderThickness="1" CornerRadius="8">
                         <StackPanel x:Name="_linesPanel" />
-                    </Border>
-                </StackPanel>
-
-                <StackPanel x:Name="_adjustmentsSection" Spacing="8" Visibility="Collapsed">
-                    <TextBlock Text="Included Adjustments" FontWeight="SemiBold" FontSize="16" Foreground="#1A1C1E" />
-                    <Border BorderBrush="#EEEEF0" BorderThickness="1" CornerRadius="8">
-                        <StackPanel x:Name="_adjustmentsPanel" />
                     </Border>
                 </StackPanel>
             </StackPanel>
