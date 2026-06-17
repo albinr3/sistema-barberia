@@ -11,12 +11,15 @@ namespace Barberia.Desktop.Views;
 public sealed partial class AppointmentsPage : Page
 {
     private readonly LocalAppointmentsService _service = new();
+    private readonly DispatcherTimer _refreshTimer = new();
 
     public event EventHandler? ShellMenuRequested;
 
     public AppointmentsPage()
     {
         InitializeComponent();
+        _refreshTimer.Interval = TimeSpan.FromSeconds(15);
+        _refreshTimer.Tick += (_, _) => LoadAppointments();
     }
 
     private void OnMenuButtonClick(object sender, RoutedEventArgs args)
@@ -27,6 +30,12 @@ public sealed partial class AppointmentsPage : Page
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         LoadAppointments();
+        _refreshTimer.Start();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        _refreshTimer.Stop();
     }
 
     private void LoadAppointments()
@@ -56,6 +65,8 @@ public sealed partial class AppointmentsPage : Page
         var orderedItems = snapshot.Items
             .OrderBy(item => IsActiveState(item) ? 0 : 1)
             .ThenBy(item => item.Appointment.ScheduledFor)
+            .ThenBy(item => item.Appointment.AppointmentCode ?? string.Empty)
+            .ThenBy(item => item.Appointment.Id)
             .ToList();
 
         foreach (var item in orderedItems)
@@ -78,84 +89,83 @@ public sealed partial class AppointmentsPage : Page
     {
         var row = new Grid
         {
-            ColumnSpacing = 18,
-            Padding = new Thickness(18, 16, 18, 16)
+            ColumnSpacing = 24,
+            Padding = new Thickness(24, 28, 24, 28)
         };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
 
         var timePanel = new StackPanel
         {
-            Spacing = 2,
+            Spacing = 4,
             VerticalAlignment = VerticalAlignment.Center
         };
         timePanel.Children.Add(new TextBlock
         {
             Text = item.Appointment.ScheduledFor.ToString("hh:mm tt"),
-            FontSize = 20,
-            FontWeight = FontWeights.SemiBold,
+            FontSize = 36,
+            FontWeight = FontWeights.Bold,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)),
             TextWrapping = TextWrapping.NoWrap
         });
         timePanel.Children.Add(new TextBlock
         {
             Text = item.Appointment.ScheduledFor.ToString("MMM d"),
-            FontSize = 12,
+            FontSize = 20,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116)),
             TextWrapping = TextWrapping.NoWrap
         });
         row.Children.Add(timePanel);
 
-        var clientPanel = new StackPanel
+        var detailsPanel = new StackPanel
         {
-            Spacing = 4,
+            Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        clientPanel.Children.Add(new TextBlock
+        detailsPanel.Children.Add(new TextBlock
         {
             Text = item.Appointment.CustomerName,
-            FontSize = 16,
-            FontWeight = FontWeights.SemiBold,
+            FontSize = 32,
+            FontWeight = FontWeights.Bold,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)),
             TextWrapping = TextWrapping.WrapWholeWords
         });
-        clientPanel.Children.Add(new TextBlock
+        
+        var serviceBarberPanel = new StackPanel
         {
-            Text = item.Service?.Name ?? "-",
-            FontSize = 14,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85)),
-            TextWrapping = TextWrapping.WrapWholeWords
-        });
-        Grid.SetColumn(clientPanel, 1);
-        row.Children.Add(clientPanel);
-
-        var assignmentPanel = new StackPanel
-        {
-            Spacing = 4,
-            VerticalAlignment = VerticalAlignment.Center
+            Orientation = Orientation.Horizontal,
+            Spacing = 16
         };
-        assignmentPanel.Children.Add(new TextBlock
+        serviceBarberPanel.Children.Add(new TextBlock
         {
-            Text = "Barber:",
-            FontSize = 14,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116))
+            Text = item.Service?.Name ?? "General Service",
+            FontSize = 22,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85)),
+            TextWrapping = TextWrapping.NoWrap
         });
-        assignmentPanel.Children.Add(new TextBlock
+        serviceBarberPanel.Children.Add(new TextBlock
+        {
+            Text = "•",
+            FontSize = 22,
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 197, 207, 221))
+        });
+        serviceBarberPanel.Children.Add(new TextBlock
         {
             Text = item.Barber?.DisplayNameWithStation ?? "Any barber",
-            FontSize = 16,
+            FontSize = 22,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 26, 28, 30)),
-            TextWrapping = TextWrapping.WrapWholeWords
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 0, 19, 135)),
+            TextWrapping = TextWrapping.NoWrap
         });
-        Grid.SetColumn(assignmentPanel, 2);
-        row.Children.Add(assignmentPanel);
+        detailsPanel.Children.Add(serviceBarberPanel);
+        
+        Grid.SetColumn(detailsPanel, 1);
+        row.Children.Add(detailsPanel);
 
         var statusPanel = new StackPanel
         {
-            Spacing = 8,
+            Spacing = 12,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -163,11 +173,11 @@ public sealed partial class AppointmentsPage : Page
         statusPanel.Children.Add(new TextBlock
         {
             Text = IsActiveState(item) ? "Operational" : "Closed",
-            FontSize = 12,
+            FontSize = 18,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116)),
             HorizontalAlignment = HorizontalAlignment.Right
         });
-        Grid.SetColumn(statusPanel, 3);
+        Grid.SetColumn(statusPanel, 2);
         row.Children.Add(statusPanel);
 
         return new Border
@@ -178,8 +188,8 @@ public sealed partial class AppointmentsPage : Page
             BorderBrush = new SolidColorBrush(IsActiveState(item)
                 ? ColorHelper.FromArgb(255, 197, 207, 221)
                 : ColorHelper.FromArgb(255, 226, 230, 235)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(12),
             Child = row
         };
     }
@@ -250,15 +260,15 @@ public sealed partial class AppointmentsPage : Page
         return new Border
         {
             Background = new SolidColorBrush(bg),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(10, 6, 10, 6),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(20, 10, 20, 10),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
             Child = new TextBlock
             {
                 Text = text,
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
+                FontSize = 22,
+                FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(fg)
             }
         };
@@ -271,11 +281,11 @@ public sealed partial class AppointmentsPage : Page
             Background = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255)),
             BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(255, 238, 238, 240)),
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Padding = new Thickness(24, 48, 24, 48),
+            Padding = new Thickness(32, 64, 32, 64),
             Child = new TextBlock
             {
                 Text = text,
-                FontSize = 14,
+                FontSize = 24,
                 Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 101, 108, 116)),
                 TextWrapping = TextWrapping.Wrap,
                 HorizontalAlignment = HorizontalAlignment.Center

@@ -33,7 +33,24 @@
 .headerPills {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.menuButton {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: transparent;
+  color: #001387;
+  transition: all 0.2s ease;
+  margin-right: 4px;
+}
+
+.menuButton:hover {
+  background: #e8ebff;
+  transform: scale(1.05);
 }
 
 .titleGroup svg,

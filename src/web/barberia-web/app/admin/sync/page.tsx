@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireAdmin } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
-import { Activity, Server, Smartphone, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Activity, Server, Smartphone, AlertTriangle, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import styles from "./admin-sync.module.css";
 import { DismissConflictButton } from "@/components/admin/dismiss-conflict-button";
 import Link from "next/link";
@@ -21,12 +21,14 @@ export default async function AdminSyncPage(props: { searchParams?: Promise<{ pa
     { count: servicesCount },
     { data: events, count: totalEvents },
     { data: conflicts },
+    { data: auditLogs },
   ] = await Promise.all([
     supabase.from("sync_devices").select("*").order("last_sync_at", { ascending: false }),
     supabase.from("barbers").select("*", { count: "exact", head: true }),
     supabase.from("services").select("*", { count: "exact", head: true }),
     supabase.from("sync_events").select("*", { count: "exact" }).order("received_at", { ascending: false }).range(offset, offset + limit - 1),
     supabase.from("sync_conflicts").select("*").eq("status", "open").order("created_at", { ascending: false }),
+    supabase.from("audit_log").select("id, action, created_at, actor:profiles(display_name)").order("created_at", { ascending: false }).limit(10),
   ]);
 
   const totalPages = Math.ceil((totalEvents || 0) / limit);
@@ -161,6 +163,35 @@ export default async function AdminSyncPage(props: { searchParams?: Promise<{ pa
             </>
           ) : (
             <div className={styles.emptyMessage}>No recent sync events found.</div>
+          )}
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}><FileText size={20} /> Recent Audit Log</h2>
+          {auditLogs && auditLogs.length > 0 ? (
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Action</th>
+                    <th>Actor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {auditLogs.map((log: any) => (
+                    <tr key={log.id}>
+                      <td>{new Date(log.created_at).toLocaleString()}</td>
+                      <td style={{ fontWeight: 500 }}>{log.action}</td>
+                      <td>{log.actor?.display_name || "Unknown"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className={styles.emptyMessage}>No recent audit activity.</div>
           )}
         </section>
       </div>

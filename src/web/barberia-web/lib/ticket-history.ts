@@ -99,7 +99,7 @@ export async function getTicketHistory(
   }
 
   if (params.status) {
-    query = query.eq("status", params.status);
+    query = query.ilike("status", params.status);
   }
 
   query = query
@@ -165,11 +165,20 @@ export function formatDateTime(isoString: string | undefined | null) {
   }).format(new Date(isoString));
 }
 
-export function formatStatus(status: string) {
+export function formatStatus(status?: string | null) {
+  if (!status) return "-";
   return status
+    .toLowerCase()
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+export function getStatusCssKey(status?: string | null) {
+  if (!status) return "";
+  const s = status.toLowerCase();
+  if (s === "inservice" || s === "in service") return "in_progress";
+  return s;
 }
 
 export function getSource(ticket: TicketHistoryRow) {

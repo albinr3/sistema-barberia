@@ -1,4 +1,5 @@
-import { AlertTriangle, Clock3, Scissors, UsersRound } from "lucide-react";
+import { AlertTriangle, Clock3, Scissors, UsersRound, Menu } from "lucide-react";
+import Link from "next/link";
 import { AutoRefresh } from "@/components/tickets-dashboard/auto-refresh";
 import { requireAdmin } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +19,9 @@ export default async function TicketsDashboardPage() {
       <section className={styles.nowCalling} aria-label="Now Calling">
         <div className={styles.sectionHeader}>
           <div className={styles.titleGroup}>
+            <Link href="/admin" className={styles.menuButton} aria-label="Open menu">
+              <Menu size={28} aria-hidden="true" />
+            </Link>
             <Clock3 size={34} aria-hidden="true" />
             <h1>Now Calling</h1>
           </div>

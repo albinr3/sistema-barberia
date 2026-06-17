@@ -1,8 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { CalendarDays, ClipboardList, DollarSign, Scissors, Settings, UserRound, Tv, Wrench, History } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 import styles from "./app-shell.module.css";
+import logo from "../../logo(2).png";
 
 type AppShellProps = {
   title: string;
@@ -29,12 +31,12 @@ const navItems: Record<AppShellProps["variant"], NavItem[]> = {
   admin: [
     { href: "/admin", label: "Dashboard", icon: ClipboardList },
     { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
-    { href: "/admin/admin-dashboard" as Route, label: "Admin Dashboard", icon: Scissors },
-    { href: "/admin/sync", label: "Sync", icon: Settings },
+    { href: "/tickets-dashboard" as Route, label: "Tickets Dashboard", icon: Tv },
     { href: "/admin/tickets" as Route, label: "Ticket Ops", icon: Wrench },
     { href: "/admin/ticket-history" as Route, label: "Ticket History", icon: History },
     { href: "/admin/payroll" as Route, label: "Payroll", icon: DollarSign },
-    { href: "/tickets-dashboard" as Route, label: "Tickets Dashboard", icon: Tv },
+    { href: "/admin/admin-dashboard" as Route, label: "Admin Dashboard", icon: Scissors },
+    { href: "/admin/sync", label: "Sync", icon: Settings },
   ],
 };
 
@@ -44,9 +46,9 @@ export function AppShell({ title, variant, children }: AppShellProps) {
   return (
     <div className={`${styles.shell} ${styles[variant]}`}>
       <aside className={styles.sidebar}>
-        <Link className={styles.brand} href={homeHref}>
-          <span>System</span>
-          Barbershop
+        <Link className={styles.brand} href={homeHref} style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+          <Image src={logo} alt="Logo" style={{ height: "64px", width: "auto" }} priority />
+
         </Link>
         <nav aria-label={`${variant} navigation`}>
           {navItems[variant].map((item) => {

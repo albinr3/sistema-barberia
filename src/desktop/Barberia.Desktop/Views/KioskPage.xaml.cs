@@ -32,6 +32,8 @@ public sealed partial class KioskPage : Page
     private IReadOnlyList<Barber> _barbers = [];
     private bool _acceptsAnyBarber = true;
     private string _customerName = string.Empty;
+    private readonly DispatcherTimer _refreshTimer = new();
+    private static readonly TimeSpan BarberRefreshInterval = TimeSpan.FromSeconds(5);
 
     public event EventHandler? ShellMenuRequested;
 
@@ -42,11 +44,21 @@ public sealed partial class KioskPage : Page
         LoadBarbers();
         RenderBarberChoices();
         UpdateInteractionState();
+
+        _refreshTimer.Interval = BarberRefreshInterval;
+        _refreshTimer.Tick += (_, _) => RefreshBarbersIfChanged();
     }
 
     private void OnKioskLoaded(object sender, RoutedEventArgs args)
     {
         Focus(FocusState.Programmatic);
+        RefreshBarbersIfChanged();
+        _refreshTimer.Start();
+    }
+
+    private void OnKioskUnloaded(object sender, RoutedEventArgs args)
+    {
+        _refreshTimer.Stop();
     }
 
     private void OnKioskSizeChanged(object sender, SizeChangedEventArgs args)
@@ -301,6 +313,61 @@ public sealed partial class KioskPage : Page
             _barbers = [];
             _barberErrorText.Text = exception.Message;
             _barberErrorText.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void RefreshBarbersIfChanged()
+    {
+        try
+        {
+            var newBarbers = _checkInService.Load().Barbers
+                .OrderBy(barber => barber.StationNumber ?? int.MaxValue)
+                .ThenBy(barber => barber.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var changed = false;
+            if (_barbers.Count != newBarbers.Length)
+            {
+                changed = true;
+            }
+            else
+            {
+                for (int i = 0; i < _barbers.Count; i++)
+                {
+                    if (_barbers[i].Id != newBarbers[i].Id ||
+                        _barbers[i].State != newBarbers[i].State ||
+                        _barbers[i].DisplayName != newBarbers[i].DisplayName ||
+                        _barbers[i].StationCode != newBarbers[i].StationCode ||
+                        _barbers[i].ProfileImagePath != newBarbers[i].ProfileImagePath)
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                _barbers = newBarbers;
+                
+                var previousSelectionCount = _selectedBarberIds.Count;
+                _selectedBarberIds.RemoveWhere(id => 
+                {
+                    var b = newBarbers.FirstOrDefault(x => x.Id == id);
+                    return b == null || !IsSelectable(b);
+                });
+
+                if (_selectedBarberIds.Count == 0 && previousSelectionCount > 0)
+                {
+                    _acceptsAnyBarber = true;
+                }
+
+                RenderBarberChoices();
+            }
+        }
+        catch
+        {
+            // Ignore background load errors
         }
     }
 

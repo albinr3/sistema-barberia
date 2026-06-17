@@ -52,3 +52,7 @@ Para tareas de Fase 1, lee primero `docs/fases/phase-1-current-status.md` y NO l
 ## Limpieza despues de tests
 
 Si ejecutas tests o validaciones que generen `.codex-test-output/`, borra esa carpeta al terminar antes de revisar o preparar cambios para commit.
+
+## Manejo de Zonas Horarias
+
+Siempre que debas trabajar con fechas o tiempos (crear consultas, comparar fechas, generar reportes), debes utilizar estrictamente la zona horaria de **New Jersey (`America/New_York`)**. No utilices UTC genérico, ni la hora local del servidor por defecto, ni la zona horaria de Santo Domingo. Esto es crítico para asegurar que la información coincida con los puntos de venta (POS) y las operaciones físicas del negocio.

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import styles from "./ticket-history.module.css";
-import { formatCurrency, formatDateTime, formatStatus, getSource, type TicketHistoryRow } from "@/lib/ticket-history";
+import { formatCurrency, formatDateTime, formatStatus, getStatusCssKey, getSource, type TicketHistoryRow } from "@/lib/ticket-history";
 
 export function TicketDetails({
   ticket,
@@ -64,7 +64,7 @@ export function TicketDetails({
               <div className={styles.detailItem}>
                 <span className={styles.detailLabel}>Status</span>
                 <span className={styles.detailValue}>
-                  <span className={`${styles.statusBadge} ${styles[ticket.status] || ""}`}>
+                  <span className={`${styles.statusBadge} ${styles[getStatusCssKey(ticket.status)] || ""}`}>
                     {formatStatus(ticket.status)}
                   </span>
                 </span>

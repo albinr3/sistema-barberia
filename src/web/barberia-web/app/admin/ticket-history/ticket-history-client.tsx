@@ -11,6 +11,7 @@ import {
   formatCurrency,
   formatDateTime,
   formatStatus,
+  getStatusCssKey,
 } from "@/lib/ticket-history";
 
 export function TicketHistoryClient({ initialData }: { initialData: TicketHistoryResult }) {
@@ -190,7 +191,7 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
                       {ticket.payment ? ticket.payment.payment_method.toUpperCase() : "-"}
                     </td>
                     <td>
-                      <span className={`${styles.statusBadge} ${styles[ticket.status] || ""}`}>
+                      <span className={`${styles.statusBadge} ${styles[getStatusCssKey(ticket.status)] || ""}`}>
                         {formatStatus(ticket.status)}
                       </span>
                     </td>
