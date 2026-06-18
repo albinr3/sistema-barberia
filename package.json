@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build": "npm --prefix src/web/barberia-web ci --include=dev && npm --prefix src/web/barberia-web run build",
+    "start": "npm --prefix src/web/barberia-web run start",
     "web:dev": "npm --prefix src/web/barberia-web run dev",
     "web:build": "npm --prefix src/web/barberia-web run build",
     "web:typecheck": "npm --prefix src/web/barberia-web run typecheck",

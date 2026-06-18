@@ -26,6 +26,13 @@ Las fases del producto se gestionaran con milestones, labels e issues, no con ca
 
 El repositorio ya contiene la estructura base del monorepo, contexto IA en Markdown, plan tecnico de Fase 1 y solucion .NET para Fase 1. La aplicacion Windows local usa WinUI 3 con ventanas y paginas declaradas en XAML por defecto; la regla se protege con pruebas en `tests/desktop/Barberia.Desktop.Tests`.
 
+## Deploy web desde la raiz
+
+La app Next.js vive en `src/web/barberia-web`. Para proveedores que despliegan desde la raiz del repositorio y no permiten cambiar el directorio base, el `package.json` raiz expone:
+
+- `npm run build`: instala dependencias de `src/web/barberia-web` y ejecuta el build de Next.js.
+- `npm start`: inicia la app web con `next start` desde `src/web/barberia-web`.
+
 El estado vivo de Fase 1 esta en:
 
 - `docs/fases/phase-1-current-status.md`
