@@ -1,6 +1,7 @@
 namespace Barberia.Data.Models;
 
 public sealed record ReceiptPrintRecord(
+    Guid PaymentId,
     string? ReceiptNumber,
     int DisplayTicketNumber,
     string InternalTicketNumber,

@@ -61,7 +61,7 @@ public sealed class ReceiptReprintService
                 now,
                 "receipt_reprint_failed",
                 "payment",
-                Guid.Empty,
+                record.PaymentId,
                 JsonSerializer.Serialize(new { record.ReceiptNumber, error = printResult.ErrorMessage }),
                 deviceId));
                 
@@ -73,7 +73,7 @@ public sealed class ReceiptReprintService
             now,
             "receipt_reprinted",
             "payment",
-            Guid.Empty,
+            record.PaymentId,
             JsonSerializer.Serialize(new { record.ReceiptNumber }),
             deviceId));
     }
