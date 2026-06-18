@@ -151,34 +151,73 @@ public sealed class CashBoxCloseService
             var commission = decimal.Round(amount * barber.CommissionRate, 2, MidpointRounding.AwayFromZero);
             var barberStationCode = barber.StationCode
                 ?? throw new InvalidOperationException("Active barber has no assigned station.");
-            var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
-                receiptNumber,
-                turn.DisplayTicketNumber,
-                barber.DisplayName,
-                barberStationCode,
-                service.Name,
-                servicePrice,
-                additionalAmount,
-                amount,
-                commission,
-                Currency,
-                now,
-                deviceId,
-                paymentMethod.ToString()));
-            if (!printResult.Succeeded)
+            var receiptPrinted = false;
+            var cashDrawerOpened = false;
+            string? hardwareFailureMessage = null;
+
+            try
             {
-                throw new InvalidOperationException($"Could not print receipt: {printResult.ErrorMessage}");
+                var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
+                    receiptNumber,
+                    turn.DisplayTicketNumber,
+                    barber.DisplayName,
+                    barberStationCode,
+                    service.Name,
+                    servicePrice,
+                    additionalAmount,
+                    amount,
+                    commission,
+                    Currency,
+                    now,
+                    deviceId,
+                    paymentMethod.ToString()));
+                    
+                if (!printResult.Succeeded)
+                {
+                    hardwareFailureMessage = $"Printer failed: {printResult.ErrorMessage}";
+                }
+                else
+                {
+                    receiptPrinted = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                hardwareFailureMessage = $"Printer error: {ex.Message}";
             }
 
-            var cashDrawerOpened = false;
             if (paymentMethod == CustomerPaymentMethod.Cash)
             {
-                var drawerResult = _cashDrawer.Open(deviceId);
-                if (!drawerResult.Succeeded)
+                try
                 {
-                    throw new InvalidOperationException($"Could not open cash drawer: {drawerResult.ErrorMessage}");
+                    var drawerResult = _cashDrawer.Open(deviceId);
+                    if (!drawerResult.Succeeded)
+                    {
+                        var msg = $"Drawer failed: {drawerResult.ErrorMessage}";
+                        hardwareFailureMessage = hardwareFailureMessage == null ? msg : $"{hardwareFailureMessage} | {msg}";
+                    }
+                    else
+                    {
+                        cashDrawerOpened = true;
+                    }
                 }
-                cashDrawerOpened = true;
+                catch (Exception ex)
+                {
+                    var msg = $"Drawer error: {ex.Message}";
+                    hardwareFailureMessage = hardwareFailureMessage == null ? msg : $"{hardwareFailureMessage} | {msg}";
+                }
+            }
+
+            if (hardwareFailureMessage != null)
+            {
+                auditRepository.Add(new AuditEvent(
+                    Guid.NewGuid(),
+                    now,
+                    "cash_box_hardware_failure",
+                    "turn",
+                    turn.Id,
+                    JsonSerializer.Serialize(new { error = hardwareFailureMessage, receiptNumber }),
+                    deviceId));
             }
 
             var barbers = barberRepository
@@ -282,7 +321,7 @@ public sealed class CashBoxCloseService
                     commissionPercentage = barber.CommissionPercentage,
                     commissionRate = barber.CommissionRate,
                     receiptNumber,
-                    receiptPrinted = true,
+                    receiptPrinted = receiptPrinted,
                     cashDrawerOpened = cashDrawerOpened,
                     paymentMethod = paymentMethod.ToString(),
                     paymentReference
@@ -347,7 +386,10 @@ public sealed class CashBoxCloseService
                 commission,
                 receiptNumber,
                 now,
-                paymentMethod == CustomerPaymentMethod.Zelle ? "Service closed by Zelle. Payment registered." : "Service closed locally. Deposit cash into cash drawer.");
+                paymentMethod == CustomerPaymentMethod.Zelle ? "Service closed by Zelle. Payment registered." : "Service closed locally. Deposit cash into cash drawer.",
+                receiptPrinted,
+                cashDrawerOpened,
+                hardwareFailureMessage);
         });
 
         return result ?? throw new InvalidOperationException("Could not close service at cash box.");

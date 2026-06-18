@@ -112,4 +112,70 @@ public sealed class CashPaymentRepository
 
         return "CB-0000001";
     }
+
+    public IReadOnlyList<ReceiptPrintRecord> ListReceiptsForReprint(DateTimeOffset businessDate, string? searchQuery = null)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        
+        var query = """
+            SELECT p.receipt_number,
+                   t.display_ticket_number,
+                   t.ticket_number,
+                   b.display_name,
+                   b.station_number,
+                   s.name as service_name,
+                   p.service_price_cents,
+                   p.additional_cents,
+                   p.amount_cents,
+                   p.commission_cents,
+                   p.currency,
+                   p.collected_at,
+                   p.device_id,
+                   p.payment_method
+            FROM cash_payments p
+            JOIN turns t ON p.turn_id = t.id
+            JOIN barbers b ON p.barber_id = b.id
+            JOIN services s ON p.service_id = s.id
+            WHERE t.ticket_date = $business_date
+            """;
+            
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            query += " AND (t.display_ticket_number = $search OR t.ticket_number = $search OR p.receipt_number = $search)";
+        }
+        
+        query += " ORDER BY p.collected_at DESC;";
+        
+        command.CommandText = query;
+        command.AddText("$business_date", businessDate.ToString("yyyy-MM-dd"));
+        
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            command.AddText("$search", searchQuery.Trim());
+        }
+
+        using var reader = command.ExecuteReader();
+        var receipts = new List<ReceiptPrintRecord>();
+        while (reader.Read())
+        {
+            receipts.Add(new ReceiptPrintRecord(
+                reader.IsDBNull(0) ? null : reader.GetString(0),
+                reader.GetInt32(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.IsDBNull(4) ? "Unknown" : reader.GetInt32(4).ToString(),
+                reader.GetString(5),
+                (reader.IsDBNull(6) ? 0m : reader.GetInt64(6) / 100m),
+                (reader.GetInt64(7) / 100m),
+                (reader.GetInt64(8) / 100m),
+                (reader.IsDBNull(9) ? 0m : reader.GetInt64(9) / 100m),
+                reader.GetString(10),
+                DateTimeOffset.Parse(reader.GetString(11)),
+                reader.GetString(12),
+                (CustomerPaymentMethod)reader.GetInt32(13)));
+        }
+
+        return receipts;
+    }
 }

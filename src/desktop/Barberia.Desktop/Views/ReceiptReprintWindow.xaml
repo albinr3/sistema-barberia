@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Barberia.Desktop.Views.ReceiptReprintWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:Barberia.Data.Models"
+    mc:Ignorable="d"
+    Title="Receipt Reprint">
+
+    <Grid Background="#FFF9F9FC">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom TitleBar area -->
+        <Grid x:Name="AppTitleBar" Height="32" Background="Transparent" Grid.Row="0">
+            <TextBlock Text="Reprint Receipts" VerticalAlignment="Center" Margin="16,0,0,0" FontSize="12" Foreground="#FF444655"/>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Padding="24" Spacing="16">
+            <TextBlock FontSize="24" FontWeight="Bold" Foreground="#FF1A1C1E" Text="Receipt Reprint" />
+            
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <CalendarDatePicker x:Name="_datePicker" 
+                                    Header="Business Date"
+                                    DateChanged="OnDateChanged" />
+
+                <TextBox x:Name="_searchInput" 
+                         Grid.Column="1" 
+                         Header="Search by Ticket or Receipt"
+                         PlaceholderText="e.g. 1042 or CB-00001"
+                         KeyDown="OnSearchKeyDown" />
+                
+                <Button Grid.Column="2" 
+                        VerticalAlignment="Bottom"
+                        Content="Search"
+                        Click="OnSearchClick"
+                        Background="#FF0020C2"
+                        Foreground="White"
+                        MinHeight="32"/>
+            </Grid>
+
+            <TextBlock x:Name="_messageText" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <ListView x:Name="_receiptsList" 
+                  Grid.Row="2"
+                  Margin="24,0,24,24"
+                  BorderBrush="#FFE2E2E5"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  Background="White"
+                  SelectionMode="None">
+            <ListView.Header>
+                <Grid Padding="16,12" Background="#FFF3F3F6" BorderBrush="#FFE2E2E5" BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Ticket / Receipt" FontWeight="SemiBold" Foreground="#FF444655" />
+                    <TextBlock Grid.Column="1" Text="Barber" FontWeight="SemiBold" Foreground="#FF444655" />
+                    <TextBlock Grid.Column="2" Text="Service" FontWeight="SemiBold" Foreground="#FF444655" />
+                    <TextBlock Grid.Column="3" Text="Total" FontWeight="SemiBold" Foreground="#FF444655" />
+                    <TextBlock Grid.Column="4" Text="Action" FontWeight="SemiBold" Foreground="#FF444655" Width="100"/>
+                </Grid>
+            </ListView.Header>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <StackPanel>
+                            <TextBlock Text="{Binding DisplayTicketNumber}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding ReceiptNumber}" FontSize="12" Foreground="#FF757687"/>
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding BarberName}" />
+                            <TextBlock Text="{Binding BarberStationCode}" FontSize="12" Foreground="#FF757687"/>
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="2" Text="{Binding ServiceName}" VerticalAlignment="Center"/>
+                        
+                        <TextBlock Grid.Column="3" Text="{Binding TotalAmount}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        
+                        <Button Grid.Column="4" 
+                                Content="Reprint" 
+                                Click="OnReprintItemClick" 
+                                Tag="{Binding}" 
+                                Width="100" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Window>

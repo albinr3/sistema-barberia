@@ -443,6 +443,27 @@
                                     Text="Print Day Report" />
                             </StackPanel>
                         </Button>
+
+                        <Button
+                            MinHeight="48"
+                            HorizontalAlignment="Stretch"
+                            Background="#FFF3F3F6"
+                            BorderBrush="#FFE2E2E5"
+                            BorderThickness="1"
+                            Click="OnReprintReceiptsClick"
+                            Foreground="#FF444655">
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="8">
+                                <FontIcon FontSize="18" Glyph="&#xE90A;" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Text="Reprint Receipts" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </StackPanel>

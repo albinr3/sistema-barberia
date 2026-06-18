@@ -12,4 +12,7 @@ public sealed record CashBoxDepositResult(
     decimal Commission,
     string ReceiptNumber,
     DateTimeOffset ClosedAt,
-    string Message);
+    string Message,
+    bool ReceiptPrinted = false,
+    bool CashDrawerOpened = false,
+    string? HardwareFailureMessage = null);

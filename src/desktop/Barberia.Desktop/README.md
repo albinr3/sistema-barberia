@@ -44,6 +44,7 @@ Sync cloud:
 - Barber Panel acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.
 - Cash Box completa la cita solo al cerrar el cobro; ahi se marcan el turno y la reserva como completados y se suben `ticket.completed`, `payment.collected` y `appointment.completed`.
 - Appointment turns are operational records for Cash Box/Barber Panel, but are not ticket-dashboard rows.
+- Cash Box contiene un botón `Reprint Receipts` oculto bajo contraseña (`G1234`) para abrir la ventana de reimpresión `ReceiptReprintWindow`. Los fallos de la impresora o la gaveta durante el cierre de venta no cancelan la transacción, sino que se auditan como `cash_box_hardware_failure` y se indica el fallo en pantalla.
 Restricciones actuales:
 
 - No contiene reglas de negocio.

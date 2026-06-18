@@ -69,6 +69,34 @@ public sealed partial class CashBoxPage : Page
         ShellMenuRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private async void OnReprintReceiptsClick(object sender, RoutedEventArgs args)
+    {
+        var passwordBox = new PasswordBox { PlaceholderText = "Admin password" };
+        var dialog = new ContentDialog
+        {
+            Title = "Reprint Receipts",
+            Content = passwordBox,
+            PrimaryButtonText = "Submit",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            if (passwordBox.Password == "G1234")
+            {
+                var window = new ReceiptReprintWindow();
+                window.Activate();
+            }
+            else
+            {
+                ShowError("Invalid password.");
+            }
+        }
+    }
+
     private void OnSizeChanged(object sender, SizeChangedEventArgs args)
     {
         ApplyResponsiveLayout(args.NewSize.Width);
@@ -176,7 +204,16 @@ public sealed partial class CashBoxPage : Page
                 ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
                 : $"{result.ServiceName} {result.ServicePrice:0.00}";
             _successPlayer.Play();
-            SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
+            
+            if (result.HardwareFailureMessage != null)
+            {
+                SetMessage($"La venta fue registrada, pero falló la impresora/gaveta. Registre el incidente.\n{result.HardwareFailureMessage}", Brush(255, 140, 0)); // Orange for warning
+            }
+            else
+            {
+                SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
+            }
+            
             _ticketInput.Text = string.Empty;
             ClearTicketDetails();
             _additionalAmount = 0;
