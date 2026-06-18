@@ -97,6 +97,16 @@ Fase 2.5 convierte el esqueleto inicial en una sincronización operativa bidirec
 
 El contrato técnico detallado y las estructuras de eventos (JSON) viven en `docs/arquitectura/phase-2-5-sync-contract.md`. Las tablas cloud (ej. `synced_tickets`, `synced_payments`) almacenan el historial materializado proveniente de Windows.
 
+## Emails Transaccionales
+
+Las citas web generan emails transaccionales para clientes mediante una cola en PostgreSQL (`appointment_email_jobs`) y
+la Edge Function `appointment-emails`. La cola se alimenta desde triggers sobre `appointments`, por lo que cubre cambios
+hechos por RPC web y por sincronizacion desktop cuando el estado cloud cambia a `no_show` o `completed`.
+
+Los emails son en ingles, usan horario `America/New_York`, cargan el logo publico desde
+`${PUBLIC_SITE_URL}/email/master-clips-logo.png` y se envian por Resend. La funcion se invoca con `pg_cron`/`pg_net`
+usando un secreto interno; las credenciales reales se configuran como secretos de Supabase y no se guardan en el repo.
+
 ## Referencias Oficiales
 
 - Next.js App Router: https://nextjs.org/docs/app

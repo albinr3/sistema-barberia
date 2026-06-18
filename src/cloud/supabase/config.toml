@@ -26,3 +26,7 @@ verify_jwt = false
 [functions.sync-events]
 enabled = true
 verify_jwt = false
+
+[functions.appointment-emails]
+enabled = true
+verify_jwt = false

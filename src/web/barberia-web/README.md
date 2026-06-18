@@ -17,10 +17,17 @@ Fase 2 web scaffold for authenticated booking, customer accounts, barber panels 
 
 1. Copy `.env.example` to `.env.local`.
 2. Fill `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the Supabase project.
-3. Run `npm install`.
-4. Run `npm run dev`.
+3. Fill `PUBLIC_SITE_URL` with the public HTTPS site origin used in appointment emails.
+4. Run `npm install`.
+5. Run `npm run dev`.
 
 The initial scaffold intentionally uses placeholder role pages until Supabase Auth/RLS and seeded profiles are available.
+
+## Appointment Email Assets
+
+The public email logo is served from `/email/master-clips-logo.png`. The appointment email Edge Function uses
+`${PUBLIC_SITE_URL}/email/master-clips-logo.png`, so `PUBLIC_SITE_URL` must be the real HTTPS production origin before
+testing live emails.
 
 ## Validation
 

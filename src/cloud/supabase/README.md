@@ -9,6 +9,7 @@ Fase 2 cloud foundation for Auth, PostgreSQL, RLS, booking and sync contracts.
 - Phase 2.2 adds catalog/availability indexes and the `public.get_available_slots` RPC for authenticated availability preview and future booking.
 - Sync tables now include desktop devices, POS ticket/payment materialization, local catalog snapshots, admin ticket commands, and desktop-authoritative payroll commands/snapshots.
 - Appointments include a stable `appointment_code` used as the customer QR payload for Barber Panel and Cash Box flow.
+- Appointment email jobs queue transactional customer emails for confirmation, 1-hour reminders, cancellations and no-shows.
 
 ## Local Use
 
@@ -31,6 +32,31 @@ Admins reschedule future `pending` or `confirmed` appointments through:
 - `public.admin_reschedule_appointment(p_appointment_id uuid, p_new_starts_at timestamptz)`
 
 Rescheduling keeps the current barber and service, validates the same availability rules, excludes the appointment being moved from overlap checks, and preserves the QR `appointment_code`.
+
+## Appointment Emails
+
+Customer appointment emails are sent by the `appointment-emails` Edge Function through Resend. PostgreSQL triggers enqueue
+jobs in `appointment_email_jobs` when appointments are created, cancelled, rescheduled or marked `no_show`.
+
+Required Edge Function secrets:
+
+- `RESEND_API_KEY`
+- `APPOINTMENT_EMAIL_FROM`
+- `PUBLIC_SITE_URL`
+- `APPOINTMENT_EMAIL_INTERNAL_SECRET`
+
+Production setup checklist:
+
+1. Create a Resend account.
+2. Verify the sending domain in Resend.
+3. Configure DNS records requested by Resend, including DKIM and any SPF/return-path records.
+4. Add a DMARC record for better deliverability.
+5. Create a Resend API key.
+6. Set `APPOINTMENT_EMAIL_FROM`, for example `Master Clips <appointments@example.com>`.
+7. Set the four Edge Function secrets in Supabase.
+8. Deploy `appointment-emails` with JWT verification disabled.
+9. Run `scripts/setup-appointment-email-cron.sql` after replacing placeholders.
+10. Send real tests to Gmail and Outlook/iCloud inboxes and check spam/promotions folders.
 
 ## Desktop Sync Contract
 

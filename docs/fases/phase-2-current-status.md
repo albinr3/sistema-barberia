@@ -128,3 +128,8 @@ Payroll web/cloud actualizado a nivel de codigo:
 - Desktop paga automaticamente el ultimo periodo viernes-jueves cerrado y sube `payroll.snapshot` con `state = paid`.
 - `sync-changes` no emite nuevos comandos `adjustment_added`; la RPC legacy de ajustes queda deshabilitada por migracion no destructiva.
 - Revalidacion 2026-06-17: `npm run typecheck` paso; `npm test` paso 4 archivos / 12 tests. La primera corrida de `npm test` en sandbox fallo por `spawn EPERM`, y se reejecuto fuera del sandbox.
+
+Emails transaccionales de citas implementados a nivel de codigo:
+- Supabase encola emails de confirmacion, recordatorio de 1 hora, cancelacion y no-show en `appointment_email_jobs`.
+- Edge Function `appointment-emails` renderiza emails modernos en ingles con logo publico y los envia por Resend.
+- Queda pendiente configurar cuenta Resend, dominio verificado, secretos Supabase, deploy de la funcion y cron real en el proyecto cloud.
