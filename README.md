@@ -33,6 +33,8 @@ La app Next.js vive en `src/web/barberia-web`. Para proveedores que despliegan d
 - `npm run build`: instala dependencias de `src/web/barberia-web` y ejecuta el build de Next.js.
 - `npm start`: inicia la app web con `next start` desde `src/web/barberia-web`.
 
+En Hostinger, el directorio de salida del build debe apuntar a `src/web/barberia-web/.next`, porque Next.js genera los artefactos dentro de la subcarpeta de la app web.
+
 El estado vivo de Fase 1 esta en:
 
 - `docs/fases/phase-1-current-status.md`
