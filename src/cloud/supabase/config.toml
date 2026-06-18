@@ -30,3 +30,7 @@ verify_jwt = false
 [functions.appointment-emails]
 enabled = true
 verify_jwt = false
+
+[functions.desktop-db-backups]
+enabled = true
+verify_jwt = false

@@ -1,0 +1,272 @@
+﻿<Page
+    x:Class="Barberia.Desktop.Views.BackupsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded">
+
+    <Page.Resources>
+        <SolidColorBrush x:Key="AdminBackgroundBrush" Color="#FFF9F9FC" />
+        <SolidColorBrush x:Key="AdminSurfaceBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="AdminSurfaceLowBrush" Color="#FFF3F3F6" />
+        <SolidColorBrush x:Key="AdminSurfaceContainerBrush" Color="#FFEEEEF0" />
+        <SolidColorBrush x:Key="AdminSurfaceHighBrush" Color="#FFE8E8EA" />
+        <SolidColorBrush x:Key="AdminPrimaryBrush" Color="#FF001387" />
+        <SolidColorBrush x:Key="AdminPrimaryContainerBrush" Color="#FF0020C2" />
+        <SolidColorBrush x:Key="AdminPrimaryFixedBrush" Color="#FFDFE0FF" />
+        <SolidColorBrush x:Key="AdminTextBrush" Color="#FF1A1C1E" />
+        <SolidColorBrush x:Key="AdminMutedTextBrush" Color="#FF444655" />
+        <SolidColorBrush x:Key="AdminOutlineBrush" Color="#FF757687" />
+        <SolidColorBrush x:Key="AdminOutlineVariantBrush" Color="#FFC5C5D8" />
+
+        <Style x:Key="AdminCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource AdminSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AdminSurfaceContainerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="20" />
+        </Style>
+
+        <Style x:Key="AdminTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource AdminTextBrush}" />
+        </Style>
+
+        <Style x:Key="AdminLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource AdminMutedTextBrush}" />
+        </Style>
+
+        <Style x:Key="AdminBodyStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{StaticResource AdminMutedTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="{StaticResource AdminBackgroundBrush}">
+        <ScrollViewer
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Enabled">
+            <Grid
+                MaxWidth="1200"
+                Padding="48,96,48,72"
+                Background="Transparent"
+                HorizontalAlignment="Center">
+                <StackPanel Spacing="32">
+                    
+                    <Grid ColumnSpacing="32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="0.8*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Settings Section -->
+                        <StackPanel Spacing="32">
+                            <Border Style="{StaticResource AdminCardStyle}">
+                                <StackPanel Spacing="24">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Backup Configuration" />
+                                            <TextBlock Style="{StaticResource AdminBodyStyle}" Text="Manage automatic daily local and cloud backups." />
+                                        </StackPanel>
+                                        <Border
+                                            Grid.Column="1"
+                                            Width="40"
+                                            Height="40"
+                                            Background="{StaticResource AdminPrimaryFixedBrush}"
+                                            CornerRadius="8">
+                                            <FontIcon
+                                                FontSize="18"
+                                                Foreground="{StaticResource AdminPrimaryContainerBrush}"
+                                                Glyph="&#xE753;" />
+                                        </Border>
+                                    </Grid>
+
+                                    <StackPanel Spacing="16">
+                                        <ToggleSwitch
+                                            x:Name="_enabledSwitch"
+                                            Header="Enable Automatic Backups"
+                                            OnContent="On"
+                                            OffContent="Off" />
+
+                                        <TimePicker
+                                            x:Name="_timePicker"
+                                            Header="Time of Day (America/New_York)" />
+
+                                        <PasswordBox
+                                            x:Name="_passwordBox"
+                                            Header="Backup Password (Optional)"
+                                            PlaceholderText="Leave blank for no password" />
+                                        <TextBlock 
+                                            FontSize="12" 
+                                            Foreground="{StaticResource AdminOutlineBrush}" 
+                                            Text="This password will be encrypted using Windows DPAPI and tied to this machine."
+                                            TextWrapping="Wrap" />
+
+                                        <Grid ColumnSpacing="16">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition />
+                                                <ColumnDefinition />
+                                            </Grid.ColumnDefinitions>
+                                            <NumberBox
+                                                x:Name="_localRetentionBox"
+                                                Header="Local Retention (Days)"
+                                                Minimum="1"
+                                                Maximum="365" />
+                                            <NumberBox
+                                                x:Name="_cloudRetentionBox"
+                                                Grid.Column="1"
+                                                Header="Cloud Retention (Days)"
+                                                Minimum="1"
+                                                Maximum="365" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Grid>
+                                        <Button
+                                            x:Name="_saveButton"
+                                            MinHeight="46"
+                                            HorizontalAlignment="Right"
+                                            Background="{StaticResource AdminPrimaryBrush}"
+                                            BorderBrush="{StaticResource AdminPrimaryBrush}"
+                                            Click="OnSaveClick"
+                                            Foreground="White">
+                                            <StackPanel
+                                                HorizontalAlignment="Center"
+                                                Orientation="Horizontal"
+                                                Spacing="8">
+                                                <FontIcon FontSize="17" Glyph="&#xE74E;" />
+                                                <TextBlock
+                                                    FontWeight="SemiBold"
+                                                    Text="Save Settings" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource AdminCardStyle}">
+                                <StackPanel Spacing="16">
+                                    <TextBlock Style="{StaticResource AdminTitleStyle}" Text="Local Backups Directory" />
+                                    <TextBlock Style="{StaticResource AdminBodyStyle}" Text="Recent ZIP backups stored on this machine." />
+                                    
+                                    <Grid Padding="12,12,12,12" Background="{StaticResource AdminSurfaceLowBrush}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource AdminLabelStyle}" Text="File Name" />
+                                        <TextBlock Grid.Column="1" Style="{StaticResource AdminLabelStyle}" Text="Date" />
+                                        <TextBlock Grid.Column="2" Style="{StaticResource AdminLabelStyle}" Text="Size" />
+                                        <TextBlock Grid.Column="3" Style="{StaticResource AdminLabelStyle}" Text="Action" />
+                                    </Grid>
+                                    
+                                    <StackPanel x:Name="_localFilesList" Spacing="4" />
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+
+                        <!-- Controls Section -->
+                        <StackPanel Grid.Column="1" Spacing="32">
+                            <Border
+                                Background="{StaticResource AdminSurfaceLowBrush}"
+                                BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                                <Grid>
+                                    <Border Height="4" Background="{StaticResource AdminPrimaryBrush}" VerticalAlignment="Top" CornerRadius="11,11,0,0" Margin="0" />
+                                    
+                                    <StackPanel Spacing="16" Padding="24">
+                                        <Border
+                                            Width="48"
+                                            Height="48"
+                                            HorizontalAlignment="Center"
+                                            Background="{StaticResource AdminSurfaceBrush}"
+                                            BorderBrush="{StaticResource AdminOutlineVariantBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="999">
+                                            <FontIcon
+                                                FontSize="21"
+                                                Foreground="{StaticResource AdminPrimaryBrush}"
+                                                Glyph="&#xE9F5;" />
+                                        </Border>
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            Style="{StaticResource AdminTitleStyle}"
+                                            Text="Manual Run" />
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            Style="{StaticResource AdminBodyStyle}"
+                                            Text="Force an immediate backup right now, ignoring the schedule. This will upload to Supabase if connected."
+                                            TextAlignment="Center" />
+                                        <Button
+                                            x:Name="_runBackupButton"
+                                            MinHeight="42"
+                                            HorizontalAlignment="Stretch"
+                                            Background="{StaticResource AdminSurfaceBrush}"
+                                            BorderBrush="{StaticResource AdminPrimaryBrush}"
+                                            BorderThickness="1.5"
+                                            Click="OnRunManualBackupClick"
+                                            Foreground="{StaticResource AdminPrimaryBrush}">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon FontSize="16" Glyph="&#xE768;" />
+                                                <TextBlock FontWeight="SemiBold" Text="Run Backup Now" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button
+                                            x:Name="_restoreFromFileButton"
+                                            MinHeight="42"
+                                            HorizontalAlignment="Stretch"
+                                            Background="{StaticResource AdminSurfaceBrush}"
+                                            BorderBrush="{StaticResource AdminOutlineVariantBrush}"
+                                            BorderThickness="1"
+                                            Click="OnRestoreFromFileClick"
+                                            Foreground="{StaticResource AdminTextBrush}">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon FontSize="16" Glyph="&#xE8E5;" />
+                                                <TextBlock FontWeight="SemiBold" Text="Restore from file" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <InfoBar
+                                x:Name="_statusInfoBar"
+                                IsOpen="False"
+                                Message="Settings saved successfully."
+                                Severity="Success" />
+                        </StackPanel>
+                    </Grid>
+
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="{StaticResource AdminSurfaceBrush}"
+            BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="{StaticResource AdminTextBrush}"
+                Glyph="&#xE700;" />
+        </Button>
+    </Grid>
+</Page>

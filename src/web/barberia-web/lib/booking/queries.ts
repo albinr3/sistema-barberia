@@ -119,8 +119,8 @@ export async function getAdminDailySalesStats(supabase: SupabaseClient) {
   const endOfDayIso = new Date(`${todayStr}T23:59:59.999-04:00`).toISOString();
 
   const [ticketsRes, paymentsRes] = await Promise.all([
-    supabase.from("synced_tickets").select("id, status").eq("ticket_date", todayStr),
-    supabase.from("synced_payments").select("amount_cents").gte("collected_at", startOfDayIso).lte("collected_at", endOfDayIso)
+    supabase.from("synced_tickets").select("id, status").eq("ticket_date", todayStr).is("restore_reverted_at", null),
+    supabase.from("synced_payments").select("amount_cents").gte("collected_at", startOfDayIso).lte("collected_at", endOfDayIso).is("restore_reverted_at", null)
   ]);
 
   const tickets = ticketsRes.data || [];

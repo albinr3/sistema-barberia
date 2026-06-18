@@ -147,7 +147,7 @@ public sealed partial class MainWindow : Window
 
     private void ApplyModuleChrome(ShellModuleKey moduleKey)
     {
-        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay or ShellModuleKey.BarberPanel or ShellModuleKey.CashBox or ShellModuleKey.LocalAdmin or ShellModuleKey.Barbers or ShellModuleKey.Services or ShellModuleKey.TicketHistory or ShellModuleKey.Payroll or ShellModuleKey.PayrollHistory or ShellModuleKey.BarberPublic;
+        var usesFullScreenChrome = moduleKey is ShellModuleKey.Kiosk or ShellModuleKey.PublicDisplay or ShellModuleKey.BarberPanel or ShellModuleKey.CashBox or ShellModuleKey.LocalAdmin or ShellModuleKey.Barbers or ShellModuleKey.Services or ShellModuleKey.TicketHistory or ShellModuleKey.Payroll or ShellModuleKey.PayrollHistory or ShellModuleKey.BarberPublic or ShellModuleKey.Backups;
         _navigationColumn.Width = usesFullScreenChrome ? new GridLength(0) : new GridLength(256);
         _sidebar.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
         _moduleHeader.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
@@ -197,6 +197,10 @@ public sealed partial class MainWindow : Window
         else if (page is BarberPublicPage barberPublicPage)
         {
             barberPublicPage.ShellMenuRequested += (_, _) => ShowShellMenu();
+        }
+        else if (page is BackupsPage backupsPage)
+        {
+            backupsPage.ShellMenuRequested += (_, _) => ShowShellMenu();
         }
 
         return page;

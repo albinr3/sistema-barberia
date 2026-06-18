@@ -21,6 +21,7 @@ export default async function AdminTicketHistoryPage({
   const endDate = typeof resolvedSearchParams.endDate === "string" ? resolvedSearchParams.endDate : undefined;
   const barberId = typeof resolvedSearchParams.barberId === "string" ? resolvedSearchParams.barberId : undefined;
   const status = typeof resolvedSearchParams.status === "string" ? resolvedSearchParams.status : undefined;
+  const restoreView = resolvedSearchParams.restoreView === "reverted" ? "reverted" : "active";
   const page = typeof resolvedSearchParams.page === "string" ? parseInt(resolvedSearchParams.page, 10) : 1;
 
   const initialData = await getTicketHistory(supabase, {
@@ -29,6 +30,7 @@ export default async function AdminTicketHistoryPage({
     endDate,
     barberId,
     status,
+    restoreView,
     page: isNaN(page) ? 1 : page,
   });
 

@@ -78,6 +78,7 @@ export async function getTicketsDashboardSnapshot(supabase: SupabaseClient): Pro
           barber:barbers(id, display_name, station_code)
         `)
         .is("appointment_id", null)
+        .is("restore_reverted_at", null)
         .in("status", ACTIVE_TICKET_STATUSES)
         .order("checked_in_at", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true }),

@@ -79,6 +79,8 @@ export async function fetchLineDailyBreakdown(
         synced_tickets!inner ( barber_id )
       `)
       .eq("synced_tickets.barber_id", barberId)
+      .is("restore_reverted_at", null)
+      .is("synced_tickets.restore_reverted_at", null)
       .gte("collected_at", `${queryStart}T00:00:00Z`)
       .lte("collected_at", `${queryEnd}T23:59:59Z`);
 

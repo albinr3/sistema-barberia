@@ -67,6 +67,11 @@ export function TicketDetails({
                   <span className={`${styles.statusBadge} ${styles[getStatusCssKey(ticket.status)] || ""}`}>
                     {formatStatus(ticket.status)}
                   </span>
+                  {ticket.restore_reverted_at && (
+                    <span className={`${styles.statusBadge} ${styles.reverted}`}>
+                      Reverted by restore
+                    </span>
+                  )}
                 </span>
               </div>
               <div className={styles.detailItem}>
@@ -75,6 +80,26 @@ export function TicketDetails({
               </div>
             </div>
           </div>
+
+          {ticket.restore_reverted_at && (
+            <div className={styles.detailSection}>
+              <h3>Restore Audit</h3>
+              <div className={styles.detailGrid}>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Restore ID</span>
+                  <span className={styles.detailValue}>{ticket.restore_reverted_by || "-"}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Reverted At</span>
+                  <span className={styles.detailValue}>{formatDateTime(ticket.restore_reverted_at)}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Reason</span>
+                  <span className={styles.detailValue}>{ticket.restore_revert_reason || "Missing from restored desktop backup"}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {(payment || totalAmount > 0) && (
             <div className={styles.detailSection}>

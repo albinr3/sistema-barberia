@@ -45,6 +45,17 @@ Sync cloud:
 - Cash Box completa la cita solo al cerrar el cobro; ahi se marcan el turno y la reserva como completados y se suben `ticket.completed`, `payment.collected` y `appointment.completed`.
 - Appointment turns are operational records for Cash Box/Barber Panel, but are not ticket-dashboard rows.
 - Cash Box contiene un botón `Reprint Receipts` oculto bajo contraseña (`G1234`) para abrir la ventana de reimpresión `ReceiptReprintWindow`. Los fallos de la impresora o la gaveta durante el cierre de venta no cancelan la transacción, sino que se auditan como `cash_box_hardware_failure` y se indica el fallo en pantalla.
+
+Backups y restore:
+
+- `BackupsPage` configura backups automaticos diarios en hora `America/New_York`, permite ejecutar backup manual y lista los ZIP locales guardados en `%LocalAppData%\BarberiaSystem\backups`.
+- La restauracion v1 cubre ZIP locales listados y ZIP externos elegidos con `Restore from file`; no lista ni descarga backups desde Supabase.
+- Antes de restaurar, Desktop valida que el ZIP contenga exactamente una base `.db`, extrae con la contraseña guardada o una contraseña ingresada manualmente, ejecuta `PRAGMA integrity_check`, inicializa/migra el esquema local y valida tablas minimas.
+- Restore se bloquea si la DB actual o la DB restaurada tiene eventos pendientes en `sync_outbox_events`; el operador debe esperar a que sincronice antes de restaurar para evitar perder o reenviar cambios locales.
+- Antes de reemplazar `barberia-local.db`, Desktop crea un ZIP de seguridad `pre-restore_yyyyMMdd_HHmmss.zip` en la carpeta local de backups.
+- Restore crea un evento `desktop.restore_applied` dentro de la DB restaurada. Al reiniciar, Web adopta el snapshot restaurado de tickets/cobros y marca como revertidos los tickets/items/pagos que existian en Web pero no estan en el backup restaurado.
+- Web no borra registros posteriores al backup: los conserva como auditoria con `restore_reverted_at`, pero dashboards, ventas, ticket history activo y breakdowns de nomina filtran esos registros revertidos.
+- Restore no intenta operar en vivo: al terminar, cerrar y abrir Barberia Desktop antes de seguir operando para que el sync envie el restore autoritativo a Web.
 Restricciones actuales:
 
 - No contiene reglas de negocio.

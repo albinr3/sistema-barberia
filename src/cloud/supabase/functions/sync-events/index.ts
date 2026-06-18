@@ -88,6 +88,8 @@ serve(async (req: Request) => {
         await materializeCatalogSnapshot(supabaseAdmin, device.id, payload);
       } else if (event_type === "desktop.sync_heartbeat") {
         await materializeSyncHeartbeat(supabaseAdmin, device.id, payload);
+      } else if (event_type === "desktop.restore_applied") {
+        await materializeDesktopRestore(supabaseAdmin, device.id, insertedEvent.id, payload);
       } else if (event_type === "payroll.snapshot") {
         await materializePayrollSnapshot(supabaseAdmin, device.id, payload);
       } else if (event_type === "sync.conflict") {
@@ -134,6 +136,230 @@ serve(async (req: Request) => {
     headers: { "Content-Type": "application/json" },
   });
 });
+
+async function materializeDesktopRestore(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  deviceId: string,
+  syncEventId: string,
+  payload: Record<string, unknown>,
+) {
+  const restoreId = stringValue(payload.restore_id);
+  const restoredAt = stringValue(payload.restored_at) || new Date().toISOString();
+  if (!restoreId) {
+    throw new Error("Restore payload restore_id is required");
+  }
+
+  const snapshot = isRecord(payload.snapshot) ? payload.snapshot : {};
+  const tickets = Array.isArray(snapshot.tickets) ? snapshot.tickets.filter(isRecord) : [];
+  const ticketItems = Array.isArray(snapshot.ticket_items) ? snapshot.ticket_items.filter(isRecord) : [];
+  const payments = Array.isArray(snapshot.payments) ? snapshot.payments.filter(isRecord) : [];
+  const backup = isRecord(payload.backup) ? payload.backup : {};
+
+  await supabaseAdmin.from("desktop_restore_batches").upsert({
+    id: restoreId,
+    source_device_id: deviceId,
+    restored_at: restoredAt,
+    backup_file_name: stringValue(backup.file_name),
+    backup_size_bytes: numberValue(backup.size_bytes) ?? 0,
+    safety_backup_path: stringValue(backup.safety_backup_path),
+    ticket_count: tickets.length,
+    payment_count: payments.length,
+    sync_event_id: syncEventId,
+  });
+
+  const ticketRows = tickets
+    .map((ticket) => {
+      const localTicketId = stringValue(ticket.local_ticket_id);
+      const status = stringValue(ticket.status);
+      const checkedInAt = stringValue(ticket.checked_in_at);
+      if (!localTicketId || !status || !checkedInAt) return null;
+      return {
+        local_ticket_id: localTicketId,
+        source_device_id: deviceId,
+        display_ticket_number: numberValue(ticket.display_ticket_number),
+        ticket_date: dateOnlyValue(ticket.ticket_date),
+        customer_name: stringValue(ticket.customer_name),
+        status,
+        checked_in_at: checkedInAt,
+        barber_id: stringValue(ticket.barber_id),
+        appointment_id: stringValue(ticket.appointment_id),
+        started_at: stringValue(ticket.started_at),
+        completed_at: stringValue(ticket.completed_at),
+        cancelled_at: stringValue(ticket.cancelled_at),
+        restore_reverted_at: null,
+        restore_reverted_by: null,
+        restore_revert_reason: null,
+      };
+    })
+    .filter((row): row is Record<string, unknown> => row !== null);
+
+  if (ticketRows.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("synced_tickets")
+      .upsert(ticketRows, { onConflict: "local_ticket_id" });
+    if (error) throw new Error("Restore ticket upsert failed: " + error.message);
+  }
+
+  const { data: cloudTickets, error: ticketSelectError } = await supabaseAdmin
+    .from("synced_tickets")
+    .select("id, local_ticket_id, restore_reverted_at")
+    .eq("source_device_id", deviceId);
+  if (ticketSelectError) throw new Error("Restore ticket lookup failed: " + ticketSelectError.message);
+
+  const ticketIdsByLocalId = new Map<string, string>();
+  for (const ticket of cloudTickets || []) {
+    ticketIdsByLocalId.set(String(ticket.local_ticket_id), String(ticket.id));
+  }
+
+  const activeTicketIds = new Set(ticketRows.map((ticket) => String(ticket.local_ticket_id)));
+  const ticketsToRevert = (cloudTickets || [])
+    .filter((ticket) => !activeTicketIds.has(String(ticket.local_ticket_id)) && !ticket.restore_reverted_at)
+    .map((ticket) => String(ticket.id));
+
+  if (ticketsToRevert.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("synced_tickets")
+      .update({
+        restore_reverted_at: restoredAt,
+        restore_reverted_by: restoreId,
+        restore_revert_reason: "Missing from restored desktop backup",
+      })
+      .in("id", ticketsToRevert);
+    if (error) throw new Error("Restore ticket revert failed: " + error.message);
+  }
+
+  const itemRows = ticketItems
+    .map((item) => {
+      const localTicketId = stringValue(item.local_ticket_id);
+      const localItemId = stringValue(item.local_item_id);
+      const ticketId = localTicketId ? ticketIdsByLocalId.get(localTicketId) : null;
+      if (!ticketId || !localItemId) return null;
+      return {
+        synced_ticket_id: ticketId,
+        local_item_id: localItemId,
+        service_id: stringValue(item.service_id),
+        price_cents: centsValue(item.price_cents, null),
+        restore_reverted_at: null,
+        restore_reverted_by: null,
+        restore_revert_reason: null,
+      };
+    })
+    .filter((row): row is Record<string, unknown> => row !== null);
+
+  if (itemRows.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("synced_ticket_items")
+      .upsert(itemRows, { onConflict: "synced_ticket_id, local_item_id" });
+    if (error) throw new Error("Restore ticket item upsert failed: " + error.message);
+  }
+
+  const allTicketIdsForDevice = Array.from(ticketIdsByLocalId.values());
+  if (allTicketIdsForDevice.length > 0) {
+    const activeItemKeys = new Set(itemRows.map((item) => `${item.synced_ticket_id}:${item.local_item_id}`));
+    const { data: cloudItems, error: itemLookupError } = await supabaseAdmin
+      .from("synced_ticket_items")
+      .select("id, synced_ticket_id, local_item_id, restore_reverted_at")
+      .in("synced_ticket_id", allTicketIdsForDevice);
+    if (itemLookupError) throw new Error("Restore ticket item lookup failed: " + itemLookupError.message);
+
+    const itemsToRevert = (cloudItems || [])
+      .filter((item) => !activeItemKeys.has(`${item.synced_ticket_id}:${item.local_item_id}`) && !item.restore_reverted_at)
+      .map((item) => String(item.id));
+    if (itemsToRevert.length > 0) {
+      const { error } = await supabaseAdmin
+        .from("synced_ticket_items")
+        .update({
+          restore_reverted_at: restoredAt,
+          restore_reverted_by: restoreId,
+          restore_revert_reason: "Missing from restored desktop backup",
+        })
+        .in("id", itemsToRevert);
+      if (error) throw new Error("Restore ticket item revert failed: " + error.message);
+    }
+  }
+
+  const paymentRows = payments
+    .map((payment) => {
+      const localPaymentId = stringValue(payment.local_payment_id);
+      const localTicketId = stringValue(payment.local_ticket_id);
+      const ticketId = localTicketId ? ticketIdsByLocalId.get(localTicketId) : null;
+      if (!localPaymentId || !ticketId) return null;
+      return {
+        local_payment_id: localPaymentId,
+        synced_ticket_id: ticketId,
+        source_device_id: deviceId,
+        payment_method: stringValue(payment.payment_method) || "cash",
+        amount_cents: centsValue(payment.amount_cents, null),
+        receipt_number: stringValue(payment.receipt_number),
+        payment_reference: stringValue(payment.payment_reference),
+        collected_at: stringValue(payment.collected_at) || restoredAt,
+        restore_reverted_at: null,
+        restore_reverted_by: null,
+        restore_revert_reason: null,
+      };
+    })
+    .filter((row): row is Record<string, unknown> => row !== null);
+
+  if (paymentRows.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("synced_payments")
+      .upsert(paymentRows, { onConflict: "local_payment_id" });
+    if (error) throw new Error("Restore payment upsert failed: " + error.message);
+  }
+
+  const activePaymentIds = new Set(paymentRows.map((payment) => String(payment.local_payment_id)));
+  const { data: cloudPayments, error: paymentLookupError } = await supabaseAdmin
+    .from("synced_payments")
+    .select("id, local_payment_id, restore_reverted_at")
+    .eq("source_device_id", deviceId);
+  if (paymentLookupError) throw new Error("Restore payment lookup failed: " + paymentLookupError.message);
+
+  const paymentsToRevert = (cloudPayments || [])
+    .filter((payment) => !activePaymentIds.has(String(payment.local_payment_id)) && !payment.restore_reverted_at)
+    .map((payment) => String(payment.id));
+  if (paymentsToRevert.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("synced_payments")
+      .update({
+        restore_reverted_at: restoredAt,
+        restore_reverted_by: restoreId,
+        restore_revert_reason: "Missing from restored desktop backup",
+      })
+      .in("id", paymentsToRevert);
+    if (error) throw new Error("Restore payment revert failed: " + error.message);
+  }
+
+  await supabaseAdmin
+    .from("desktop_restore_batches")
+    .update({
+      reverted_ticket_count: ticketsToRevert.length,
+      reverted_payment_count: paymentsToRevert.length,
+    })
+    .eq("id", restoreId);
+
+  const { data: existingAudit } = await supabaseAdmin
+    .from("audit_log")
+    .select("id")
+    .eq("action", "desktop_restore_applied")
+    .eq("entity_id", restoreId)
+    .maybeSingle();
+
+  if (!existingAudit) {
+    await supabaseAdmin.from("audit_log").insert({
+      action: "desktop_restore_applied",
+      entity_type: "desktop_restore",
+      entity_id: restoreId,
+      metadata: {
+        source_device_id: deviceId,
+        restored_at: restoredAt,
+        ticket_count: ticketRows.length,
+        payment_count: paymentRows.length,
+        reverted_ticket_count: ticketsToRevert.length,
+        reverted_payment_count: paymentsToRevert.length,
+      },
+    });
+  }
+}
 
 async function materializeSyncHeartbeat(
   supabaseAdmin: ReturnType<typeof createClient>,

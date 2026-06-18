@@ -8,8 +8,10 @@ public sealed partial class App : Application
     private Window? _mainWindow;
     private DesktopSyncService? _desktopSyncService;
     private PayrollAutoPayService? _payrollAutoPayService;
+    private DesktopBackupService? _desktopBackupService;
 
     public static Window? MainWindowInstance { get; private set; }
+    internal static DesktopBackupService? BackupServiceInstance { get; private set; }
 
     public App()
     {
@@ -24,6 +26,10 @@ public sealed partial class App : Application
 
         _desktopSyncService = new DesktopSyncService();
         _desktopSyncService.Start();
+
+        _desktopBackupService = new DesktopBackupService();
+        BackupServiceInstance = _desktopBackupService;
+        _desktopBackupService.Start();
 
         _mainWindow = new MainWindow();
         MainWindowInstance = _mainWindow;

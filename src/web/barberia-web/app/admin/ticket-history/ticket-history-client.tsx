@@ -23,6 +23,7 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [barberId, setBarberId] = useState(searchParams.get("barberId") || "");
   const [status, setStatus] = useState(searchParams.get("status") || "");
+  const [restoreView, setRestoreView] = useState(searchParams.get("restoreView") === "reverted" ? "reverted" : "active");
 
   const [selectedTicket, setSelectedTicket] = useState<TicketHistoryRow | null>(null);
 
@@ -37,6 +38,7 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
     setEndDate("");
     setBarberId("");
     setStatus("");
+    setRestoreView("active");
     router.push("/admin/ticket-history" as Route);
   };
 
@@ -51,6 +53,7 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
     if (endDate) params.set("endDate", endDate);
     if (barberId) params.set("barberId", barberId);
     if (status) params.set("status", status);
+    if (restoreView === "reverted") params.set("restoreView", "reverted");
     if (page > 1) params.set("page", page.toString());
 
     const query = params.toString();
@@ -116,6 +119,14 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label htmlFor="restoreView">Restore</label>
+          <select id="restoreView" value={restoreView} onChange={(e) => setRestoreView(e.target.value === "reverted" ? "reverted" : "active")}>
+            <option value="active">Active only</option>
+            <option value="reverted">Reverted by restore</option>
           </select>
         </div>
 
@@ -194,6 +205,11 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
                       <span className={`${styles.statusBadge} ${styles[getStatusCssKey(ticket.status)] || ""}`}>
                         {formatStatus(ticket.status)}
                       </span>
+                      {ticket.restore_reverted_at && (
+                        <span className={`${styles.statusBadge} ${styles.reverted}`}>
+                          Reverted
+                        </span>
+                      )}
                     </td>
                     <td>
                       <button

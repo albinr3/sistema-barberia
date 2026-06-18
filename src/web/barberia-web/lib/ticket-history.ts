@@ -16,6 +16,9 @@ export type TicketHistoryPayment = {
   receipt_number: string | null;
   payment_reference: string | null;
   collected_at: string;
+  restore_reverted_at: string | null;
+  restore_reverted_by: string | null;
+  restore_revert_reason: string | null;
 };
 
 export type TicketHistoryRow = {
@@ -29,6 +32,9 @@ export type TicketHistoryRow = {
   completed_at: string | null;
   cancelled_at: string | null;
   appointment_id: string | null;
+  restore_reverted_at: string | null;
+  restore_reverted_by: string | null;
+  restore_revert_reason: string | null;
   barber: {
     id: string;
     display_name: string | null;
@@ -44,6 +50,7 @@ export type TicketHistoryFilterParams = {
   endDate?: string;
   barberId?: string;
   status?: string;
+  restoreView?: "active" | "reverted";
   page?: number;
 };
 
@@ -70,12 +77,19 @@ export async function getTicketHistory(
     .select(
       `
         id, local_ticket_id, display_ticket_number, customer_name, status, created_at, started_at, completed_at, cancelled_at, appointment_id,
+        restore_reverted_at, restore_reverted_by, restore_revert_reason,
         barber:barbers(id, display_name, station_code),
-        payment:synced_payments(id, payment_method, amount_cents, receipt_number, payment_reference, collected_at),
+        payment:synced_payments(id, payment_method, amount_cents, receipt_number, payment_reference, collected_at, restore_reverted_at, restore_reverted_by, restore_revert_reason),
         items:synced_ticket_items(id, price_cents, service:services(id, name))
       `,
       { count: "exact" }
     );
+
+  if (params.restoreView === "reverted") {
+    query = query.not("restore_reverted_at", "is", null);
+  } else {
+    query = query.is("restore_reverted_at", null);
+  }
 
   if (params.search) {
     const searchNumber = parseInt(params.search, 10);

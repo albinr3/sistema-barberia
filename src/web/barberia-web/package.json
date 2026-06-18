@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "supabase:db:push": "cd ../../cloud/supabase && npx supabase db push",
-    "supabase:functions:deploy": "cd ../../cloud/supabase && npx supabase functions deploy sync-changes --no-verify-jwt && npx supabase functions deploy sync-events --no-verify-jwt && npx supabase functions deploy appointment-emails --no-verify-jwt"
+    "supabase:functions:deploy": "cd ../../cloud/supabase && npx supabase functions deploy sync-changes --no-verify-jwt && npx supabase functions deploy sync-events --no-verify-jwt && npx supabase functions deploy appointment-emails --no-verify-jwt && npx supabase functions deploy desktop-db-backups --no-verify-jwt"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
