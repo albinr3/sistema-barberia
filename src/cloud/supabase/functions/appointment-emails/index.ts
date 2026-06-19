@@ -243,6 +243,7 @@ function buildAppointmentEmail(
   const appointmentTime = formatAppointmentTime(appointment.starts_at);
   const appointmentCode = appointment.appointment_code || "Not assigned";
   const cancellationReason = appointment.cancellation_reason || "No reason was provided.";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(appointmentCode)}`;
 
   const copy = getEmailCopy(emailType, cancellationReason);
   const preheader = copy.preheader.replace("{time}", appointmentTime);
@@ -288,6 +289,12 @@ function buildAppointmentEmail(
                 </table>
               </td>
             </tr>
+            ${emailType !== "cancelled" ? `<tr>
+              <td style="padding:18px 34px;text-align:center;">
+                <p style="margin:0 0 10px;color:#4b5265;font-size:14px;font-weight:700;">Show this QR Code at the barbershop</p>
+                <img src="${escapeAttr(qrUrl)}" alt="Appointment QR Code" width="150" height="150" style="display:inline-block;border:none;border-radius:10px;">
+              </td>
+            </tr>` : ""}
             <tr>
               <td style="padding:8px 34px 34px;">
                 <a href="${escapeAttr(detailUrl)}" style="display:inline-block;background:#071caa;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;border-radius:10px;padding:15px 22px;">View appointment</a>
