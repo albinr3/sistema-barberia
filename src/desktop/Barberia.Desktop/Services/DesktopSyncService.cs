@@ -582,8 +582,8 @@ internal sealed class DesktopSyncService : IDisposable
             return;
         }
 
-        var startsAt = DateTimeOffset.Parse(GetString(data, "starts_at") ?? throw new InvalidOperationException("Appointment starts_at is required."));
-        var endsAt = DateTimeOffset.Parse(GetString(data, "ends_at") ?? throw new InvalidOperationException("Appointment ends_at is required."));
+        var startsAt = OperationalClock.ToLocalTime(DateTimeOffset.Parse(GetString(data, "starts_at") ?? throw new InvalidOperationException("Appointment starts_at is required.")));
+        var endsAt = OperationalClock.ToLocalTime(DateTimeOffset.Parse(GetString(data, "ends_at") ?? throw new InvalidOperationException("Appointment ends_at is required.")));
         var status = GetString(data, "status") ?? "confirmed";
         var customerName = GetNestedString(data, "customer", "display_name");
         var appointment = new AppointmentReservation(
@@ -839,7 +839,12 @@ internal sealed class DesktopSyncService : IDisposable
 
     private static DateTimeOffset? ParseNullableDate(string? value)
     {
-        return string.IsNullOrWhiteSpace(value) ? null : DateTimeOffset.Parse(value);
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (DateTimeOffset.TryParse(value, out var parsed))
+        {
+            return OperationalClock.ToLocalTime(parsed);
+        }
+        return null;
     }
 
     private static string? GetString(JsonElement element, string propertyName)

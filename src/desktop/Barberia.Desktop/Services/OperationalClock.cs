@@ -14,6 +14,11 @@ internal static class OperationalClock
         return DateOnly.FromDateTime(newJerseyTime.DateTime);
     }
 
+    public static DateTimeOffset ToLocalTime(DateTimeOffset timestamp)
+    {
+        return TimeZoneInfo.ConvertTime(timestamp, NewJerseyTimeZone.Value);
+    }
+
     public static DateTimeOffset StartOfDay(DateOnly date)
     {
         var localMidnight = date.ToDateTime(TimeOnly.MinValue);

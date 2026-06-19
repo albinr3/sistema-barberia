@@ -113,12 +113,44 @@ public sealed partial class MainWindow : Window
         NavigateTo(ShellModuleKey.Kiosk);
     }
 
-    private void OnNavigationButtonClick(object sender, RoutedEventArgs args)
+    private async void OnNavigationButtonClick(object sender, RoutedEventArgs args)
     {
         if (sender is not Button button ||
             button.Tag is not ShellModuleKey moduleKey)
         {
             return;
+        }
+
+        if (moduleKey == ShellModuleKey.Backups)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Contraseña Requerida",
+                PrimaryButtonText = "Aceptar",
+                CloseButtonText = "Cancelar",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var passwordBox = new PasswordBox { PlaceholderText = "Ingrese la contraseña" };
+            dialog.Content = passwordBox;
+
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary || passwordBox.Password != "G1234")
+            {
+                if (result == ContentDialogResult.Primary)
+                {
+                    var errorDialog = new ContentDialog
+                    {
+                        Title = "Error",
+                        Content = "Contraseña incorrecta.",
+                        CloseButtonText = "Aceptar",
+                        XamlRoot = this.Content.XamlRoot
+                    };
+                    await errorDialog.ShowAsync();
+                }
+                return;
+            }
         }
 
         NavigateTo(moduleKey);

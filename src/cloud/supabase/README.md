@@ -23,6 +23,7 @@ Do not expose service-role or secret keys to the web app. Client code must use t
 bookable future slots in `America/New_York`. It filters out any past slots (where start time <= now), inactive services, and inactive barbers.
 It applies date exceptions over weekly rules, and removes slots that overlap `pending` or `confirmed`
 appointments.
+When availability is stored with `ends_at = 23:59:00`, the RPC treats that value as effective midnight for slot generation so the last valid slot before closing is not dropped.
 
 Customers create appointments via `public.create_appointment`, which rejects any attempt to book a slot in the past.
 
@@ -32,6 +33,7 @@ Admins reschedule future `pending` or `confirmed` appointments through:
 - `public.admin_reschedule_appointment(p_appointment_id uuid, p_new_starts_at timestamptz)`
 
 Rescheduling keeps the current barber and service, validates the same availability rules, excludes the appointment being moved from overlap checks, and preserves the QR `appointment_code`.
+The same `23:59:00` normalization is applied to admin reschedule slot generation.
 
 ## Appointment Emails
 
