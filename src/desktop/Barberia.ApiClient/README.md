@@ -8,6 +8,7 @@ Responsabilidades actuales:
 - Enviar eventos locales a la Edge Function `sync-events`.
 - Descargar cambios desde la Edge Function `sync-changes`.
 - Aislar detalles HTTP, headers de dispositivo y serializacion JSON fuera de la operacion local.
+- Validar el resultado real por evento devuelto por `sync-events`; un `HTTP 200` no se considera exito si el body reporta `status: "error"` para el `source_event_id` enviado.
 
 Restricciones actuales:
 

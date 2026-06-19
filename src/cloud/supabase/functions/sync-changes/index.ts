@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
+const TIME_ZONE = "America/New_York";
+const ACTIVE_APPOINTMENT_STATUSES = ["pending", "confirmed"];
+
 serve(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -38,8 +41,9 @@ serve(async (req: Request) => {
 
   const cursor = body.cursor || new Date(0).toISOString();
   const newCursor = new Date().toISOString();
+  const operationalWindow = getOperationalAppointmentWindow(new Date());
 
-  const [{ data: barbers }, { data: services }, { data: appointments }, { data: ticketCommands }, { data: payrollCommands }] = await Promise.all([
+  const [{ data: barbers }, { data: services }, { data: appointments }, { data: operationalAppointments }, { data: ticketCommands }, { data: payrollCommands }] = await Promise.all([
     supabaseAdmin.from("barbers").select("*").gt("updated_at", cursor),
     supabaseAdmin.from("services").select("*").gt("updated_at", cursor),
     supabaseAdmin
@@ -47,12 +51,25 @@ serve(async (req: Request) => {
       .select(
         `
         *,
-        customer:profiles(display_name, phone),
+        customer:profiles!appointments_customer_id_fkey(display_name, phone),
         barber:barbers(display_name, station_code),
         service:services(name, base_price_cents, duration_minutes)
       `,
       )
       .gt("updated_at", cursor),
+    supabaseAdmin
+      .from("appointments")
+      .select(
+        `
+        *,
+        customer:profiles!appointments_customer_id_fkey(display_name, phone),
+        barber:barbers(display_name, station_code),
+        service:services(name, base_price_cents, duration_minutes)
+      `,
+      )
+      .in("status", ACTIVE_APPOINTMENT_STATUSES)
+      .gte("starts_at", operationalWindow.startIso)
+      .lt("starts_at", operationalWindow.endIso),
     supabaseAdmin
       .from("ticket_admin_commands")
       .select("*")
@@ -87,7 +104,14 @@ serve(async (req: Request) => {
     changes.catalog.push({ type: "upsert_service", data: service });
   }
 
-  for (const appointment of appointments || []) {
+  const appointmentsById = new Map<string, any>();
+  for (const appointment of [...(appointments || []), ...(operationalAppointments || [])]) {
+    if (appointment?.id) {
+      appointmentsById.set(appointment.id, appointment);
+    }
+  }
+
+  for (const appointment of appointmentsById.values()) {
     if (appointment.status === "cancelled" || appointment.status === "no_show") {
       changes.appointments.push({ type: "cancel_appointment", data: appointment });
     } else {
@@ -115,3 +139,47 @@ serve(async (req: Request) => {
     },
   );
 });
+
+function getOperationalAppointmentWindow(now: Date) {
+  const startParts = getDatePartsInTimeZone(now);
+  const nextDayProbe = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+  const endParts = getDatePartsInTimeZone(nextDayProbe);
+  const startOffset = getTimeZoneOffset(now);
+  const endOffset = getTimeZoneOffset(nextDayProbe);
+
+  const startLocal = `${startParts.year}-${startParts.month}-${startParts.day}T00:00:00${startOffset}`;
+  const endLocal = `${endParts.year}-${endParts.month}-${endParts.day}T00:00:00${endOffset}`;
+
+  return {
+    startIso: new Date(startLocal).toISOString(),
+    endIso: new Date(endLocal).toISOString(),
+  };
+}
+
+function getDatePartsInTimeZone(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  return {
+    year: parts.find((part) => part.type === "year")?.value ?? "0000",
+    month: parts.find((part) => part.type === "month")?.value ?? "01",
+    day: parts.find((part) => part.type === "day")?.value ?? "01",
+  };
+}
+
+function getTimeZoneOffset(date: Date) {
+  const timeZoneName = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    timeZoneName: "longOffset",
+  }).formatToParts(date).find((part) => part.type === "timeZoneName")?.value;
+
+  if (!timeZoneName) {
+    return "-05:00";
+  }
+
+  return timeZoneName.replace("GMT", "") || "+00:00";
+}

@@ -23,6 +23,7 @@ public sealed class LocalAppointmentsService
     public AppointmentsSnapshot Load()
     {
         var now = OperationalClock.Now;
+        AppointmentStatusMaintenanceService.ApplyDueNoShows(_connectionFactory, now, Environment.MachineName);
         var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
         var startOfDay = OperationalClock.StartOfDay(businessDate);
         var endOfDay = startOfDay.AddDays(1);
@@ -66,3 +67,4 @@ public sealed record AppointmentSnapshotItem(
     Barber? Barber,
     Service? Service,
     Turn? LocalTurn);
+

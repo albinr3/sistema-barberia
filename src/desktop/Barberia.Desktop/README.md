@@ -40,7 +40,7 @@ Sync cloud:
 - Payroll web usa `snapshot_requested` para pedir recalculo, pero no paga nomina ni crea ajustes manuales. Desktop es la unica autoridad de pago: recalcula contra SQLite, marca el periodo cerrado como pagado automaticamente y confirma con `payroll.snapshot`. Comandos legacy `payroll.adjustment_added` se responden como fallidos.
 - Desktop emite `desktop.sync_heartbeat` con `pending_outbox_count`; web lo usa solo para estado operativo/sync. El boton `Pay Payroll` ya no existe en web.
 - Las citas sincronizadas se guardan en `appointment_reservations` con `appointment_code`, cliente, servicio, hora de inicio/fin y estado local.
-- `AppointmentsPage` muestra las citas del dia como una lista operativa directa; las filas priorizan citas activas y conservan el QR/codigo visible para operacion.
+- `AppointmentsPage` muestra las citas del dia como una lista operativa directa; al refrescar aplica localmente las citas vencidas a `NoShow` antes de renderizar, las filas priorizan citas activas y conservan el QR/codigo visible para operacion.
 - Barber Panel acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.
 - Cash Box completa la cita solo al cerrar el cobro; ahi se marcan el turno y la reserva como completados y se suben `ticket.completed`, `payment.collected` y `appointment.completed`.
 - Appointment turns are operational records for Cash Box/Barber Panel, but are not ticket-dashboard rows.
@@ -61,3 +61,4 @@ Restricciones actuales:
 - No contiene reglas de negocio.
 - No mover persistencia, hardware ni sincronizacion al code-behind de UI.
 - No publica MSIX, MSI, EXE ni App Installer sin aprobacion humana.
+

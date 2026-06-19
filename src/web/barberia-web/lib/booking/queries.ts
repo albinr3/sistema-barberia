@@ -56,7 +56,7 @@ export async function getAdminAppointments(supabase: SupabaseClient) {
       no_show_at,
       service:services(name),
       barber:barbers(id, display_name),
-      customer:profiles(display_name, phone)
+      customer:profiles!appointments_customer_id_fkey(display_name, phone)
     `)
     .order("starts_at", { ascending: false });
 
@@ -78,7 +78,7 @@ export async function getBarberAppointments(supabase: SupabaseClient) {
       completed_at,
       no_show_at,
       service:services(name),
-      customer:profiles(display_name, phone)
+      customer:profiles!appointments_customer_id_fkey(display_name, phone)
     `)
     .order("starts_at", { ascending: true })
     .gte("starts_at", new Date().toISOString().split('T')[0] + "T00:00:00Z"); // Today and future

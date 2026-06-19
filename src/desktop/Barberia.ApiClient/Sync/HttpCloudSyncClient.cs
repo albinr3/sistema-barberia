@@ -45,18 +45,58 @@ public sealed class HttpCloudSyncClient : ICloudSyncClient
             request.Content = JsonContent.Create(payload);
 
             var response = await _httpClient.SendAsync(request);
+            var responseContent = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                return CloudSyncResult.Success();
+                return CloudSyncResult.Failure($"HTTP {response.StatusCode}: {responseContent}");
             }
 
-            var errorContent = await response.Content.ReadAsStringAsync();
-            return CloudSyncResult.Failure($"HTTP {response.StatusCode}: {errorContent}");
+            return ParseSyncResponse(responseContent, envelope.Id)
+                ?? CloudSyncResult.Failure("Cloud sync response did not include a result for the pushed event.");
         }
         catch (Exception ex)
         {
             return CloudSyncResult.Failure(ex.Message);
         }
+    }
+
+    private static CloudSyncResult? ParseSyncResponse(string responseContent, Guid sourceEventId)
+    {
+        using var document = JsonDocument.Parse(responseContent);
+        if (!document.RootElement.TryGetProperty("results", out var results)
+            || results.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var result in results.EnumerateArray())
+        {
+            if (!result.TryGetProperty("source_event_id", out var responseEventId)
+                || !string.Equals(responseEventId.GetString(), sourceEventId.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!result.TryGetProperty("status", out var statusElement))
+            {
+                return CloudSyncResult.Failure("Cloud sync response did not include a status for the pushed event.");
+            }
+
+            var status = statusElement.GetString();
+            if (string.Equals(status, "success", StringComparison.OrdinalIgnoreCase))
+            {
+                return CloudSyncResult.Success();
+            }
+
+            var message = result.TryGetProperty("message", out var messageElement)
+                ? messageElement.GetString()
+                : null;
+            return CloudSyncResult.Failure(string.IsNullOrWhiteSpace(message)
+                ? "Cloud sync event failed."
+                : message);
+        }
+
+        return null;
     }
 }

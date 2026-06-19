@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,7 @@ const staticSource = join(root, ".next", "static");
 const staticTarget = join(standaloneDir, ".next", "static");
 const publicSource = join(root, "public");
 const publicTarget = join(standaloneDir, "public");
+const packageJsonPath = join(standaloneDir, "package.json");
 
 if (!existsSync(standaloneDir)) {
   throw new Error("Next standalone output was not generated. Check next.config.ts output settings.");
@@ -21,4 +22,11 @@ if (existsSync(staticSource)) {
 
 if (existsSync(publicSource)) {
   cpSync(publicSource, publicTarget, { recursive: true, force: true });
+}
+
+if (existsSync(packageJsonPath)) {
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  packageJson.scripts = { start: "node server.js" };
+  delete packageJson.devDependencies;
+  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }

@@ -15,7 +15,6 @@ internal sealed class DesktopSyncService : IDisposable
     private const string CursorKey = "cloud_cursor";
     private const string CatalogSnapshotFingerprintKey = "catalog_snapshot_fingerprint";
     private const string PayrollSnapshotFingerprintPrefix = "payroll_snapshot_fingerprint:";
-    private static readonly TimeSpan NoShowGracePeriod = TimeSpan.FromMinutes(10);
 
     private readonly SqliteConnectionFactory _connectionFactory;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -84,7 +83,7 @@ internal sealed class DesktopSyncService : IDisposable
             ApplyPulledChanges(settings, changesJson, now);
         }
 
-        ApplyDueNoShows(now);
+        AppointmentStatusMaintenanceService.ApplyDueNoShows(_connectionFactory, now, Environment.MachineName);
         EnqueueCatalogSnapshotIfChanged(settings, now);
         EnqueueCurrentPayrollSnapshotIfChanged(settings, now);
 
@@ -727,40 +726,6 @@ internal sealed class DesktopSyncService : IDisposable
         }
     }
 
-    private void ApplyDueNoShows(DateTimeOffset now)
-    {
-        var transaction = new LocalDataTransaction(_connectionFactory);
-        transaction.Execute((connection, sqliteTransaction) =>
-        {
-            var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
-            var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
-            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
-
-            foreach (var appointment in appointmentRepository.ListDueForNoShow(now, NoShowGracePeriod))
-            {
-                if (turnRepository.GetByAppointmentId(appointment.Id) is not null)
-                {
-                    continue;
-                }
-
-                appointmentRepository.MarkNoShow(appointment.Id, now, now);
-                syncRecorder.Enqueue(new LocalSyncEvent(
-                    Guid.NewGuid(),
-                    now,
-                    "appointment.no_show",
-                    "appointment",
-                    appointment.Id,
-                    JsonSerializer.Serialize(new
-                    {
-                        appointment_id = appointment.Id,
-                        appointment_code = appointment.AppointmentCode,
-                        no_show_at = now
-                    }),
-                    Environment.MachineName), now);
-            }
-        });
-    }
-
     private static void EnqueueMissingMappingConflict(
         DesktopSyncSettings settings,
         SyncOutboxRecorder syncRecorder,
@@ -915,3 +880,4 @@ internal sealed class DesktopSyncService : IDisposable
 
     private sealed record CatalogSnapshot(string Payload, string Fingerprint);
 }
+
