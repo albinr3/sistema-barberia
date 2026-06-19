@@ -29,6 +29,22 @@ The public email logo is served from `/email/master-clips-logo.png`. The appoint
 `${PUBLIC_SITE_URL}/email/master-clips-logo.png`, so `PUBLIC_SITE_URL` must be the real HTTPS production origin before
 testing live emails.
 
+
+## Hostinger Git Deployment
+
+Hostinger keeps the repository root as `./`, while the Next.js app lives in `src/web/barberia-web`. The root `package.json` bridges that layout by running the web build through `npm --prefix`.
+
+Use these settings in Hostinger:
+
+- Framework preset: `Next.js`
+- Node version: `22.x`
+- Root directory: `./`
+- Install command: `npm install`
+- Build command: `npm run build`
+- Output directory: `src/web/barberia-web/.next/standalone`
+
+The Next.js config uses `output: "standalone"`, and the build copies `public` plus `.next/static` into the standalone output so Hostinger can run the generated `server.js` artifact from the nested app.
+
 ## Validation
 
 - `npm run typecheck`
