@@ -27,4 +27,5 @@ against `sync_devices` before processing requests.
 
 Catalog identity is not assumed. Windows sends local catalog snapshots; admins map local barber/service ids to cloud ids in `/admin/sync`.
 
-Desktop restore events (`desktop.restore_applied`) are authoritative for POS tickets, ticket items, and payments from the sending device. The function upserts rows present in the restored snapshot and marks missing rows with `restore_reverted_at` instead of deleting them, so Web reports can exclude reverted rows while audit history remains available.
+Desktop restore events (`desktop.restore_applied`) are authoritative for POS tickets, ticket items, and payments from the sending device. The function upserts rows present in the restored snapshot and marks missing rows with `restore_reverted_at` instead of deleting them, so Web reports can exclude reverted rows while audit history remains available. Restore materialization keeps POS rows even if a referenced barber, service, or appointment is not present in cloud yet; unresolved foreign keys are stored as `null` instead of failing the whole restore.
+

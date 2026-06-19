@@ -154,6 +154,21 @@ async function materializeDesktopRestore(
   const ticketItems = Array.isArray(snapshot.ticket_items) ? snapshot.ticket_items.filter(isRecord) : [];
   const payments = Array.isArray(snapshot.payments) ? snapshot.payments.filter(isRecord) : [];
   const backup = isRecord(payload.backup) ? payload.backup : {};
+  const existingBarberIds = await loadExistingIds(
+    supabaseAdmin,
+    "barbers",
+    tickets.map((ticket) => stringValue(ticket.barber_id)),
+  );
+  const existingAppointmentIds = await loadExistingIds(
+    supabaseAdmin,
+    "appointments",
+    tickets.map((ticket) => stringValue(ticket.appointment_id)),
+  );
+  const existingServiceIds = await loadExistingIds(
+    supabaseAdmin,
+    "services",
+    ticketItems.map((item) => stringValue(item.service_id)),
+  );
 
   await supabaseAdmin.from("desktop_restore_batches").upsert({
     id: restoreId,
@@ -173,6 +188,8 @@ async function materializeDesktopRestore(
       const status = stringValue(ticket.status);
       const checkedInAt = stringValue(ticket.checked_in_at);
       if (!localTicketId || !status || !checkedInAt) return null;
+      const barberId = stringValue(ticket.barber_id);
+      const appointmentId = stringValue(ticket.appointment_id);
       return {
         local_ticket_id: localTicketId,
         source_device_id: deviceId,
@@ -181,8 +198,8 @@ async function materializeDesktopRestore(
         customer_name: stringValue(ticket.customer_name),
         status,
         checked_in_at: checkedInAt,
-        barber_id: stringValue(ticket.barber_id),
-        appointment_id: stringValue(ticket.appointment_id),
+        barber_id: barberId && existingBarberIds.has(barberId) ? barberId : null,
+        appointment_id: appointmentId && existingAppointmentIds.has(appointmentId) ? appointmentId : null,
         started_at: stringValue(ticket.started_at),
         completed_at: stringValue(ticket.completed_at),
         cancelled_at: stringValue(ticket.cancelled_at),
@@ -232,12 +249,13 @@ async function materializeDesktopRestore(
     .map((item) => {
       const localTicketId = stringValue(item.local_ticket_id);
       const localItemId = stringValue(item.local_item_id);
+      const serviceId = stringValue(item.service_id);
       const ticketId = localTicketId ? ticketIdsByLocalId.get(localTicketId) : null;
       if (!ticketId || !localItemId) return null;
       return {
         synced_ticket_id: ticketId,
         local_item_id: localItemId,
-        service_id: stringValue(item.service_id),
+        service_id: serviceId && existingServiceIds.has(serviceId) ? serviceId : null,
         price_cents: centsValue(item.price_cents, null),
         restore_reverted_at: null,
         restore_reverted_by: null,
@@ -817,6 +835,28 @@ function nullableString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+async function loadExistingIds(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  tableName: string,
+  values: Array<string | null>,
+) {
+  const ids = Array.from(new Set(values.filter((value): value is string => value !== null)));
+  if (ids.length === 0) {
+    return new Set<string>();
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from(tableName)
+    .select("id")
+    .in("id", ids);
+  if (error) {
+    throw new Error(`Restore ${tableName} lookup failed: ${error.message}`);
+  }
+
+  return new Set((data || []).map((row) => String(row.id)));
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
