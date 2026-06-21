@@ -68,13 +68,15 @@
                         <ColumnDefinition Width="2*"/>
                         <ColumnDefinition Width="2*"/>
                         <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Ticket / Receipt" FontWeight="SemiBold" Foreground="#FF444655" />
                     <TextBlock Grid.Column="1" Text="Barber" FontWeight="SemiBold" Foreground="#FF444655" />
                     <TextBlock Grid.Column="2" Text="Service" FontWeight="SemiBold" Foreground="#FF444655" />
-                    <TextBlock Grid.Column="3" Text="Total" FontWeight="SemiBold" Foreground="#FF444655" />
-                    <TextBlock Grid.Column="4" Text="Action" FontWeight="SemiBold" Foreground="#FF444655" Width="100"/>
+                    <TextBlock Grid.Column="3" Text="Additional" FontWeight="SemiBold" Foreground="#FF444655" />
+                    <TextBlock Grid.Column="4" Text="Total" FontWeight="SemiBold" Foreground="#FF444655" />
+                    <TextBlock Grid.Column="5" Text="Action" FontWeight="SemiBold" Foreground="#FF444655" Width="100"/>
                 </Grid>
             </ListView.Header>
             <ListView.ItemTemplate>
@@ -84,6 +86,7 @@
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1*"/>
                             <ColumnDefinition Width="1*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
@@ -100,9 +103,11 @@
 
                         <TextBlock Grid.Column="2" Text="{Binding ServiceName}" VerticalAlignment="Center"/>
                         
-                        <TextBlock Grid.Column="3" Text="{Binding TotalAmount}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="3" Text="{Binding AdditionalAmount}" VerticalAlignment="Center"/>
                         
-                        <Button Grid.Column="4" 
+                        <TextBlock Grid.Column="4" Text="{Binding TotalAmount}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        
+                        <Button Grid.Column="5" 
                                 Content="Reprint" 
                                 Click="OnReprintItemClick" 
                                 Tag="{Binding}" 

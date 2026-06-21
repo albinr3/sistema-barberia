@@ -225,6 +225,42 @@ public sealed class PosHardwareTests
         Assert.Equal("Printer offline.", result.ErrorMessage);
     }
 
+
+    [Fact]
+    public void WindowsGraphicsCashBoxReceiptPrinter_ReturnsValidationFailureBeforePrintingReceipt()
+    {
+        var printer = new WindowsGraphicsCashBoxReceiptPrinter();
+
+        var result = printer.Print(new CashReceiptPrintJob(
+            "",
+            1,
+            "Luis",
+            "B-1",
+            25m,
+            5m,
+            "USD",
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "autocaja-1"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Receipt number is required.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void WindowsGraphicsCashBoxReceiptPrinter_ReturnsValidationFailureBeforePrintingDayReport()
+    {
+        var printer = new WindowsGraphicsCashBoxReceiptPrinter();
+
+        var result = printer.PrintDayReport(new DayReportPrintJob(
+            25m,
+            [new BarberDayReport("Luis (B-1)", 1, 25m)],
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            ""));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Device id is required to print the day report.", result.ErrorMessage);
+    }
+
     [Fact]
     public void SimulatedCashDrawer_ReturnsSuccessWithDeviceId()
     {

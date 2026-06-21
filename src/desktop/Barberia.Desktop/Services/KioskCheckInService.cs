@@ -54,19 +54,20 @@ public sealed class KioskCheckInService
     {
         var normalizedCustomerName = NormalizeCustomerName(customerName);
         var requestedIds = NormalizeRequestedBarbers(acceptsAnyBarber, requestedBarberIds);
+        var effectiveAcceptsAnyBarber = acceptsAnyBarber && requestedIds.Count == 0;
 
         for (var attempt = 0; attempt < 2; attempt++)
         {
             try
             {
-                return RegisterWalkInOnce(normalizedCustomerName, acceptsAnyBarber, requestedIds);
+                return RegisterWalkInOnce(normalizedCustomerName, effectiveAcceptsAnyBarber, requestedIds);
             }
             catch (SqliteException exception) when (attempt == 0 && exception.SqliteErrorCode == 19)
             {
             }
         }
 
-        return RegisterWalkInOnce(normalizedCustomerName, acceptsAnyBarber, requestedIds);
+        return RegisterWalkInOnce(normalizedCustomerName, effectiveAcceptsAnyBarber, requestedIds);
     }
 
     private KioskCheckInResult RegisterWalkInOnce(

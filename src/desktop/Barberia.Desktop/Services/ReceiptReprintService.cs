@@ -12,7 +12,7 @@ public sealed class ReceiptReprintService
     private readonly ICashBoxReceiptPrinter _receiptPrinter;
 
     public ReceiptReprintService()
-        : this(LocalDesktopDatabase.CreateConnectionFactory(), new SimulatedCashBoxReceiptPrinter())
+        : this(LocalDesktopDatabase.CreateConnectionFactory(), new WindowsGraphicsCashBoxReceiptPrinter())
     {
     }
 
@@ -33,6 +33,11 @@ public sealed class ReceiptReprintService
     {
         var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
+
+        if (string.IsNullOrWhiteSpace(record.ReceiptNumber))
+        {
+            throw new InvalidOperationException("Receipt number is required to reprint a receipt.");
+        }
 
         var job = new CashReceiptPrintJob(
             record.ReceiptNumber,

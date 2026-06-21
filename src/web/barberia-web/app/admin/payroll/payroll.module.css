@@ -18,6 +18,20 @@
   line-height: 40px;
 }
 
+
+.titleActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.printMeta {
+  display: none;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
 .badgeRow {
   display: flex;
   flex-wrap: wrap;
@@ -58,7 +72,8 @@
 }
 
 .historyLink,
-.backLink {
+.backLink,
+.printButton {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
@@ -298,6 +313,20 @@
   border-bottom: 0;
 }
 
+.staffLinkButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staffLinkButton:hover {
+  text-decoration: underline;
+}
 .staffCell {
   display: flex;
   align-items: center;
@@ -336,9 +365,76 @@
 }
 
 .actionCell {
-  width: 72px;
+  width: 96px;
 }
 
+.historyActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.historyPrintArea {
+  display: none;
+}
+
+.printReportHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.printReportHeader h1,
+.printReportHeader p {
+  margin: 0;
+}
+
+.printReportHeader h1 {
+  font-size: 28px;
+  line-height: 36px;
+}
+
+.printReportHeader p,
+.printReportMeta {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.printReportMeta {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.printSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.printSummaryGrid div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.printSummaryGrid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.printSummaryGrid strong {
+  color: var(--text);
+  font-size: 20px;
+}
 .emptyState {
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
@@ -571,3 +667,78 @@
     grid-template-columns: 1fr;
   }
 }
+@media print {
+  .page {
+    max-width: none;
+    gap: 16px;
+  }
+
+  .titleRow {
+    align-items: flex-start;
+  }
+  .historyScreenPrinting {
+    display: none !important;
+  }
+
+  .historyPrintArea {
+    display: block;
+  }
+
+  .historyPrintArea .payrollTable th:last-child,
+  .historyPrintArea .payrollTable td:last-child {
+    display: table-cell;
+  }
+
+  .titleActions,
+  .filtersBar,
+  .actionsGrid,
+  .modalOverlay {
+    display: none !important;
+  }
+
+  .printMeta {
+    display: block;
+  }
+
+  .kpiGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .kpi,
+  .tableScroller {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+
+  .kpi {
+    min-height: 86px;
+    padding: 12px;
+  }
+
+  .kpi strong {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .tableScroller {
+    overflow: visible;
+  }
+
+  .payrollTable {
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  .payrollTable th,
+  .payrollTable td {
+    padding: 9px 10px;
+  }
+
+  .payrollTable th:last-child,
+  .payrollTable td:last-child {
+    display: none;
+  }
+}
+
+

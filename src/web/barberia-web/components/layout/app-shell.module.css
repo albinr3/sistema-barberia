@@ -150,3 +150,21 @@
     padding: 16px 12px;
   }
 }
+@media print {
+  .shell {
+    display: block;
+    min-height: auto;
+    background: white;
+  }
+
+  .sidebar,
+  .header {
+    display: none !important;
+  }
+
+  .content,
+  .admin .content {
+    width: 100%;
+    padding: 0;
+  }
+}

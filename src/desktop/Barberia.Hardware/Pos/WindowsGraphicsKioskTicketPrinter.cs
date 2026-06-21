@@ -133,44 +133,48 @@ public sealed class WindowsGraphicsKioskTicketPrinter : IKioskTicketPrinter
 
             var dpiX = GetDeviceCaps(hdc, LogPixelsX);
             var dpiY = GetDeviceCaps(hdc, LogPixelsY);
-            var pageWidth = GetDeviceCaps(hdc, HorzRes);
-            var marginX = Math.Max(dpiX / 2, 24);
-            var y = Math.Max(dpiY / 3, 24);
+            var pageWidth = Math.Min(GetDeviceCaps(hdc, HorzRes), (int)(dpiX * 3.15));
+            var marginX = Math.Max(dpiX / 8, 12);
+            var y = Math.Max(dpiY / 8, 12);
 
-            using var titleFont = GdiObjectHandle.CreateFont(dpiY, 22, bold: true);
-            using var ticketFont = GdiObjectHandle.CreateFont(dpiY, 36, bold: true);
-            using var bodyFont = GdiObjectHandle.CreateFont(dpiY, 13, bold: false);
-            using var codeFont = GdiObjectHandle.CreateFont(dpiY, 11, bold: false);
+            using var titleFont = GdiObjectHandle.CreateFont(dpiY, 15, bold: true);
+            using var ticketFont = GdiObjectHandle.CreateFont(dpiY, 30, bold: true);
+            using var bodyFont = GdiObjectHandle.CreateFont(dpiY, 11, bold: false);
+            using var codeFont = GdiObjectHandle.CreateFont(dpiY, 9, bold: false);
             using var brush = GdiObjectHandle.CreateSolidBrush(0);
 
-            y = DrawCenteredText(hdc, KioskTicketPrintText.BrandName, titleFont.Handle, pageWidth, y, dpiY / 12);
-            y = DrawCenteredText(hdc, $"TICKET #{job.DisplayTicketNumber}", ticketFont.Handle, pageWidth, y, dpiY / 5);
-
-            var qrCode = QrCodeMatrix.CreateAlphanumeric(job.QrPayload);
-            var qrPixels = Math.Min(pageWidth - (marginX * 2), dpiX * 2);
-            var moduleSize = Math.Max(qrPixels / (qrCode.Size + 8), 1);
-            var renderedQrPixels = moduleSize * (qrCode.Size + 8);
-            var qrLeft = (pageWidth - renderedQrPixels) / 2;
-            DrawQrCode(hdc, qrCode, qrLeft, y, moduleSize, brush.Handle);
-            y += renderedQrPixels + (dpiY / 8);
-
-            y = DrawCenteredText(hdc, $"{KioskTicketPrintText.CodeLabel}: {job.QrPayload}", codeFont.Handle, pageWidth, y, dpiY / 5);
-            y = DrawCenteredText(hdc, job.CustomerName, bodyFont.Handle, pageWidth, y, dpiY / 12);
-            y = DrawCenteredText(hdc, job.CheckedInAt.ToLocalTime().ToString("yyyy-MM-dd hh:mm tt"), bodyFont.Handle, pageWidth, y, dpiY / 5);
+            y = DrawCenteredLines(hdc, KioskTicketPrintText.BrandName, titleFont.Handle, pageWidth, y, dpiY / 24, dpiY / 10);
+            y = DrawCenteredText(hdc, $"TICKET #{job.DisplayTicketNumber}", ticketFont.Handle, pageWidth, y, dpiY / 10);
 
             foreach (var line in GetBarberPreferenceLines(job))
             {
-                y = DrawCenteredText(hdc, line, bodyFont.Handle, pageWidth, y, dpiY / 12);
+                y = DrawCenteredText(hdc, line, bodyFont.Handle, pageWidth, y, dpiY / 20);
             }
 
-            y += dpiY / 8;
+            y += dpiY / 24;
+
+            var qrCode = QrCodeMatrix.CreateAlphanumeric(job.QrPayload);
+            var qrPhysicalInches = 1.15;
+            var moduleSizeX = Math.Max((int)(dpiX * qrPhysicalInches) / (qrCode.Size + 8), 1);
+            var moduleSizeY = Math.Max((int)(dpiY * qrPhysicalInches) / (qrCode.Size + 8), 1);
+            var renderedQrWidth = moduleSizeX * (qrCode.Size + 8);
+            var renderedQrHeight = moduleSizeY * (qrCode.Size + 8);
+            var qrLeft = (pageWidth - renderedQrWidth) / 2;
+            DrawQrCode(hdc, qrCode, qrLeft, y, moduleSizeX, moduleSizeY, brush.Handle);
+            y += renderedQrHeight + (dpiY / 16);
+
+            y = DrawCenteredText(hdc, $"{KioskTicketPrintText.CodeLabel}: {job.QrPayload}", codeFont.Handle, pageWidth, y, dpiY / 5);
+            y = DrawCenteredText(hdc, job.CustomerName, bodyFont.Handle, pageWidth, y, dpiY / 12);
+            y = DrawCenteredText(hdc, job.CheckedInAt.ToString("yyyy-MM-dd hh:mm tt"), bodyFont.Handle, pageWidth, y, dpiY / 10);
+
+            y += dpiY / 24;
             y = DrawCenteredText(hdc, KioskTicketPrintText.PresentTicket, bodyFont.Handle, pageWidth, y, dpiY / 12);
             DrawCenteredText(hdc, KioskTicketPrintText.ThankYou, bodyFont.Handle, pageWidth, y, dpiY / 12);
         }
 
         private static IEnumerable<string> GetBarberPreferenceLines(KioskTicketPrintJob job)
         {
-            if (job.AcceptsAnyBarber)
+            if (job.AcceptsAnyBarber && job.RequestedBarberNames.Count == 0)
             {
                 yield return KioskTicketPrintText.AnyAvailableBarber;
                 yield break;
@@ -181,7 +185,7 @@ public sealed class WindowsGraphicsKioskTicketPrinter : IKioskTicketPrinter
             {
                 var station = job.RequestedBarberStationCodes[index];
                 var stationText = string.IsNullOrWhiteSpace(station) ? string.Empty : $" ({station})";
-                yield return $"- {job.RequestedBarberNames[index]}{stationText}";
+                yield return $"{job.RequestedBarberNames[index]}{stationText}";
             }
 
             if (!string.IsNullOrWhiteSpace(job.AssignedBarberName))
@@ -191,6 +195,25 @@ public sealed class WindowsGraphicsKioskTicketPrinter : IKioskTicketPrinter
                     : $" ({job.AssignedBarberStationCode})";
                 yield return $"{KioskTicketPrintText.Assigned}: {job.AssignedBarberName}{stationText}";
             }
+        }
+
+        private static int DrawCenteredLines(
+            IntPtr hdc,
+            string text,
+            IntPtr font,
+            int pageWidth,
+            int y,
+            int lineSpacing,
+            int bottomSpacing)
+        {
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            for (var index = 0; index < lines.Length; index++)
+            {
+                var spacing = index == lines.Length - 1 ? bottomSpacing : lineSpacing;
+                y = DrawCenteredText(hdc, lines[index].Trim(), font, pageWidth, y, spacing);
+            }
+
+            return y;
         }
 
         private static int DrawCenteredText(
@@ -228,7 +251,8 @@ public sealed class WindowsGraphicsKioskTicketPrinter : IKioskTicketPrinter
             QrCodeMatrix qrCode,
             int left,
             int top,
-            int moduleSize,
+            int moduleSizeX,
+            int moduleSizeY,
             IntPtr brush)
         {
             const int quietZoneModules = 4;
@@ -242,10 +266,10 @@ public sealed class WindowsGraphicsKioskTicketPrinter : IKioskTicketPrinter
                     }
 
                     var rect = new Rect(
-                        left + ((x + quietZoneModules) * moduleSize),
-                        top + ((y + quietZoneModules) * moduleSize),
-                        left + ((x + quietZoneModules + 1) * moduleSize),
-                        top + ((y + quietZoneModules + 1) * moduleSize));
+                        left + ((x + quietZoneModules) * moduleSizeX),
+                        top + ((y + quietZoneModules) * moduleSizeY),
+                        left + ((x + quietZoneModules + 1) * moduleSizeX),
+                        top + ((y + quietZoneModules + 1) * moduleSizeY));
                     FillRect(hdc, ref rect, brush);
                 }
             }

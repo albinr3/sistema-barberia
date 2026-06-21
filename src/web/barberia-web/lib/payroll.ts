@@ -117,11 +117,6 @@ export async function getPayrollDashboard(
 }
 
 export async function getPayrollHistory(supabase: SupabaseClient) {
-  const device = await getLatestPayrollDevice(supabase);
-  if (!device) {
-    return { device: null, periods: [] as PayrollPeriod[] };
-  }
-
   const { data, error } = await supabase
     .from("synced_payroll_periods")
     .select(
@@ -130,7 +125,6 @@ export async function getPayrollHistory(supabase: SupabaseClient) {
         lines:synced_payroll_lines(*)
       `,
     )
-    .eq("source_device_id", device.id)
     .eq("state", "paid")
     .order("start_date", { ascending: false })
     .limit(25);
@@ -138,7 +132,7 @@ export async function getPayrollHistory(supabase: SupabaseClient) {
   if (error) throw new Error("Failed to load payroll history: " + error.message);
 
   return {
-    device,
+    device: null,
     periods: normalizePayrollPeriods(data ?? []),
   };
 }

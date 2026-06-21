@@ -126,6 +126,7 @@ La Fase 2.5 de sincronización Windows-Supabase ha sido implementada a nivel de 
 Payroll web/cloud actualizado a nivel de codigo:
 - `/admin/payroll` ya no expone `Pay Payroll` ni ajustes manuales; solo solicita recalculo y muestra el snapshot sincronizado desde Desktop.
 - Desktop paga automaticamente el ultimo periodo viernes-jueves cerrado y sube `payroll.snapshot` con `state = paid`.
+- Desktop tambien reenvia los periodos historicos pagados como `payroll.snapshot` durante el sync periodico; web `/admin/payroll/history` depende de esos snapshots en `synced_payroll_periods`.
 - `sync-changes` no emite nuevos comandos `adjustment_added`; la RPC legacy de ajustes queda deshabilitada por migracion no destructiva.
 - Revalidacion 2026-06-17: `npm run typecheck` paso; `npm test` paso 4 archivos / 12 tests. La primera corrida de `npm test` en sandbox fallo por `spawn EPERM`, y se reejecuto fuera del sandbox.
 

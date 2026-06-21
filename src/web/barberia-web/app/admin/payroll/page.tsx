@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate, getPayrollDashboard, payrollReference } from "@/lib/payroll";
 import { PayrollActions } from "./payroll-actions";
 import { PayrollLines } from "./payroll-lines";
+import { PayrollPrintButton } from "./payroll-print-button";
 import styles from "./payroll.module.css";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +44,15 @@ export default async function AdminPayrollPage({
               )}
             </div>
             <h2>Payroll Management</h2>
+            <p className={styles.printMeta}>{range.label} | {payrollReference(period, range)}</p>
           </div>
-          <Link href={"/admin/payroll/history" as Route} className={styles.historyLink}>
-            <History size={16} aria-hidden="true" />
-            View History
-          </Link>
+          <div className={styles.titleActions}>
+            <PayrollPrintButton />
+            <Link href={"/admin/payroll/history" as Route} className={styles.historyLink}>
+              <History size={16} aria-hidden="true" />
+              View History
+            </Link>
+          </div>
         </section>
 
         <section className={styles.kpiGrid}>

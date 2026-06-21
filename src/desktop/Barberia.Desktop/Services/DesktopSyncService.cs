@@ -85,7 +85,7 @@ internal sealed class DesktopSyncService : IDisposable
 
         AppointmentStatusMaintenanceService.ApplyDueNoShows(_connectionFactory, now, Environment.MachineName);
         EnqueueCatalogSnapshotIfChanged(settings, now);
-        EnqueueCurrentPayrollSnapshotIfChanged(settings, now);
+        EnqueuePayrollSnapshotsIfChanged(settings, now);
 
         var dispatcher = new SyncOutboxDispatcher(
             new LocalSyncOutboxStore(_connectionFactory),
@@ -181,7 +181,7 @@ internal sealed class DesktopSyncService : IDisposable
             JsonSerializer.Serialize(new { items = fingerprintBarbers.Cast<object>().Concat(fingerprintServices) }));
     }
 
-    private void EnqueueCurrentPayrollSnapshotIfChanged(DesktopSyncSettings settings, DateTimeOffset now)
+    private void EnqueuePayrollSnapshotsIfChanged(DesktopSyncSettings settings, DateTimeOffset now)
     {
         try
         {
@@ -189,6 +189,16 @@ internal sealed class DesktopSyncService : IDisposable
             var range = payrollService.GetWeekRange(now);
             var snapshot = payrollService.LoadOrGenerate(range.Start);
             EnqueuePayrollSnapshotIfChanged(settings, snapshot, now);
+
+            foreach (var period in payrollService.ListHistoricalPeriods())
+            {
+                if (period.StartDate == snapshot.Period.StartDate && period.EndDate == snapshot.Period.EndDate)
+                {
+                    continue;
+                }
+
+                EnqueuePayrollSnapshotIfChanged(settings, payrollService.Load(new PayrollWeekRange(period.StartDate, period.EndDate)), now);
+            }
         }
         catch (Exception exception)
         {

@@ -23,7 +23,7 @@ public sealed class CashBoxCloseService
     public CashBoxCloseService()
         : this(
             LocalDesktopDatabase.CreateConnectionFactory(),
-            new SimulatedCashBoxReceiptPrinter(),
+            new WindowsGraphicsCashBoxReceiptPrinter(),
             new SimulatedCashDrawer())
     {
     }
@@ -399,8 +399,9 @@ public sealed class CashBoxCloseService
     {
         var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
-        var from = new DateTimeOffset(now.Date, now.Offset);
-        var to = from.AddDays(1);
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var from = OperationalClock.StartOfDay(businessDate);
+        var to = OperationalClock.StartOfDay(businessDate.AddDays(1));
 
         using var connection = _connectionFactory.OpenConnection();
         var report = new LocalAdminReportRepository(connection).Load(from, to, now);

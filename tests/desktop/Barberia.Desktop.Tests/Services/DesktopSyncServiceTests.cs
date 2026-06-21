@@ -39,6 +39,13 @@ public class DesktopSyncServiceTests : IDisposable
         method!.Invoke(service, new object[] { settings, command, localAdminService, now });
     }
 
+    private void InvokeEnqueuePayrollSnapshotsIfChanged(DateTimeOffset now, DesktopSyncSettings settings)
+    {
+        var service = new DesktopSyncService(_connectionFactory);
+        var method = typeof(DesktopSyncService).GetMethod("EnqueuePayrollSnapshotsIfChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+        method!.Invoke(service, new object[] { settings, now });
+    }
+
     private void InvokeApplyPayrollCommand(JsonElement command, DateTimeOffset now, DesktopSyncSettings settings)
     {
         var service = new DesktopSyncService(_connectionFactory);
@@ -316,6 +323,34 @@ public class DesktopSyncServiceTests : IDisposable
             Assert.Contains(outboxEvents, e => e.EventType == "payroll.snapshot");
             Assert.Contains(outboxEvents, e => e.EventType == "payroll_admin_command.applied" && e.AggregateId == commandId);
         }
+    }
+
+    [Fact]
+    public void EnqueuePayrollSnapshotsIfChanged_IncludesPaidHistoricalPeriods()
+    {
+        var firstFriday = new DateTimeOffset(new DateTime(2026, 6, 5), OperationalClock.Now.Offset);
+        var secondFriday = firstFriday.AddDays(7);
+        var now = secondFriday.AddDays(7).AddHours(10);
+        var settings = new DesktopSyncSettings("http://test", Guid.NewGuid().ToString(), "secret", 60);
+        var service = new PayrollService(_connectionFactory);
+
+        SeedBarberTurnAndPayment(Guid.NewGuid(), "Ana", 1, firstFriday.AddHours(10), 2500, 1600);
+        SeedBarberTurnAndPayment(Guid.NewGuid(), "Luis", 2, secondFriday.AddHours(10), 3000, 1900);
+        service.PayPeriod(new PayrollWeekRange(firstFriday, firstFriday.AddDays(7)), PayrollPaymentMethod.Cash, "NOM-1", null, firstFriday.AddDays(7));
+        service.PayPeriod(new PayrollWeekRange(secondFriday, secondFriday.AddDays(7)), PayrollPaymentMethod.Cash, "NOM-2", null, secondFriday.AddDays(7));
+
+        InvokeEnqueuePayrollSnapshotsIfChanged(now, settings);
+        InvokeEnqueuePayrollSnapshotsIfChanged(now.AddMinutes(1), settings);
+
+        using var connection = _connectionFactory.OpenConnection();
+        var payrollSnapshots = new SyncOutboxRepository(connection)
+            .ListAll()
+            .Where(e => e.EventType == "payroll.snapshot")
+            .ToList();
+
+        Assert.Equal(3, payrollSnapshots.Count);
+        Assert.Contains(payrollSnapshots, e => e.Payload.Contains("NOM-1"));
+        Assert.Contains(payrollSnapshots, e => e.Payload.Contains("NOM-2"));
     }
 
     private void SeedBarberTurnAndPayment(
