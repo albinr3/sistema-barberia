@@ -11,14 +11,19 @@ export function CancelForm({
   ticket: TicketDashboardTicketRow; 
 }) {
   const [state, formAction, isPending] = useActionState(async () => {
-    if (!confirm("Are you sure you want to cancel this ticket?")) {
-      return null;
-    }
     return adminCancelTicket(ticket.id);
   }, null);
 
   return (
-    <form action={formAction} className={styles.cancelForm}>
+    <form 
+      action={formAction} 
+      className={styles.cancelForm}
+      onSubmit={(e) => {
+        if (!confirm("Are you sure you want to cancel this ticket?")) {
+          e.preventDefault();
+        }
+      }}
+    >
       <button 
         type="submit" 
         disabled={isPending} 

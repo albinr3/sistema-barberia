@@ -146,7 +146,7 @@ public sealed class LocalAdminReportRepository
                AND p.collected_at >= $from
                AND p.collected_at < $to
             GROUP BY b.id, b.display_name, b.station_number
-            ORDER BY cash_collected_cents DESC, services_closed DESC, b.display_name;
+            ORDER BY CASE WHEN b.station_number IS NULL THEN 1 ELSE 0 END, b.station_number ASC, b.display_name ASC;
             """;
         AddRange(command, fromInclusive, toExclusive);
 
