@@ -32,7 +32,7 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
   const [cancelling, setCancelling] = useState<string | null>(null);
 
   const handleCancel = async (id: string) => {
-    if (!confirm("¿Estás seguro de que quieres cancelar esta cita?")) return;
+    if (!confirm("Are you sure you want to cancel this appointment?")) return;
     setCancelling(id);
     await cancelCustomerAppointment(id);
     setCancelling(null);
@@ -41,13 +41,13 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
-        return <span className={`${styles.badge} ${styles.badgePending}`}>Pendiente</span>;
+        return <span className={`${styles.badge} ${styles.badgePending}`}>Pending</span>;
       case "confirmed":
-        return <span className={`${styles.badge} ${styles.badgeConfirmed}`}>Confirmada</span>;
+        return <span className={`${styles.badge} ${styles.badgeConfirmed}`}>Confirmed</span>;
       case "cancelled":
-        return <span className={`${styles.badge} ${styles.badgeCancelled}`}>Cancelada</span>;
+        return <span className={`${styles.badge} ${styles.badgeCancelled}`}>Cancelled</span>;
       case "completed":
-        return <span className={`${styles.badge} ${styles.badgeCompleted}`}>Completada</span>;
+        return <span className={`${styles.badge} ${styles.badgeCompleted}`}>Completed</span>;
       case "no_show":
         return <span className={`${styles.badge} ${styles.badgeNoShow}`}>No Show</span>;
       default:
@@ -61,9 +61,9 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
         <div className={styles.emptyIcon}>
           <CalendarIcon />
         </div>
-        <p className={styles.emptyText}>Aún no tienes citas programadas.</p>
+        <p className={styles.emptyText}>You have no upcoming appointments.</p>
         <Link href="/app/book" className={styles.btnPrimary}>
-          <PlusIcon /> Reservar una cita
+          <PlusIcon /> Book an appointment
         </Link>
       </div>
     );
@@ -96,7 +96,7 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
                 <div className={styles.dateRow}>
                   <CalendarIcon /> 
                   <span className="capitalize">
-                    {date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </span>
                 </div>
                 <div className={styles.timeRow}>
@@ -106,14 +106,14 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
                 {app.cancellation_reason && (
                   <div className={styles.cancelReason}>
                     <svg xmlns="http://www.w3.org/2000/svg" className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-                    <span>Motivo de cancelación: {app.cancellation_reason}</span>
+                    <span>Cancellation reason: {app.cancellation_reason}</span>
                   </div>
                 )}
 
                 {app.status === "completed" && (
                   <div className={styles.completedMessage}>
                     <CheckIcon />
-                    <span>¡Servicio completado! Gracias por tu visita.</span>
+                    <span>Service completed! Thank you for your visit.</span>
                   </div>
                 )}
               </div>
@@ -125,7 +125,7 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
                   </div>
                   <div className={styles.qrInfo}>
                     <span className={styles.qrCodeText}>{app.appointment_code}</span>
-                    <span className={styles.qrText}>Muestra este código QR al barbero cuando llegues.</span>
+                    <span className={styles.qrText}>Show this QR code to the barber when you arrive.</span>
                   </div>
                 </div>
               )}
@@ -138,7 +138,7 @@ export function CustomerAppointmentsList({ appointments }: { appointments: any[]
                   disabled={cancelling === app.id}
                   className={styles.btnSecondary}
                 >
-                  {cancelling === app.id ? "Cancelando..." : "Cancelar cita"}
+                  {cancelling === app.id ? "Cancelling..." : "Cancel appointment"}
                 </button>
               </div>
             )}

@@ -132,33 +132,35 @@ public sealed partial class AppointmentsPage : Page
             TextWrapping = TextWrapping.WrapWholeWords
         });
         
-        var serviceBarberPanel = new StackPanel
+        var serviceBarberText = new TextBlock
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 16
+            TextWrapping = TextWrapping.Wrap,
+            VerticalAlignment = VerticalAlignment.Center
         };
-        serviceBarberPanel.Children.Add(new TextBlock
+        
+        serviceBarberText.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run
         {
             Text = item.Service?.Name ?? "General Service",
             FontSize = 22,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85)),
-            TextWrapping = TextWrapping.NoWrap
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 68, 70, 85))
         });
-        serviceBarberPanel.Children.Add(new TextBlock
+        
+        serviceBarberText.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run
         {
-            Text = "•",
+            Text = "  •  ",
             FontSize = 22,
             Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 197, 207, 221))
         });
-        serviceBarberPanel.Children.Add(new TextBlock
+        
+        serviceBarberText.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run
         {
             Text = item.Barber?.DisplayNameWithStation ?? "Any barber",
-            FontSize = 22,
+            FontSize = 26,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 0, 19, 135)),
-            TextWrapping = TextWrapping.NoWrap
+            Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 0, 19, 135))
         });
-        detailsPanel.Children.Add(serviceBarberPanel);
+        
+        detailsPanel.Children.Add(serviceBarberText);
         
         Grid.SetColumn(detailsPanel, 1);
         row.Children.Add(detailsPanel);

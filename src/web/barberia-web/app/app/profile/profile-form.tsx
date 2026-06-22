@@ -51,7 +51,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
       if (result.error) {
         setMessage({ type: "error", text: result.error });
       } else {
-        setMessage({ type: "success", text: "Perfil actualizado correctamente." });
+        setMessage({ type: "success", text: "Profile updated successfully." });
       }
     });
   }
@@ -68,8 +68,8 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
             {avatarLetter}
           </div>
           <div className={styles.headerText}>
-            <h2 className={styles.title}>Perfil de Cuenta</h2>
-            <p className={styles.subtitle}>Gestiona tu información personal y de contacto</p>
+            <h2 className={styles.title}>Account Profile</h2>
+            <p className={styles.subtitle}>Manage your personal and contact information</p>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
           <div className={styles.fieldsGrid}>
             <div className={`${styles.field} ${styles.fullWidth}`}>
               <label htmlFor="email" className={styles.label}>
-                Correo electrónico
+                Email Address
               </label>
               <div className={styles.inputWrapper}>
                 <MailIcon />
@@ -88,14 +88,14 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
                   defaultValue={initialData.email || ""}
                   disabled
                   className={styles.input}
-                  title="El correo no se puede modificar"
+                  title="Email cannot be modified"
                 />
               </div>
             </div>
 
             <div className={styles.field}>
               <label htmlFor="displayName" className={styles.label}>
-                Nombre completo
+                Full Name
               </label>
               <div className={styles.inputWrapper}>
                 <UserIcon />
@@ -106,14 +106,14 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
                   required
                   defaultValue={initialData.displayName || ""}
                   className={styles.input}
-                  placeholder="Tu nombre"
+                  placeholder="Your name"
                 />
               </div>
             </div>
 
             <div className={styles.field}>
               <label htmlFor="phone" className={styles.label}>
-                Número de teléfono
+                Phone Number
               </label>
               <div className={styles.inputWrapper}>
                 <PhoneIcon />
@@ -123,7 +123,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
                   type="tel"
                   defaultValue={initialData.phone || ""}
                   className={styles.input}
-                  placeholder="Tu número (ej. +12345678)"
+                  placeholder="Your number (e.g. +12345678)"
                 />
               </div>
             </div>
@@ -140,11 +140,11 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
             <button type="submit" disabled={isPending} className={styles.submitBtn}>
               {isPending ? (
                 <>
-                  <LoaderIcon /> Guardando...
+                  <LoaderIcon /> Saving...
                 </>
               ) : (
                 <>
-                  <SaveIcon /> Guardar cambios
+                  <SaveIcon /> Save changes
                 </>
               )}
             </button>
