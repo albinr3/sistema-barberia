@@ -22,7 +22,10 @@
         </Style>
     </Page.Resources>
 
-    <Grid Background="{StaticResource AdminBackgroundBrush}">
+    <Grid
+        x:Name="_pageRoot"
+        Background="{StaticResource AdminBackgroundBrush}"
+        Tapped="OnPageRootTapped">
         <ScrollViewer
             VerticalScrollBarVisibility="Auto"
             VerticalScrollMode="Enabled">
@@ -71,5 +74,53 @@
                 Foreground="{StaticResource AdminTextBrush}"
                 Glyph="&#xE700;" />
         </Button>
+
+        <Border
+            Canvas.ZIndex="1"
+            Width="280"
+            Margin="0,0,28,28"
+            Padding="12"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Background="{StaticResource AdminSurfaceBrush}"
+            BorderBrush="{StaticResource AdminSurfaceContainerBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Opacity="0.94">
+            <StackPanel Spacing="8">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <FontIcon
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        Foreground="{StaticResource AdminMutedTextBrush}"
+                        Glyph="&#xE8B6;" />
+
+                    <TextBox
+                        x:Name="_scanInput"
+                        Grid.Column="1"
+                        MinHeight="34"
+                        Padding="8,5,8,5"
+                        CharacterCasing="Upper"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        KeyDown="OnScanInputKeyDown"
+                        PlaceholderText="Scan"
+                        TextAlignment="Center" />
+                </Grid>
+
+                <TextBlock
+                    x:Name="_scanMessageText"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource AdminMutedTextBrush}"
+                    MaxLines="2"
+                    TextWrapping="WrapWholeWords" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Page>

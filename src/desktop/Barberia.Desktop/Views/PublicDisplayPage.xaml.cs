@@ -491,7 +491,7 @@ public sealed partial class PublicDisplayPage : Page
         };
         detailGrid.Children.Add(new TextBlock
         {
-            Text = barber.DisplayName,
+            Text = FormatBarberNameWithStation(barber),
             FontSize = 24,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush(26, 28, 30),
@@ -782,6 +782,13 @@ public sealed partial class PublicDisplayPage : Page
             .ToArray();
 
         return requestedNames.Length == 0 ? "Any Available" : string.Join(", ", requestedNames);
+    }
+
+    private static string FormatBarberNameWithStation(Barber barber)
+    {
+        return string.IsNullOrWhiteSpace(barber.StationCode)
+            ? barber.DisplayName
+            : $"{barber.DisplayName}({barber.StationCode})";
     }
 
     private static Barber? GetAssignedBarber(Turn turn, IReadOnlyList<Barber> barbers)

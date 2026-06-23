@@ -4,14 +4,21 @@ using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using System.Runtime.InteropServices;
+using Windows.Media.Core;
+using Windows.Media.Playback;
 
 namespace Barberia.Desktop.Views;
 
 public sealed partial class AppointmentsPage : Page
 {
+    private const uint ErrorBeepType = 0xFFFFFFFF;
     private readonly LocalAppointmentsService _service = new();
+    private readonly BarberPanelService _startService = new();
     private readonly DispatcherTimer _refreshTimer = new();
+    private readonly MediaPlayer _successPlayer = new();
 
     public event EventHandler? ShellMenuRequested;
 
@@ -20,6 +27,7 @@ public sealed partial class AppointmentsPage : Page
         InitializeComponent();
         _refreshTimer.Interval = TimeSpan.FromSeconds(15);
         _refreshTimer.Tick += (_, _) => LoadAppointments();
+        _successPlayer.Source = MediaSource.CreateFromUri(new Uri(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "barberpanel.wav")));
     }
 
     private void OnMenuButtonClick(object sender, RoutedEventArgs args)
@@ -31,6 +39,7 @@ public sealed partial class AppointmentsPage : Page
     {
         LoadAppointments();
         _refreshTimer.Start();
+        QueueScanFocus();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -50,6 +59,63 @@ public sealed partial class AppointmentsPage : Page
             _appointmentsRows.Children.Clear();
             _appointmentsRows.Children.Add(CreateEmptyState($"Could not load appointments: {exception.Message}"));
         }
+        finally
+        {
+            QueueScanFocus();
+        }
+    }
+
+    private void OnPageRootTapped(object sender, TappedRoutedEventArgs args)
+    {
+        QueueScanFocus();
+    }
+
+    private void OnScanInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
+    {
+        if (args.Key == Windows.System.VirtualKey.Enter)
+        {
+            StartScannedService();
+            args.Handled = true;
+        }
+    }
+
+    private void StartScannedService()
+    {
+        try
+        {
+            var result = _startService.StartService(_scanInput.Text);
+            _scanInput.Text = string.Empty;
+            SetScanSuccess($"Started #{result.DisplayTicketNumber} - {result.BarberStationCode}");
+            LoadAppointments();
+        }
+        catch (Exception exception)
+        {
+            _scanInput.Text = string.Empty;
+            SetScanError(exception.Message);
+        }
+        finally
+        {
+            QueueScanFocus();
+        }
+    }
+
+    private void QueueScanFocus()
+    {
+        DispatcherQueue.TryEnqueue(() => _scanInput.Focus(FocusState.Programmatic));
+    }
+
+    private void SetScanSuccess(string message)
+    {
+        _successPlayer.Play();
+        _scanMessageText.Text = message;
+        _scanMessageText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 17, 105, 88));
+    }
+
+    private void SetScanError(string message)
+    {
+        MessageBeep(ErrorBeepType);
+        _scanMessageText.Text = message;
+        _scanMessageText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 190, 35, 35));
     }
 
     private void ShowSnapshot(AppointmentsSnapshot snapshot)
@@ -294,4 +360,7 @@ public sealed partial class AppointmentsPage : Page
             }
         };
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool MessageBeep(uint uType);
 }
