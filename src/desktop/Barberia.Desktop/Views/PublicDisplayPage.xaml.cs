@@ -420,7 +420,7 @@ public sealed partial class PublicDisplayPage : Page
                 new TextBlock
                 {
                     Text = "Created:",
-                    FontSize = 16,
+                    FontSize = 20,
                     FontWeight = FontWeights.Black,
                     Foreground = Brush(0, 19, 135),
                     TextAlignment = TextAlignment.Right
@@ -428,7 +428,7 @@ public sealed partial class PublicDisplayPage : Page
                 new TextBlock
                 {
                     Text = turn.CheckedInAt.ToString("h:mm tt"),
-                    FontSize = 16,
+                    FontSize = 20,
                     FontWeight = FontWeights.Black,
                     Foreground = Brush(0, 19, 135),
                     TextAlignment = TextAlignment.Right
@@ -719,7 +719,7 @@ public sealed partial class PublicDisplayPage : Page
             Child = new TextBlock
             {
                 Text = text,
-                FontSize = 18,
+                FontSize = 22,
                 FontWeight = FontWeights.Black,
                 Foreground = foreground,
                 TextTrimming = TextTrimming.CharacterEllipsis
