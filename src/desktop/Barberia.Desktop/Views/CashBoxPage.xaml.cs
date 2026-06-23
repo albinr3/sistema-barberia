@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Runtime.InteropServices;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 
@@ -15,6 +16,7 @@ public sealed partial class CashBoxPage : Page
 {
     private const double NarrowLayoutThreshold = 900;
     private const int ServiceOptionColumnCount = 3;
+    private const uint ErrorBeepType = 0xFFFFFFFF;
 
     private static readonly SolidColorBrush SuccessTextBrush = Brush(17, 105, 88);
     private static readonly SolidColorBrush ErrorTextBrush = Brush(154, 58, 47);
@@ -447,6 +449,7 @@ public sealed partial class CashBoxPage : Page
 
     private void ShowError(string message)
     {
+        MessageBeep(ErrorBeepType);
         SetMessage(message, ErrorTextBrush);
     }
 
@@ -480,4 +483,7 @@ public sealed partial class CashBoxPage : Page
     {
         return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool MessageBeep(uint uType);
 }

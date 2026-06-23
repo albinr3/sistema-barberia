@@ -63,15 +63,11 @@ public sealed class CashBoxCloseService
         var turnRepository = new LocalTurnRepository(connection);
         var barberRepository = new LocalBarberRepository(connection);
 
-        var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
-            ?? throw new InvalidOperationException("Ticket not found in local database.");
-
-        var barberId = turn.AssignedBarberId
-            ?? throw new InvalidOperationException("The ticket has no assigned barber.");
-        var barber = barberRepository.GetById(barberId)
-            ?? throw new InvalidOperationException("Assigned barber does not exist in local database.");
-        var barberStationCode = barber.StationCode
-            ?? throw new InvalidOperationException("Active barber has no assigned station.");
+        var (turn, barber, barberStationCode) = LoadCashBoxTicketContext(
+            turnRepository,
+            barberRepository,
+            ticketNumber,
+            now);
 
         return new CashBoxTicketLookupResult(
             turn.DisplayTicketNumber,
@@ -117,21 +113,15 @@ public sealed class CashBoxCloseService
 
             var receiptNumber = paymentRepository.GetNextReceiptNumber();
 
-            var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
-                ?? throw new InvalidOperationException("Ticket not found in local database.");
-
-            var barberId = turn.AssignedBarberId
-                ?? throw new InvalidOperationException("The ticket has no assigned barber.");
-            var barber = barberRepository.GetById(barberId)
-                ?? throw new InvalidOperationException("Assigned barber does not exist in local database.");
+            var (turn, barber, barberStationCode) = LoadCashBoxTicketContext(
+                turnRepository,
+                barberRepository,
+                ticketNumber,
+                now);
+            var barberId = barber.Id;
             if (!barber.IsActive)
             {
                 throw new InvalidOperationException("Assigned barber is deactivated by administration.");
-            }
-
-            if (turn.State != TurnState.InService || barber.State != BarberState.InService)
-            {
-                throw new InvalidOperationException("Ticket and barber must be in service to close at cash box.");
             }
 
             var service = serviceRepository.GetById(serviceId)
@@ -149,8 +139,6 @@ public sealed class CashBoxCloseService
 
             var amount = servicePrice + additionalAmount;
             var commission = decimal.Round(amount * barber.CommissionRate, 2, MidpointRounding.AwayFromZero);
-            var barberStationCode = barber.StationCode
-                ?? throw new InvalidOperationException("Active barber has no assigned station.");
             var receiptPrinted = false;
             var cashDrawerOpened = false;
             string? hardwareFailureMessage = null;
@@ -421,6 +409,35 @@ public sealed class CashBoxCloseService
         {
             throw new InvalidOperationException($"Could not print day report: {result.ErrorMessage}");
         }
+    }
+
+    private static (Turn Turn, Barber Barber, string BarberStationCode) LoadCashBoxTicketContext(
+        LocalTurnRepository turnRepository,
+        LocalBarberRepository barberRepository,
+        string ticketNumber,
+        DateTimeOffset now)
+    {
+        var turn = turnRepository.GetByTicketInputForToday(ticketNumber, now)
+            ?? throw new InvalidOperationException("Ticket not found in local database.");
+
+        var barberId = turn.AssignedBarberId
+            ?? throw new InvalidOperationException("The ticket has no assigned barber.");
+        var barber = barberRepository.GetById(barberId)
+            ?? throw new InvalidOperationException("Assigned barber does not exist in local database.");
+        var barberStationCode = barber.StationCode
+            ?? throw new InvalidOperationException("Active barber has no assigned station.");
+
+        if (turn.State == TurnState.Completed)
+        {
+            throw new InvalidOperationException($"This ticket was already completed and charged by {barber.DisplayName}.");
+        }
+
+        if (turn.State != TurnState.InService || barber.State != BarberState.InService)
+        {
+            throw new InvalidOperationException("This ticket is not currently being attended.");
+        }
+
+        return (turn, barber, barberStationCode);
     }
 
     private TurnAssignmentDecision? TryAssignNextWaitingTurn(

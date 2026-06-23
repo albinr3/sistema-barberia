@@ -57,6 +57,7 @@ public sealed partial class BarberPanelPage : Page
         }
         catch (Exception exception)
         {
+            _ticketInput.Text = string.Empty;
             _assignedBarberText.Text = "Review ticket";
             SetErrorMessage(exception.Message);
         }
