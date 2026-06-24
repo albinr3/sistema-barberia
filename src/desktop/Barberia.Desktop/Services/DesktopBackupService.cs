@@ -19,6 +19,7 @@ internal sealed class DesktopBackupService : IDisposable
         "barbers",
         "turns",
         "cash_payments",
+        "pending_service_payments",
         "services",
         "sync_outbox_events",
         "sync_state"
@@ -549,7 +550,13 @@ internal sealed class DesktopBackupService : IDisposable
         command.CommandText = """
             SELECT id, turn_id, service_id, COALESCE(service_price_cents, amount_cents - additional_cents, amount_cents)
             FROM cash_payments
-            WHERE service_id IS NOT NULL;
+            WHERE service_id IS NOT NULL
+            UNION ALL
+            SELECT id || ':pending', turn_id, service_id, service_price_cents
+            FROM pending_service_payments
+            WHERE service_id IS NOT NULL
+              AND paid_at IS NULL
+              AND voided_at IS NULL;
             """;
 
         using var reader = command.ExecuteReader();

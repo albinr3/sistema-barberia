@@ -74,7 +74,16 @@ El Desktop agrupa eventos en un arreglo y los envía. Cada evento representa un 
   "items": [
     {
       "service_id": "uuid-del-servicio",
+      "price_cents": 2500,
+      "local_item_id": "uuid-local-del-item"
+    }
+  ]
+}
+```
+
 Desktop consulta cambios periódicamente, enviando el cursor (timestamp del último evento sincronizado).
+
+Nota operativa: Cash Box puede emitir `ticket.completed` antes de `payment.collected` cuando el barbero usa `Pay Later`. En ese caso el servicio termino y el barbero volvio a cola, pero el dinero sigue en `pending_service_payments` local; Web solo debe materializar el cobro cuando reciba `payment.collected`.
 
 ### Petición
 ```json

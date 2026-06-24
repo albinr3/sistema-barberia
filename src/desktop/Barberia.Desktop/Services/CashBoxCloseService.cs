@@ -46,7 +46,9 @@ public sealed class CashBoxCloseService
 
         using var connection = _connectionFactory.OpenConnection();
         var services = new ServiceRepository(connection).ListActive();
-        return new CashBoxSnapshot(now, services);
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var pendingPaymentCount = new PendingServicePaymentRepository(connection).CountOpenByBusinessDate(businessDate);
+        return new CashBoxSnapshot(now, services, pendingPaymentCount);
     }
 
     public CashBoxTicketLookupResult LookupTicket(string ticketNumber)
@@ -75,6 +77,360 @@ public sealed class CashBoxCloseService
             string.IsNullOrWhiteSpace(turn.CustomerName) ? "Walk-in customer" : turn.CustomerName,
             barber.DisplayName,
             barberStationCode);
+    }
+
+    public IReadOnlyList<PendingServicePaymentRow> ListPendingPayments()
+    {
+        var now = OperationalClock.Now;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, Environment.MachineName);
+
+        using var connection = _connectionFactory.OpenConnection();
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        return new PendingServicePaymentRepository(connection).ListOpenByBusinessDate(businessDate);
+    }
+
+    public PendingServicePaymentResult MarkServicePendingPayment(string ticketNumber, Guid serviceId, decimal additionalAmount)
+    {
+        if (string.IsNullOrWhiteSpace(ticketNumber))
+        {
+            throw new InvalidOperationException("Scan or enter the service ticket.");
+        }
+
+        if (serviceId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Select the provided service.");
+        }
+
+        if (additionalAmount is not (0m or 2m or 3m or 5m))
+        {
+            throw new InvalidOperationException("The addition must be 0, 2, 3 or 5 dollars.");
+        }
+
+        var now = OperationalClock.Now;
+        var deviceId = Environment.MachineName;
+        PendingServicePaymentResult? result = null;
+
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
+            var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
+            var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
+            var pendingRepository = new PendingServicePaymentRepository(connection, sqliteTransaction);
+            var serviceRepository = new ServiceRepository(connection, sqliteTransaction);
+            var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var dailyRotationRepository = new DailyRotationRepository(connection, sqliteTransaction);
+            var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
+
+            var (turn, barber, barberStationCode) = LoadCashBoxTicketContext(
+                turnRepository,
+                barberRepository,
+                ticketNumber,
+                now);
+            var barberId = barber.Id;
+            if (!barber.IsActive)
+            {
+                throw new InvalidOperationException("Assigned barber is deactivated by administration.");
+            }
+
+            var service = serviceRepository.GetById(serviceId)
+                ?? throw new InvalidOperationException("Service not found in local database.");
+            if (!service.IsActive)
+            {
+                throw new InvalidOperationException("This service is deactivated by administration.");
+            }
+
+            var servicePrice = service.Price;
+            if (servicePrice <= 0)
+            {
+                throw new InvalidOperationException("The service base price must be greater than zero.");
+            }
+
+            var amount = servicePrice + additionalAmount;
+            var commission = decimal.Round(amount * barber.CommissionRate, 2, MidpointRounding.AwayFromZero);
+            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            var pendingId = Guid.NewGuid();
+
+            pendingRepository.Add(new PendingServicePayment(
+                pendingId,
+                turn.Id,
+                barberId,
+                service.Id,
+                businessDate,
+                servicePrice,
+                additionalAmount,
+                amount,
+                commission,
+                Currency,
+                deviceId,
+                now));
+
+            var barbers = barberRepository
+                .ListAll()
+                .Where(candidate => candidate.IsActive)
+                .ToArray();
+            var rotationQueue = DailyRotationQueue.Build(
+                barbers,
+                dailyRotationRepository.ListByDate(businessDate),
+                businessDate);
+            var closeResult = _assignmentEngine.CloseServiceAtCashBox(
+                new CashBoxCloseRequest(barberId, rotationQueue));
+
+            turnRepository.MarkCompleted(turn.Id, now);
+            if (turn.AppointmentId is Guid appointmentId)
+            {
+                appointmentRepository.MarkCompleted(appointmentId, now, now);
+            }
+            barberRepository.ApplyCashBoxClose(closeResult.BarberId, closeResult.BarberState, now);
+            dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
+
+            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+
+            syncRecorder.Enqueue(new LocalSyncEvent(
+                Guid.NewGuid(), now, "ticket.completed", "ticket", turn.Id,
+                JsonSerializer.Serialize(TicketSyncPayload.Create(
+                    turn,
+                    "completed",
+                    barberId,
+                    now,
+                    new[] { new { service_id = service.Id, price_cents = service.PriceCents, local_item_id = $"{pendingId}:service" } })),
+                deviceId), now);
+
+            if (turn.AppointmentId is Guid completedAppointmentId)
+            {
+                syncRecorder.Enqueue(new LocalSyncEvent(
+                    Guid.NewGuid(), now, "appointment.completed", "appointment", completedAppointmentId,
+                    JsonSerializer.Serialize(new
+                    {
+                        appointment_id = completedAppointmentId,
+                        appointment_code = turn.TicketNumber,
+                        ticket_id = turn.Id,
+                        completed_at = now
+                    }),
+                    deviceId), now);
+            }
+
+            auditRepository.Add(new AuditEvent(
+                Guid.NewGuid(),
+                now,
+                "cash_box_pending_payment_marked",
+                "turn",
+                turn.Id,
+                JsonSerializer.Serialize(new
+                {
+                    displayTicketNumber = turn.DisplayTicketNumber,
+                    internalTicketNumber = turn.TicketNumber,
+                    pendingPaymentId = pendingId,
+                    barberId,
+                    barberStationCode,
+                    serviceId = service.Id,
+                    serviceName = service.Name,
+                    servicePrice,
+                    additionalAmount,
+                    amount,
+                    currency = Currency,
+                    commission,
+                    commissionPercentage = barber.CommissionPercentage
+                }),
+                deviceId));
+
+            var reassignment = TryAssignNextWaitingTurn(
+                turnRepository,
+                barberRepository,
+                dailyRotationRepository,
+                appointmentRepository,
+                now);
+
+            if (reassignment is not null)
+            {
+                EnqueueReassignment(syncRecorder, auditRepository, turnRepository, reassignment, businessDate, now, deviceId, "cash_box_pending_payment_marked");
+            }
+
+            result = new PendingServicePaymentResult(
+                turn.DisplayTicketNumber,
+                turn.TicketNumber,
+                barber.DisplayName,
+                barberStationCode,
+                service.Name,
+                servicePrice,
+                additionalAmount,
+                amount,
+                commission,
+                now,
+                "Service marked pending payment. Barber returned to queue.");
+        });
+
+        return result ?? throw new InvalidOperationException("Could not mark service as pending payment.");
+    }
+
+    public PendingPaymentCollectionResult CollectPendingPayments(IReadOnlyCollection<Guid> pendingPaymentIds, CustomerPaymentMethod paymentMethod, string? paymentReference)
+    {
+        if (pendingPaymentIds.Count == 0)
+        {
+            throw new InvalidOperationException("Select at least one pending payment.");
+        }
+
+        var requestedIds = pendingPaymentIds.Distinct().ToArray();
+        var now = OperationalClock.Now;
+        var deviceId = Environment.MachineName;
+        PendingPaymentCollectionResult? result = null;
+
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
+            var pendingRepository = new PendingServicePaymentRepository(connection, sqliteTransaction);
+            var paymentRepository = new CashPaymentRepository(connection, sqliteTransaction);
+            var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var pendingRows = pendingRepository.GetOpenByIds(requestedIds);
+            if (pendingRows.Count != requestedIds.Length)
+            {
+                throw new InvalidOperationException("One or more pending payments were already collected or no longer exist.");
+            }
+
+            var receiptNumber = paymentRepository.GetNextReceiptNumber();
+            var totalAmount = pendingRows.Sum(row => row.Amount);
+            var totalCommission = pendingRows.Sum(row => row.Commission);
+            var receiptPrinted = false;
+            var cashDrawerOpened = false;
+            string? hardwareFailureMessage = null;
+
+            try
+            {
+                var printResult = _receiptPrinter.Print(new CashReceiptPrintJob(
+                    receiptNumber,
+                    pendingRows[0].DisplayTicketNumber,
+                    pendingRows.Count == 1 ? pendingRows[0].BarberName : "Multiple barbers",
+                    pendingRows.Count == 1 ? pendingRows[0].BarberStationCode : "Group",
+                    pendingRows.Count == 1 ? pendingRows[0].ServiceName : $"{pendingRows.Count} pending services",
+                    pendingRows.Sum(row => row.ServicePrice),
+                    pendingRows.Sum(row => row.AdditionalAmount),
+                    totalAmount,
+                    totalCommission,
+                    Currency,
+                    now,
+                    deviceId,
+                    paymentMethod.ToString()));
+
+                if (!printResult.Succeeded)
+                {
+                    hardwareFailureMessage = $"Printer failed: {printResult.ErrorMessage}";
+                }
+                else
+                {
+                    receiptPrinted = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                hardwareFailureMessage = $"Printer error: {ex.Message}";
+            }
+
+            if (paymentMethod == CustomerPaymentMethod.Cash)
+            {
+                try
+                {
+                    var drawerResult = _cashDrawer.Open(deviceId);
+                    if (!drawerResult.Succeeded)
+                    {
+                        var msg = $"Drawer failed: {drawerResult.ErrorMessage}";
+                        hardwareFailureMessage = hardwareFailureMessage == null ? msg : $"{hardwareFailureMessage} | {msg}";
+                    }
+                    else
+                    {
+                        cashDrawerOpened = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var msg = $"Drawer error: {ex.Message}";
+                    hardwareFailureMessage = hardwareFailureMessage == null ? msg : $"{hardwareFailureMessage} | {msg}";
+                }
+            }
+
+            if (hardwareFailureMessage != null)
+            {
+                auditRepository.Add(new AuditEvent(
+                    Guid.NewGuid(),
+                    now,
+                    "cash_box_hardware_failure",
+                    "pending_payment",
+                    pendingRows[0].Id,
+                    JsonSerializer.Serialize(new { error = hardwareFailureMessage, receiptNumber, pendingPaymentIds = requestedIds }),
+                    deviceId));
+            }
+
+            var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+            foreach (var pending in pendingRows)
+            {
+                var paymentId = Guid.NewGuid();
+                paymentRepository.Add(new CashPayment(
+                    paymentId,
+                    pending.TurnId,
+                    pending.BarberId,
+                    pending.ServiceId,
+                    pending.Amount,
+                    pending.Currency,
+                    now,
+                    deviceId,
+                    receiptNumber,
+                    cashDrawerOpened,
+                    pending.Commission,
+                    pending.ServicePrice,
+                    pending.AdditionalAmount,
+                    paymentMethod,
+                    paymentReference));
+
+                pendingRepository.MarkPaid(pending.Id, receiptNumber, paymentMethod, paymentReference, now);
+
+                syncRecorder.Enqueue(new LocalSyncEvent(
+                    Guid.NewGuid(), now, "payment.collected", "payment", paymentId,
+                    JsonSerializer.Serialize(new
+                    {
+                        ticket_id = pending.TurnId,
+                        payment_method = paymentMethod.ToString().ToLower(),
+                        amount_cents = pending.AmountCents,
+                        receipt_number = receiptNumber,
+                        payment_reference = paymentReference,
+                        collected_at = now
+                    }),
+                    deviceId), now);
+            }
+
+            auditRepository.Add(new AuditEvent(
+                Guid.NewGuid(),
+                now,
+                "cash_box_pending_payments_collected",
+                "pending_payment",
+                pendingRows[0].Id,
+                JsonSerializer.Serialize(new
+                {
+                    pendingPaymentIds = pendingRows.Select(row => row.Id),
+                    paymentCount = pendingRows.Count,
+                    totalAmount,
+                    currency = Currency,
+                    receiptNumber,
+                    receiptPrinted,
+                    cashDrawerOpened,
+                    paymentMethod = paymentMethod.ToString(),
+                    paymentReference
+                }),
+                deviceId));
+
+            result = new PendingPaymentCollectionResult(
+                pendingRows.Count,
+                totalAmount,
+                receiptNumber,
+                now,
+                $"{pendingRows.Count} pending payment(s) collected.",
+                receiptPrinted,
+                cashDrawerOpened,
+                hardwareFailureMessage);
+        });
+
+        return result ?? throw new InvalidOperationException("Could not collect pending payments.");
     }
 
     public CashBoxDepositResult CloseService(string ticketNumber, Guid serviceId, decimal additionalAmount, CustomerPaymentMethod paymentMethod, string? paymentReference)
@@ -326,40 +682,7 @@ public sealed class CashBoxCloseService
 
             if (reassignment is not null)
             {
-                syncRecorder.Enqueue(new LocalSyncEvent(
-                    Guid.NewGuid(), now, "ticket.called", "ticket", reassignment.TurnId,
-                    JsonSerializer.Serialize(TicketSyncPayload.Create(
-                        turnRepository.GetById(reassignment.TurnId)
-                            ?? new Turn(
-                                reassignment.TurnId,
-                                reassignment.TicketNumber,
-                                reassignment.DisplayTicketNumber,
-                                businessDate,
-                                TurnState.Called,
-                                TurnSource.WalkIn,
-                                now,
-                                reassignment.BarberId),
-                        "called",
-                        reassignment.BarberId)),
-                    deviceId), now);
-
-                auditRepository.Add(new AuditEvent(
-                    Guid.NewGuid(),
-                    now,
-                    "cash_box_waiting_turn_assigned",
-                    "turn",
-                    reassignment.TurnId,
-                    JsonSerializer.Serialize(new
-                    {
-                        turnId = reassignment.TurnId,
-                        displayTicketNumber = reassignment.DisplayTicketNumber,
-                        internalTicketNumber = reassignment.TicketNumber,
-                        barberId = reassignment.BarberId,
-                        turnState = reassignment.TurnState.ToString(),
-                        barberState = reassignment.BarberState.ToString(),
-                        reason = "cash_box_closed"
-                    }),
-                    deviceId));
+                EnqueueReassignment(syncRecorder, auditRepository, turnRepository, reassignment, businessDate, now, deviceId, "cash_box_closed");
             }
 
             result = new CashBoxDepositResult(
@@ -477,6 +800,52 @@ public sealed class CashBoxCloseService
         {
             return null;
         }
+    }
+
+    private static void EnqueueReassignment(
+        SyncOutboxRecorder syncRecorder,
+        AuditEventRepository auditRepository,
+        LocalTurnRepository turnRepository,
+        TurnAssignmentDecision reassignment,
+        DateOnly businessDate,
+        DateTimeOffset now,
+        string deviceId,
+        string reason)
+    {
+        syncRecorder.Enqueue(new LocalSyncEvent(
+            Guid.NewGuid(), now, "ticket.called", "ticket", reassignment.TurnId,
+            JsonSerializer.Serialize(TicketSyncPayload.Create(
+                turnRepository.GetById(reassignment.TurnId)
+                    ?? new Turn(
+                        reassignment.TurnId,
+                        reassignment.TicketNumber,
+                        reassignment.DisplayTicketNumber,
+                        businessDate,
+                        TurnState.Called,
+                        TurnSource.WalkIn,
+                        now,
+                        reassignment.BarberId),
+                "called",
+                reassignment.BarberId)),
+            deviceId), now);
+
+        auditRepository.Add(new AuditEvent(
+            Guid.NewGuid(),
+            now,
+            "cash_box_waiting_turn_assigned",
+            "turn",
+            reassignment.TurnId,
+            JsonSerializer.Serialize(new
+            {
+                turnId = reassignment.TurnId,
+                displayTicketNumber = reassignment.DisplayTicketNumber,
+                internalTicketNumber = reassignment.TicketNumber,
+                barberId = reassignment.BarberId,
+                turnState = reassignment.TurnState.ToString(),
+                barberState = reassignment.BarberState.ToString(),
+                reason
+            }),
+            deviceId));
     }
 
 }

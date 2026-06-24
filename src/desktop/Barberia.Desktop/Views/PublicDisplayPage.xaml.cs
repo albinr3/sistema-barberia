@@ -15,7 +15,7 @@ public sealed partial class PublicDisplayPage : Page
 {
     private const int WaitingGridColumns = 1;
     private const int WaitingGridRows = 12;
-    private const int BarberGridColumns = 2;
+    private const int BarberGridColumns = 1;
     private const int NowCallingGridColumns = 2;
     private static readonly TimeSpan SnapshotRefreshInterval = TimeSpan.FromSeconds(5);
 
@@ -131,10 +131,7 @@ public sealed partial class PublicDisplayPage : Page
             .Where(turn => turn.AssignedBarberId is not null)
             .GroupBy(turn => turn.AssignedBarberId!.Value)
             .ToDictionary(group => group.Key, group => group.OrderBy(turn => GetTurnDisplayPriority(turn.State)).First());
-        var orderedBarbers = snapshot.Barbers
-            .OrderBy(barber => barber.StationNumber ?? int.MaxValue)
-            .ThenBy(barber => barber.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var barberStatusItems = CreateBarberStatusItems(snapshot, activeTurnsByBarber);
 
         _nowCallingSection.Visibility = called.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _lastRefreshPill.Text = $"Updated: {snapshot.LoadedAt:hh:mm tt}";
@@ -153,12 +150,39 @@ public sealed partial class PublicDisplayPage : Page
             fillByColumn: true);
         ReplaceGridChildren(
             _barberItems,
-            orderedBarbers.Select(barber => CreateBarberCard(
-                barber,
-                snapshot.ProtectedBarberIds.Contains(barber.Id),
-                activeTurnsByBarber.GetValueOrDefault(barber.Id))),
+            barberStatusItems,
             BarberGridColumns,
             "No active barbers registered.");
+    }
+
+    private static IReadOnlyList<FrameworkElement> CreateBarberStatusItems(
+        PublicDisplaySnapshot snapshot,
+        IReadOnlyDictionary<Guid, Turn> activeTurnsByBarber)
+    {
+        var availableBarbers = snapshot.Barbers
+            .Where(barber => IsAvailableInRotation(barber, snapshot.ProtectedBarberIds))
+            .ToArray();
+        var unavailableBarbers = snapshot.Barbers
+            .Where(barber => !IsAvailableInRotation(barber, snapshot.ProtectedBarberIds))
+            .ToArray();
+
+        var items = new List<FrameworkElement>();
+        items.AddRange(availableBarbers.Select(barber => CreateBarberCard(
+            barber,
+            false,
+            activeTurnsByBarber.GetValueOrDefault(barber.Id))));
+
+        if (availableBarbers.Length > 0 && unavailableBarbers.Length > 0)
+        {
+            items.Add(CreateBarberStatusDivider());
+        }
+
+        items.AddRange(unavailableBarbers.Select(barber => CreateBarberCard(
+            barber,
+            snapshot.ProtectedBarberIds.Contains(barber.Id),
+            activeTurnsByBarber.GetValueOrDefault(barber.Id))));
+
+        return items;
     }
 
     private static FrameworkElement CreateNowCallingCard(Turn turn, IReadOnlyList<Barber> barbers)
@@ -527,6 +551,21 @@ public sealed partial class PublicDisplayPage : Page
             Padding = new Thickness(0, 16, 16, 16),
             Child = content
         };
+    }
+
+    private static FrameworkElement CreateBarberStatusDivider()
+    {
+        return new Border
+        {
+            Height = 1,
+            Margin = new Thickness(0, 4, 0, 4),
+            Background = Brush(197, 197, 216)
+        };
+    }
+
+    private static bool IsAvailableInRotation(Barber barber, IReadOnlySet<Guid> protectedBarberIds)
+    {
+        return barber.State == BarberState.Available && !protectedBarberIds.Contains(barber.Id);
     }
 
     private static BarberDisplay GetBarberDisplay(Barber barber, bool isProtected, Turn? activeTurn)

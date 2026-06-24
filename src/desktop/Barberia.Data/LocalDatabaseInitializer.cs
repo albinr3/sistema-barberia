@@ -117,6 +117,37 @@ public sealed class LocalDatabaseInitializer
                 FOREIGN KEY (service_id) REFERENCES services(id)
             );
 
+            CREATE TABLE IF NOT EXISTS pending_service_payments (
+                id TEXT NOT NULL PRIMARY KEY,
+                turn_id TEXT NOT NULL,
+                barber_id TEXT NOT NULL,
+                service_id TEXT NOT NULL,
+                business_date TEXT NOT NULL,
+                service_price_cents INTEGER NOT NULL,
+                additional_cents INTEGER NOT NULL DEFAULT 0,
+                amount_cents INTEGER NOT NULL,
+                commission_cents INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                pending_at TEXT NOT NULL,
+                paid_at TEXT NULL,
+                voided_at TEXT NULL,
+                receipt_number TEXT NULL,
+                payment_method INTEGER NULL,
+                payment_reference TEXT NULL,
+                FOREIGN KEY (turn_id) REFERENCES turns(id),
+                FOREIGN KEY (barber_id) REFERENCES barbers(id),
+                FOREIGN KEY (service_id) REFERENCES services(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_pending_service_payments_open_day
+                ON pending_service_payments(business_date, pending_at)
+                WHERE paid_at IS NULL AND voided_at IS NULL;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_service_payments_open_turn
+                ON pending_service_payments(turn_id)
+                WHERE paid_at IS NULL AND voided_at IS NULL;
+
             CREATE TABLE IF NOT EXISTS services (
                 id TEXT NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,

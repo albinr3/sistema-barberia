@@ -859,19 +859,19 @@ public sealed class SqlitePersistenceTests
             snapshot.Barbers,
             row =>
             {
-                Assert.Equal(anaId, row.BarberId);
-                Assert.Equal(2, row.StationNumber);
-                Assert.Equal(1, row.ServicesClosed);
-                Assert.Equal(4000, row.CashCollectedCents);
-                Assert.Equal(1, row.PaymentsMissingCommission);
-            },
-            row =>
-            {
                 Assert.Equal(luisId, row.BarberId);
                 Assert.Equal(1, row.StationNumber);
                 Assert.Equal(1, row.ServicesClosed);
                 Assert.Equal(2500, row.CashCollectedCents);
                 Assert.Equal(500, row.CommissionCents);
+            },
+            row =>
+            {
+                Assert.Equal(anaId, row.BarberId);
+                Assert.Equal(2, row.StationNumber);
+                Assert.Equal(1, row.ServicesClosed);
+                Assert.Equal(4000, row.CashCollectedCents);
+                Assert.Equal(1, row.PaymentsMissingCommission);
             },
             row =>
             {

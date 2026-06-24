@@ -21,6 +21,7 @@ DELETE FROM payroll_periods;
 
 -- Operación y Ventas
 DELETE FROM cash_payments;
+DELETE FROM pending_service_payments;
 DELETE FROM turns;
 DELETE FROM appointment_reservations;
 DELETE FROM barber_daily_rotation;

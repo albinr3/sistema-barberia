@@ -106,7 +106,7 @@ public sealed class WindowsGraphicsCashBoxReceiptPrinter : ICashBoxReceiptPrinte
             return HardwareOperationResult.Failure("Service price must be greater than zero.");
         }
 
-        if (job.AdditionalAmount is not (0m or 2m or 3m or 5m))
+        if (job.AdditionalAmount < 0)
         {
             return HardwareOperationResult.Failure("Service additional amount is invalid.");
         }
