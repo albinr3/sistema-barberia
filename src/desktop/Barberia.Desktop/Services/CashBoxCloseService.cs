@@ -89,6 +89,18 @@ public sealed class CashBoxCloseService
         return new PendingServicePaymentRepository(connection).ListOpenByBusinessDate(businessDate);
     }
 
+    public PendingPaymentCollectorLookupResult LookupPendingPaymentCollector(string stationNumberInput)
+    {
+        var stationNumber = ParseCollectorStationNumber(stationNumberInput);
+        using var connection = _connectionFactory.OpenConnection();
+        var barber = new LocalBarberRepository(connection).GetActiveByStationNumber(stationNumber)
+            ?? throw new InvalidOperationException($"No active barber is assigned to B-{stationNumber}.");
+
+        return new PendingPaymentCollectorLookupResult(
+            barber.Id,
+            barber.DisplayName,
+            barber.StationCode ?? $"B-{stationNumber}");
+    }
     public PendingServicePaymentResult MarkServicePendingPayment(string ticketNumber, Guid serviceId, decimal additionalAmount)
     {
         if (string.IsNullOrWhiteSpace(ticketNumber))
@@ -264,11 +276,16 @@ public sealed class CashBoxCloseService
         return result ?? throw new InvalidOperationException("Could not mark service as pending payment.");
     }
 
-    public PendingPaymentCollectionResult CollectPendingPayments(IReadOnlyCollection<Guid> pendingPaymentIds, CustomerPaymentMethod paymentMethod, string? paymentReference)
+    public PendingPaymentCollectionResult CollectPendingPayments(IReadOnlyCollection<Guid> pendingPaymentIds, CustomerPaymentMethod paymentMethod, string? paymentReference, int collectorStationNumber, decimal tenderedAmount = 0, decimal changeAmount = 0)
     {
         if (pendingPaymentIds.Count == 0)
         {
             throw new InvalidOperationException("Select at least one pending payment.");
+        }
+
+        if (collectorStationNumber <= 0)
+        {
+            throw new InvalidOperationException("Enter the station number of the barber collecting these pending payments.");
         }
 
         var requestedIds = pendingPaymentIds.Distinct().ToArray();
@@ -284,10 +301,15 @@ public sealed class CashBoxCloseService
             var pendingRepository = new PendingServicePaymentRepository(connection, sqliteTransaction);
             var paymentRepository = new CashPaymentRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
+            var collector = barberRepository.GetActiveByStationNumber(collectorStationNumber)
+                ?? throw new InvalidOperationException($"No active barber is assigned to B-{collectorStationNumber}.");
+            var collectorStationCode = collector.StationCode ?? $"B-{collectorStationNumber}";
+
             var pendingRows = pendingRepository.GetOpenByIds(requestedIds);
             if (pendingRows.Count != requestedIds.Length)
             {
-                throw new InvalidOperationException("One or more pending payments were already collected or no longer exist.");
+                throw new InvalidOperationException("One or more pending payments were already collected or no longer exists.");
             }
 
             var receiptNumber = paymentRepository.GetNextReceiptNumber();
@@ -296,6 +318,17 @@ public sealed class CashBoxCloseService
             var receiptPrinted = false;
             var cashDrawerOpened = false;
             string? hardwareFailureMessage = null;
+            var receiptLines = pendingRows
+                .Select(row => new CashReceiptLine(
+                    row.DisplayTicketNumber,
+                    row.CustomerName,
+                    row.BarberName,
+                    row.BarberStationCode,
+                    row.ServiceName,
+                    row.ServicePrice,
+                    row.AdditionalAmount,
+                    row.Amount))
+                .ToArray();
 
             try
             {
@@ -312,7 +345,12 @@ public sealed class CashBoxCloseService
                     Currency,
                     now,
                     deviceId,
-                    paymentMethod.ToString()));
+                    paymentMethod.ToString(),
+                    receiptLines,
+                    collector.DisplayName,
+                    collectorStationCode,
+                    tenderedAmount,
+                    changeAmount));
 
                 if (!printResult.Succeeded)
                 {
@@ -358,7 +396,15 @@ public sealed class CashBoxCloseService
                     "cash_box_hardware_failure",
                     "pending_payment",
                     pendingRows[0].Id,
-                    JsonSerializer.Serialize(new { error = hardwareFailureMessage, receiptNumber, pendingPaymentIds = requestedIds }),
+                    JsonSerializer.Serialize(new
+                    {
+                        error = hardwareFailureMessage,
+                        receiptNumber,
+                        pendingPaymentIds = requestedIds,
+                        collectorBarberId = collector.Id,
+                        collectorStationCode,
+                        collectorBarberName = collector.DisplayName
+                    }),
                     deviceId));
             }
 
@@ -415,7 +461,10 @@ public sealed class CashBoxCloseService
                     receiptPrinted,
                     cashDrawerOpened,
                     paymentMethod = paymentMethod.ToString(),
-                    paymentReference
+                    paymentReference,
+                    collectorBarberId = collector.Id,
+                    collectorStationCode,
+                    collectorBarberName = collector.DisplayName
                 }),
                 deviceId));
 
@@ -424,6 +473,8 @@ public sealed class CashBoxCloseService
                 totalAmount,
                 receiptNumber,
                 now,
+                collector.DisplayName,
+                collectorStationCode,
                 $"{pendingRows.Count} pending payment(s) collected.",
                 receiptPrinted,
                 cashDrawerOpened,
@@ -432,8 +483,7 @@ public sealed class CashBoxCloseService
 
         return result ?? throw new InvalidOperationException("Could not collect pending payments.");
     }
-
-    public CashBoxDepositResult CloseService(string ticketNumber, Guid serviceId, decimal additionalAmount, CustomerPaymentMethod paymentMethod, string? paymentReference)
+    public CashBoxDepositResult CloseService(string ticketNumber, Guid serviceId, decimal additionalAmount, CustomerPaymentMethod paymentMethod, string? paymentReference, decimal tenderedAmount = 0, decimal changeAmount = 0)
     {
         if (string.IsNullOrWhiteSpace(ticketNumber))
         {
@@ -514,8 +564,13 @@ public sealed class CashBoxCloseService
                     Currency,
                     now,
                     deviceId,
-                    paymentMethod.ToString()));
-                    
+                    paymentMethod.ToString(),
+                    null,
+                    null,
+                    null,
+                    tenderedAmount,
+                    changeAmount));
+
                 if (!printResult.Succeeded)
                 {
                     hardwareFailureMessage = $"Printer failed: {printResult.ErrorMessage}";
@@ -734,6 +789,15 @@ public sealed class CashBoxCloseService
         }
     }
 
+    private static int ParseCollectorStationNumber(string stationNumberInput)
+    {
+        if (!int.TryParse(stationNumberInput.Trim(), out var stationNumber) || stationNumber <= 0)
+        {
+            throw new InvalidOperationException("Enter a valid station number for the barber collecting these pending payments.");
+        }
+
+        return stationNumber;
+    }
     private static (Turn Turn, Barber Barber, string BarberStationCode) LoadCashBoxTicketContext(
         LocalTurnRepository turnRepository,
         LocalBarberRepository barberRepository,
@@ -752,7 +816,7 @@ public sealed class CashBoxCloseService
 
         if (turn.State == TurnState.Completed)
         {
-            throw new InvalidOperationException($"This ticket was already completed and charged by {barber.DisplayName}.");
+            throw new InvalidOperationException($"This ticket is pending to collect and was already completed by {barber.DisplayName}.");
         }
 
         if (turn.State != TurnState.InService || barber.State != BarberState.InService)

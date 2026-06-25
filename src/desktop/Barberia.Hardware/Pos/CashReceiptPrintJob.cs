@@ -1,5 +1,15 @@
 namespace Barberia.Hardware.Pos;
 
+public sealed record CashReceiptLine(
+    int DisplayTicketNumber,
+    string CustomerName,
+    string BarberName,
+    string BarberStationCode,
+    string ServiceName,
+    decimal ServicePrice,
+    decimal AdditionalAmount,
+    decimal Amount);
+
 public sealed record CashReceiptPrintJob(
     string ReceiptNumber,
     int DisplayTicketNumber,
@@ -13,7 +23,12 @@ public sealed record CashReceiptPrintJob(
     string Currency,
     DateTimeOffset CollectedAt,
     string DeviceId,
-    string PaymentMethod = "Cash")
+    string PaymentMethod = "Cash",
+    IReadOnlyList<CashReceiptLine>? Lines = null,
+    string? CollectedByName = null,
+    string? CollectedByStationCode = null,
+    decimal TenderedAmount = 0,
+    decimal ChangeAmount = 0)
 {
     public CashReceiptPrintJob(
         string receiptNumber,

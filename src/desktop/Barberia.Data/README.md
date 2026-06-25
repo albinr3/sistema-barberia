@@ -12,7 +12,7 @@ Responsabilidades:
 - Persistir barberos con `station_number`, `commission_percentage`, servicios con precio base, turnos, citas sincronizadas minimas, pagos en efectivo y eventos auditables.
 - Persistir el reset operativo diario y la cola diaria de barberos en `daily_operation_state` y `barber_daily_rotation`; `barbers.rotation_order` queda como columna legacy sin controlar asignacion.
 - Los timestamps y fechas operativas que recibe Data vienen normalizados por Desktop al horario de New Jersey/Eastern Time.
-- Guardar en `cash_payments` solo pagos realmente cobrados, con servicio cobrado, precio base, adicional y monto final para historial, reportes, sync y nomina.
+- Guardar en `cash_payments` solo pagos realmente cobrados, con servicio cobrado, precio base, adicional y monto final para historial, reportes, sync y nomina. En cobros agrupados de pendientes, cada pago conserva el barbero original del ticket; el barbero que cobro el grupo vive solo en auditoria/recibo como dato historico.
 - Guardar en `pending_service_payments` los servicios terminados que quedaron pendientes de cobro; estos registros liberan la operacion del turno pero no alimentan reportes de ventas ni nomina hasta que se convierten en `cash_payments`.
 - Crear `barbers.commission_percentage` con valor por defecto 65 para nuevas bases y backfill local de barberos existentes.
 - Persistir nomina semanal local de viernes a jueves con `payroll_periods`, `payroll_lines` y `payroll_payment_items`; los indices unicos evitan duplicar rangos de nomina y volver a incluir un pago ya marcado como pagado. Las tablas legacy `payroll_adjustments` y `payroll_pending_adjustments` pueden existir en bases de desarrollo, pero no deben usarse para nuevas funcionalidades.

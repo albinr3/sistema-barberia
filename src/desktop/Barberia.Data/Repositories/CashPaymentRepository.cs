@@ -35,9 +35,11 @@ public sealed class CashPaymentRepository
             );
             """;
         command.AddText("$id", payment.Id.ToString());
-        command.AddText("$turn_id", payment.TurnId.ToString());
-        command.AddText("$barber_id", payment.BarberId.ToString());
-        command.AddText("$service_id", payment.ServiceId?.ToString());
+        command.AddText("$turn_id", SqliteForeignKeyIds.ExistingId(_connection, _transaction, "turns", payment.TurnId));
+        command.AddText("$barber_id", SqliteForeignKeyIds.ExistingId(_connection, _transaction, "barbers", payment.BarberId));
+        command.AddText("$service_id", payment.ServiceId is null
+            ? null
+            : SqliteForeignKeyIds.ExistingId(_connection, _transaction, "services", payment.ServiceId.Value));
         command.AddInteger("$amount_cents", payment.AmountCents);
         command.AddText("$currency", payment.Currency);
         command.AddText("$collected_at", payment.CollectedAt.ToString("O"));

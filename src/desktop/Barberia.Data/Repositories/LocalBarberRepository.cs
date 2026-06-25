@@ -65,6 +65,21 @@ public sealed class LocalBarberRepository
         return reader.Read() ? ReadBarber(reader) : null;
     }
 
+    public Barber? GetActiveByStationNumber(int stationNumber)
+    {
+        using var command = _connection.CreateCommand();
+        command.Transaction = _transaction;
+        command.CommandText = """
+            SELECT id, display_name, state, clients_served_today, rotation_order, station_number, checked_in_at, profile_image_path, is_active, commission_percentage, updated_at
+            FROM barbers
+            WHERE station_number = $station_number
+              AND is_active = 1;
+            """;
+        command.AddInteger("$station_number", stationNumber);
+
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadBarber(reader) : null;
+    }
     public IReadOnlyList<Barber> ListAll()
     {
         using var command = _connection.CreateCommand();

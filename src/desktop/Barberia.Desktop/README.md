@@ -43,7 +43,7 @@ Sync cloud:
 - `AppointmentsPage` muestra las citas del dia como una lista operativa directa; al refrescar aplica localmente las citas vencidas a `NoShow` antes de renderizar, las filas priorizan citas activas y conservan el QR/codigo visible para operacion. Tambien incluye un micro panel visible de escaneo fisico que mantiene foco en su input y reutiliza `BarberPanelService.StartService(...)` para iniciar servicios desde QR de cita o tickets llamados sin cambiar de pantalla.
 - Barber Panel acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.
 - Cash Box completa la cita al cerrar el cobro inmediato o al usar `Pay Later`; en ambos casos el servicio/turno queda completado y el barbero vuelve a la cola. `Pay Later` crea `pending_service_payments` y sube `ticket.completed`/`appointment.completed`, pero no crea `cash_payments`, no imprime recibo final, no abre gaveta y no cuenta para nomina hasta cobrar.
-- Cash Box muestra `Pending Payments (N)` para cobrar uno o varios servicios pendientes del dia operativo New Jersey/Eastern. `Collect Selected` crea un `cash_payments` por ticket con el mismo recibo/metodo/referencia del cobro grupal y entonces alimenta reportes, sync y nomina.
+- Cash Box muestra `Pending Payments (N)` para cobrar uno o varios servicios pendientes del dia operativo New Jersey/Eastern. El modal es touch-first, exige ingresar la estacion del barbero que cobra como dato historico (`Collected by`) y `Collect Selected` crea un `cash_payments` por ticket con el mismo recibo/metodo/referencia del cobro grupal. El recibo grupal lista los tickets cobrados y sus barberos originales; el barbero cobrador no recibe comision ni reasignacion de dinero por ese campo.
 - Appointment turns are operational records for Cash Box/Barber Panel, but are not ticket-dashboard rows.
 - Cash Box contiene un botón `Reprint Receipts` oculto bajo contraseña (`G1234`) para abrir la ventana de reimpresión `ReceiptReprintWindow`; el listado muestra ticket/recibo, barbero, servicio, adicional, total y acción de reimpresión. Los fallos de la impresora o la gaveta durante el cierre de venta no cancelan la transacción, sino que se auditan como `cash_box_hardware_failure` y se indica el fallo en pantalla.
 
@@ -62,4 +62,3 @@ Restricciones actuales:
 - No contiene reglas de negocio.
 - No mover persistencia, hardware ni sincronizacion al code-behind de UI.
 - No publica MSIX, MSI, EXE ni App Installer sin aprobacion humana.
-

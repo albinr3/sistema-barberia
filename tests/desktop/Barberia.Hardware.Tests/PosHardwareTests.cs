@@ -185,6 +185,68 @@ public sealed class PosHardwareTests
     }
 
     [Fact]
+    public void SimulatedCashBoxReceiptPrinter_AcceptsPendingPaymentReceiptLines()
+    {
+        var printer = new SimulatedCashBoxReceiptPrinter();
+        var lines = new[]
+        {
+            new CashReceiptLine(1, "Ana", "Luis", "B-1", "Kids Cut", 23m, 2m, 25m),
+            new CashReceiptLine(2, "Mia", "Frank", "B-2", "Regular Cut", 20m, 0m, 20m)
+        };
+
+        var result = printer.Print(new CashReceiptPrintJob(
+            "CB-001",
+            1,
+            "Multiple barbers",
+            "Group",
+            "2 pending services",
+            43m,
+            2m,
+            45m,
+            29.25m,
+            "USD",
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "autocaja-1",
+            "Cash",
+            lines,
+            "Franklin",
+            "B-9"));
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void SimulatedCashBoxReceiptPrinter_RejectsPendingPaymentReceiptTotalMismatch()
+    {
+        var printer = new SimulatedCashBoxReceiptPrinter();
+        var lines = new[]
+        {
+            new CashReceiptLine(1, "Ana", "Luis", "B-1", "Kids Cut", 23m, 2m, 25m),
+            new CashReceiptLine(2, "Mia", "Frank", "B-2", "Regular Cut", 20m, 0m, 20m)
+        };
+
+        var result = printer.Print(new CashReceiptPrintJob(
+            "CB-001",
+            1,
+            "Multiple barbers",
+            "Group",
+            "2 pending services",
+            43m,
+            2m,
+            40m,
+            29.25m,
+            "USD",
+            DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
+            "autocaja-1",
+            "Cash",
+            lines,
+            "Franklin",
+            "B-9"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Receipt line totals must match receipt total.", result.ErrorMessage);
+    }
+    [Fact]
     public void SimulatedCashBoxReceiptPrinter_ReturnsFailureForInvalidJob()
     {
         var printer = new SimulatedCashBoxReceiptPrinter();

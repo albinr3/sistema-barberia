@@ -1,0 +1,73 @@
+<ContentDialog
+    x:Class="Barberia.Desktop.Views.ChangeCalculationDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Barberia.Desktop.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Cash Payment"
+    PrimaryButtonText="Complete Transaction"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    Opened="ContentDialog_Opened">
+
+    <Grid MinWidth="400" RowSpacing="24" Margin="0,12,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Total Amount -->
+        <Border Grid.Row="0" Background="#FFF3F3F6" BorderBrush="#FFE2E2E5" BorderThickness="1" CornerRadius="8" Padding="16">
+            <Grid>
+                <TextBlock Text="Total to Pay" FontSize="16" Foreground="#FF444655" VerticalAlignment="Center" />
+                <TextBlock x:Name="_totalAmountText" FontSize="28" FontWeight="Bold" Foreground="#FF0020C2" HorizontalAlignment="Right" />
+            </Grid>
+        </Border>
+
+        <!-- Tendered Amount Input -->
+        <StackPanel Grid.Row="1" Spacing="8">
+            <TextBlock Text="Amount Tendered" FontSize="14" FontWeight="SemiBold" Foreground="#FF444655" />
+            <Grid>
+                <TextBox x:Name="_tenderedInput" FontSize="32" FontWeight="Bold" Foreground="#FF1A1C1E" TextAlignment="Right"
+                         Padding="16,12,16,12" TextChanged="OnTenderedInputTextChanged" PlaceholderText="0.00" KeyDown="OnTenderedInputKeyDown" />
+                <TextBlock Text="$" FontSize="32" FontWeight="Bold" Foreground="#FF757687" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="16,0,0,0" IsHitTestVisible="False" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Quick Buttons -->
+        <Grid Grid.Row="2" ColumnSpacing="8" RowSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Button Content="Exact" Tag="Exact" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" MinHeight="48" FontSize="18" FontWeight="SemiBold" Background="#FFEBF1FF" Foreground="#FF0020C2" Click="OnQuickButtonClick" />
+            <Button Content="$20" Tag="20" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" MinHeight="48" FontSize="18" FontWeight="SemiBold" Background="#FFF9F9FC" BorderBrush="#FFE2E2E5" Foreground="#FF1A1C1E" Click="OnQuickButtonClick" />
+            <Button Content="$30" Tag="30" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" MinHeight="48" FontSize="18" FontWeight="SemiBold" Background="#FFF9F9FC" BorderBrush="#FFE2E2E5" Foreground="#FF1A1C1E" Click="OnQuickButtonClick" />
+            <Button Content="$40" Tag="40" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" MinHeight="48" FontSize="18" FontWeight="SemiBold" Background="#FFF9F9FC" BorderBrush="#FFE2E2E5" Foreground="#FF1A1C1E" Click="OnQuickButtonClick" />
+            <Button Content="$50" Tag="50" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" MinHeight="48" FontSize="18" FontWeight="SemiBold" Background="#FFF9F9FC" BorderBrush="#FFE2E2E5" Foreground="#FF1A1C1E" Click="OnQuickButtonClick" />
+            <Button Content="$100" Tag="100" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" MinHeight="48" FontSize="18" FontWeight="SemiBold" Background="#FFF9F9FC" BorderBrush="#FFE2E2E5" Foreground="#FF1A1C1E" Click="OnQuickButtonClick" />
+        </Grid>
+
+        <!-- Change Amount -->
+        <Border Grid.Row="3" Background="#FFF9F9FC" BorderBrush="#FFE2E2E5" BorderThickness="1" CornerRadius="8" Padding="16">
+            <Grid>
+                <TextBlock Text="Change" FontSize="16" FontWeight="SemiBold" Foreground="#FF444655" VerticalAlignment="Center" />
+                <TextBlock x:Name="_changeAmountText" FontSize="36" FontWeight="Bold" HorizontalAlignment="Right" Text="$0.00" Foreground="#FF757687" />
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="_validationMessage" Grid.Row="4" FontSize="14" FontWeight="SemiBold" Foreground="#FF9A3A2F" Visibility="Collapsed" HorizontalAlignment="Center" />
+
+    </Grid>
+</ContentDialog>

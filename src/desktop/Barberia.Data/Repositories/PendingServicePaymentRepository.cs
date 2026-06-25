@@ -35,9 +35,9 @@ public sealed class PendingServicePaymentRepository
             );
             """;
         command.AddText("$id", payment.Id.ToString());
-        command.AddText("$turn_id", payment.TurnId.ToString());
-        command.AddText("$barber_id", payment.BarberId.ToString());
-        command.AddText("$service_id", payment.ServiceId.ToString());
+        command.AddText("$turn_id", SqliteForeignKeyIds.ExistingId(_connection, _transaction, "turns", payment.TurnId));
+        command.AddText("$barber_id", SqliteForeignKeyIds.ExistingId(_connection, _transaction, "barbers", payment.BarberId));
+        command.AddText("$service_id", SqliteForeignKeyIds.ExistingId(_connection, _transaction, "services", payment.ServiceId));
         command.AddText("$business_date", payment.BusinessDate.ToString("yyyy-MM-dd"));
         command.AddInteger("$service_price_cents", payment.ServicePriceCents);
         command.AddInteger("$additional_cents", payment.AdditionalCents);

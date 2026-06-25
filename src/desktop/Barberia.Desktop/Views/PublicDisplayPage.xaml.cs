@@ -585,7 +585,7 @@ public sealed partial class PublicDisplayPage : Page
         {
             return new BarberDisplay(
                 "Calling",
-                $"Calling: {activeTurn.DisplayTicketNumber}",
+                $"Calling: #{activeTurn.DisplayTicketNumber}",
                 Brush(0, 19, 135),
                 Brush(223, 224, 255),
                 Brush(0, 19, 135),
@@ -594,7 +594,7 @@ public sealed partial class PublicDisplayPage : Page
 
         if (activeTurn?.State == TurnState.InService || barber.State == BarberState.InService)
         {
-            var ticketText = activeTurn is null ? "Serving Appointment" : $"Serving: {activeTurn.DisplayTicketNumber}";
+            var ticketText = activeTurn is null ? "Serving Appointment" : $"Serving: #{activeTurn.DisplayTicketNumber}";
             return new BarberDisplay(
                 "Busy",
                 ticketText,

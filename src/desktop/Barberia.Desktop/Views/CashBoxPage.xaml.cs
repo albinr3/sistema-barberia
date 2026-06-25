@@ -48,9 +48,9 @@ public sealed partial class CashBoxPage : Page
         DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
     }
 
-    private void OnCloseClick(object sender, RoutedEventArgs args)
+    private async void OnCloseClick(object sender, RoutedEventArgs args)
     {
-        CloseService();
+        await CloseService();
     }
 
     private void OnPayLaterClick(object sender, RoutedEventArgs args)
@@ -208,7 +208,6 @@ public sealed partial class CashBoxPage : Page
             _serviceReceiptText.Text = result.AdditionalAmount > 0
                 ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
                 : $"{result.ServiceName} {result.ServicePrice:0.00}";
-            _successPlayer.Play();
             SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
 
             _ticketInput.Text = string.Empty;
@@ -250,26 +249,123 @@ public sealed partial class CashBoxPage : Page
         }
 
         var selectedIds = new HashSet<Guid>();
-        var totalText = new TextBlock
+        var selectedTotalText = new TextBlock
         {
-            FontSize = 20,
+            FontSize = 28,
             FontWeight = Microsoft.UI.Text.FontWeights.Bold,
             Foreground = Brush(0, 32, 194),
             Text = "Selected total: $0.00"
         };
+        var selectedCountText = new TextBlock
+        {
+            FontSize = 14,
+            Foreground = Brush(68, 70, 85),
+            Text = "0 tickets selected"
+        };
+
+        var collectorInput = new TextBox
+        {
+            Header = "Collected by station",
+            PlaceholderText = "Station number, e.g. 1",
+            MinHeight = 56,
+            FontSize = 20,
+            Padding = new Thickness(14, 8, 14, 8)
+        };
+        var collectorStatusText = new TextBlock
+        {
+            Text = "Enter the station number before collecting.",
+            FontSize = 14,
+            Foreground = Brush(154, 58, 47),
+            TextWrapping = TextWrapping.WrapWholeWords
+        };
+
+        PendingPaymentCollectorLookupResult? collector = null;
         var paymentMethodComboBox = new ComboBox
         {
+            Header = "Payment method",
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            SelectedIndex = 0
+            SelectedIndex = 0,
+            MinHeight = 56,
+            FontSize = 18,
+            Padding = new Thickness(12, 6, 12, 6)
         };
         paymentMethodComboBox.Items.Add(new ComboBoxItem { Content = "Cash", Tag = "0" });
         paymentMethodComboBox.Items.Add(new ComboBoxItem { Content = "Zelle", Tag = "1" });
 
         var paymentReferenceInput = new TextBox
         {
-            PlaceholderText = "Zelle Reference (Optional)",
-            Visibility = Visibility.Collapsed
+            Header = "Zelle Reference",
+            PlaceholderText = "Optional",
+            Visibility = Visibility.Collapsed,
+            MinHeight = 56,
+            FontSize = 18,
+            Padding = new Thickness(14, 8, 14, 8)
         };
+
+        var collectButton = new Button
+        {
+            Content = "Collect Selected",
+            IsEnabled = false,
+            MinHeight = 64,
+            FontSize = 18,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Background = Brush(0, 96, 223),
+            Foreground = Brush(255, 255, 255)
+        };
+        var cancelButton = new Button
+        {
+            Content = "Cancel",
+            MinHeight = 64,
+            FontSize = 18,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = $"Pending Payments ({pendingRows.Count})",
+            XamlRoot = XamlRoot
+        };
+        dialog.Resources["ContentDialogMaxWidth"] = 860.0;
+        var shouldCollect = false;
+
+        void UpdateCollectState()
+        {
+            var total = pendingRows
+                .Where(row => selectedIds.Contains(row.Id))
+                .Sum(row => row.Amount);
+            selectedTotalText.Text = $"Selected total: ${total:0.00}";
+            selectedCountText.Text = selectedIds.Count == 1
+                ? "1 ticket selected"
+                : $"{selectedIds.Count} tickets selected";
+            collectButton.IsEnabled = selectedIds.Count > 0 && collector is not null;
+        }
+
+        void UpdateCollector()
+        {
+            collector = null;
+            var stationInput = collectorInput.Text.Trim();
+            if (string.IsNullOrWhiteSpace(stationInput))
+            {
+                collectorStatusText.Text = "Enter the station number before collecting.";
+                collectorStatusText.Foreground = ErrorTextBrush;
+                UpdateCollectState();
+                return;
+            }
+
+            try
+            {
+                collector = _service.LookupPendingPaymentCollector(stationInput);
+                collectorStatusText.Text = $"Collected by {collector.BarberStationCode} - {collector.BarberName}";
+                collectorStatusText.Foreground = SuccessTextBrush;
+            }
+            catch (Exception exception)
+            {
+                collectorStatusText.Text = exception.Message;
+                collectorStatusText.Foreground = ErrorTextBrush;
+            }
+
+            UpdateCollectState();
+        }
 
         paymentMethodComboBox.SelectionChanged += (_, _) =>
         {
@@ -282,67 +378,102 @@ public sealed partial class CashBoxPage : Page
                 paymentReferenceInput.Text = string.Empty;
             }
         };
+        collectorInput.TextChanged += (_, _) => UpdateCollector();
 
-        var listPanel = new StackPanel { Spacing = 8 };
-        var dialog = new ContentDialog
-        {
-            Title = $"Pending Payments ({pendingRows.Count})",
-            PrimaryButtonText = "Collect Selected",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            IsPrimaryButtonEnabled = false,
-            XamlRoot = XamlRoot
-        };
-
-        void UpdateSelectedTotal()
-        {
-            var total = pendingRows
-                .Where(row => selectedIds.Contains(row.Id))
-                .Sum(row => row.Amount);
-            totalText.Text = $"Selected total: ${total:0.00}";
-            dialog.IsPrimaryButtonEnabled = selectedIds.Count > 0;
-        }
-
+        var listPanel = new StackPanel { Spacing = 10 };
         foreach (var row in pendingRows)
         {
             var checkbox = new CheckBox
             {
                 Tag = row.Id,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                MinHeight = 92,
+                Padding = new Thickness(10, 12, 10, 12),
                 Content = CreatePendingPaymentRowContent(row)
             };
             checkbox.Checked += (_, _) =>
             {
                 selectedIds.Add(row.Id);
-                UpdateSelectedTotal();
+                UpdateCollectState();
             };
             checkbox.Unchecked += (_, _) =>
             {
                 selectedIds.Remove(row.Id);
-                UpdateSelectedTotal();
+                UpdateCollectState();
             };
             listPanel.Children.Add(checkbox);
         }
 
+        var summaryPanel = new Grid
+        {
+            ColumnSpacing = 16,
+            Padding = new Thickness(16),
+            Background = Brush(245, 247, 255)
+        };
+        summaryPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        summaryPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var summaryTextPanel = new StackPanel { Spacing = 2 };
+        summaryTextPanel.Children.Add(selectedTotalText);
+        summaryTextPanel.Children.Add(selectedCountText);
+        summaryPanel.Children.Add(summaryTextPanel);
+
+        var inputPanel = new Grid
+        {
+            ColumnSpacing = 14
+        };
+        inputPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        inputPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(collectorInput, 0);
+        Grid.SetColumn(paymentMethodComboBox, 1);
+        inputPanel.Children.Add(collectorInput);
+        inputPanel.Children.Add(paymentMethodComboBox);
+
+        var buttonPanel = new Grid
+        {
+            ColumnSpacing = 14
+        };
+        buttonPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        buttonPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(collectButton, 0);
+        Grid.SetColumn(cancelButton, 1);
+        buttonPanel.Children.Add(collectButton);
+        buttonPanel.Children.Add(cancelButton);
+
         var content = new StackPanel
         {
-            Spacing = 16,
-            MinWidth = 560,
-            MaxWidth = 760
+            Spacing = 18,
+            MinWidth = 500
         };
         content.Children.Add(new ScrollViewer
         {
-            MaxHeight = 420,
+            MaxHeight = 430,
             Content = listPanel
         });
-        content.Children.Add(totalText);
-        content.Children.Add(paymentMethodComboBox);
+        content.Children.Add(summaryPanel);
+        content.Children.Add(inputPanel);
+        content.Children.Add(collectorStatusText);
         content.Children.Add(paymentReferenceInput);
+        content.Children.Add(buttonPanel);
         dialog.Content = content;
 
-        var dialogResult = await dialog.ShowAsync();
-        if (dialogResult != ContentDialogResult.Primary)
+        collectButton.Click += (_, _) =>
         {
+            shouldCollect = true;
+            dialog.Hide();
+        };
+        cancelButton.Click += (_, _) => dialog.Hide();
+
+        UpdateCollectState();
+        var dialogResult = await dialog.ShowAsync();
+        if (!shouldCollect || dialogResult == ContentDialogResult.None && !shouldCollect)
+        {
+            return;
+        }
+
+        if (collector is null || !int.TryParse(collectorInput.Text.Trim(), out var collectorStationNumber))
+        {
+            ShowError("Enter a valid station number for the barber collecting these pending payments.");
             return;
         }
 
@@ -353,17 +484,36 @@ public sealed partial class CashBoxPage : Page
         }
 
         var reference = string.IsNullOrWhiteSpace(paymentReferenceInput.Text) ? null : paymentReferenceInput.Text.Trim();
+        
+        decimal tenderedAmount = 0;
+        decimal changeAmount = 0;
+        if (paymentMethod == CustomerPaymentMethod.Cash)
+        {
+            var totalAmount = pendingRows.Where(row => selectedIds.Contains(row.Id)).Sum(row => row.Amount);
+            var changeDialog = new ChangeCalculationDialog(totalAmount)
+            {
+                XamlRoot = this.XamlRoot
+            };
+            var changeDialogResult = await changeDialog.ShowAsync();
+            if (changeDialogResult != ContentDialogResult.Primary)
+            {
+                return;
+            }
+            tenderedAmount = changeDialog.TenderedAmount;
+            changeAmount = changeDialog.ChangeAmount;
+        }
+
         try
         {
-            var result = _service.CollectPendingPayments(selectedIds.ToArray(), paymentMethod, reference);
+            var result = _service.CollectPendingPayments(selectedIds.ToArray(), paymentMethod, reference, collectorStationNumber, tenderedAmount, changeAmount);
             _successPlayer.Play();
             if (result.HardwareFailureMessage != null)
             {
-                SetMessage($"Pending payments were collected, but printer/drawer failed. Register the incident.\n{result.HardwareFailureMessage}", Brush(255, 140, 0));
+                SetMessage($"Pending payments were collected by {result.CollectorBarberStationCode} - {result.CollectorBarberName}, but printer/drawer failed. Register the incident.\n{result.HardwareFailureMessage}", Brush(255, 140, 0));
             }
             else
             {
-                SetMessage($"{result.PaymentCount} pending payment(s) collected. Receipt {result.ReceiptNumber}.", SuccessTextBrush);
+                SetMessage($"{result.PaymentCount} pending payment(s) collected by {result.CollectorBarberStationCode} - {result.CollectorBarberName}. Receipt {result.ReceiptNumber}.", SuccessTextBrush);
             }
 
             LoadCashBox();
@@ -374,7 +524,7 @@ public sealed partial class CashBoxPage : Page
         }
     }
 
-    private void CloseService()
+    private async Task CloseService()
     {
         if (_selectedService is not Service selectedService)
         {
@@ -391,15 +541,33 @@ public sealed partial class CashBoxPage : Page
         var reference = _paymentReferenceInput?.Text;
         if (string.IsNullOrWhiteSpace(reference)) reference = null;
 
+        decimal tenderedAmount = 0;
+        decimal changeAmount = 0;
+        if (paymentMethod == CustomerPaymentMethod.Cash)
+        {
+            var totalAmount = selectedService.Price + _additionalAmount;
+            var dialog = new ChangeCalculationDialog(totalAmount)
+            {
+                XamlRoot = this.XamlRoot
+            };
+            var dialogResult = await dialog.ShowAsync();
+            if (dialogResult != ContentDialogResult.Primary)
+            {
+                return;
+            }
+            tenderedAmount = dialog.TenderedAmount;
+            changeAmount = dialog.ChangeAmount;
+        }
+
         try
         {
-            var result = _service.CloseService(_ticketInput.Text, selectedService.Id, _additionalAmount, paymentMethod, reference);
+            var result = _service.CloseService(_ticketInput.Text, selectedService.Id, _additionalAmount, paymentMethod, reference, tenderedAmount, changeAmount);
 
             _serviceReceiptText.Text = result.AdditionalAmount > 0
                 ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
                 : $"{result.ServiceName} {result.ServicePrice:0.00}";
             _successPlayer.Play();
-            
+
             if (result.HardwareFailureMessage != null)
             {
                 SetMessage($"La venta fue registrada, pero falló la impresora/gaveta. Registre el incidente.\n{result.HardwareFailureMessage}", Brush(255, 140, 0)); // Orange for warning
@@ -408,7 +576,7 @@ public sealed partial class CashBoxPage : Page
             {
                 SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
             }
-            
+
             _ticketInput.Text = string.Empty;
             ClearTicketDetails();
             _additionalAmount = 0;
@@ -650,36 +818,64 @@ public sealed partial class CashBoxPage : Page
         _pendingPaymentsButton.Content = $"Pending Payments ({count})";
     }
 
-    private static StackPanel CreatePendingPaymentRowContent(PendingServicePaymentRow row)
+    private static Grid CreatePendingPaymentRowContent(PendingServicePaymentRow row)
     {
-        var container = new StackPanel
+        var container = new Grid
         {
-            Spacing = 4,
-            Margin = new Thickness(0, 4, 0, 4)
+            ColumnSpacing = 14,
+            Padding = new Thickness(4, 0, 0, 0)
+        };
+        container.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        container.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var details = new StackPanel
+        {
+            Spacing = 6
         };
 
-        container.Children.Add(new TextBlock
+        details.Children.Add(new TextBlock
         {
-            Text = $"#{row.DisplayTicketNumber} - {row.CustomerName} - {row.BarberStationCode} {row.BarberName}",
-            FontSize = 15,
+            Text = $"#{row.DisplayTicketNumber} - {row.CustomerName}",
+            FontSize = 19,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Foreground = NeutralTextBrush,
             TextWrapping = TextWrapping.WrapWholeWords
         });
 
-        container.Children.Add(new TextBlock
+        details.Children.Add(new TextBlock
         {
-            Text = row.AdditionalAmount > 0
-                ? $"{row.ServiceName} ${row.ServicePrice:0.00} + ${row.AdditionalAmount:0.00} - Total ${row.Amount:0.00}"
-                : $"{row.ServiceName} - Total ${row.Amount:0.00}",
-            FontSize = 13,
+            Text = $"Original barber: {row.BarberStationCode} {row.BarberName}",
+            FontSize = 15,
             Foreground = Brush(68, 70, 85),
             TextWrapping = TextWrapping.WrapWholeWords
         });
 
+        details.Children.Add(new TextBlock
+        {
+            Text = row.AdditionalAmount > 0
+                ? $"{row.ServiceName} ${row.ServicePrice:0.00} + ${row.AdditionalAmount:0.00}"
+                : row.ServiceName,
+            FontSize = 14,
+            Foreground = Brush(68, 70, 85),
+            TextWrapping = TextWrapping.WrapWholeWords
+        });
+
+        var amountText = new TextBlock
+        {
+            Text = $"${row.Amount:0.00}",
+            FontSize = 24,
+            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
+            Foreground = Brush(0, 32, 194),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 0, 0, 0)
+        };
+
+        Grid.SetColumn(details, 0);
+        Grid.SetColumn(amountText, 1);
+        container.Children.Add(details);
+        container.Children.Add(amountText);
         return container;
     }
-
     private static string NormalizeTicketInput(string value)
     {
         return value.Trim();

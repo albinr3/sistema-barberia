@@ -121,9 +121,49 @@ public sealed class WindowsGraphicsCashBoxReceiptPrinter : ICashBoxReceiptPrinte
             return HardwareOperationResult.Failure("Device id is required to print the cash receipt.");
         }
 
-        return HardwareOperationResult.Success();
+        return ValidateReceiptLines(job);
     }
 
+    private static HardwareOperationResult ValidateReceiptLines(CashReceiptPrintJob job)
+    {
+        if (job.Lines is not { Count: > 0 } lines)
+        {
+            return HardwareOperationResult.Success();
+        }
+
+        if (string.IsNullOrWhiteSpace(job.CollectedByName) || string.IsNullOrWhiteSpace(job.CollectedByStationCode))
+        {
+            return HardwareOperationResult.Failure("Collector barber is required for pending payments receipt.");
+        }
+
+        foreach (var line in lines)
+        {
+            if (line.DisplayTicketNumber <= 0)
+            {
+                return HardwareOperationResult.Failure("Receipt line ticket number is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(line.BarberName) || string.IsNullOrWhiteSpace(line.BarberStationCode))
+            {
+                return HardwareOperationResult.Failure("Receipt line barber is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(line.ServiceName))
+            {
+                return HardwareOperationResult.Failure("Receipt line service is required.");
+            }
+
+            if (line.ServicePrice <= 0 || line.AdditionalAmount < 0 || line.Amount <= 0)
+            {
+                return HardwareOperationResult.Failure("Receipt line amount is invalid.");
+            }
+        }
+
+        var lineTotal = lines.Sum(line => line.Amount);
+        return lineTotal == job.Amount
+            ? HardwareOperationResult.Success()
+            : HardwareOperationResult.Failure("Receipt line totals must match receipt total.");
+    }
     private static HardwareOperationResult ValidateDayReport(DayReportPrintJob job)
     {
         ArgumentNullException.ThrowIfNull(job);
@@ -142,26 +182,54 @@ public sealed class WindowsGraphicsCashBoxReceiptPrinter : ICashBoxReceiptPrinte
         canvas.Center("CASH RECEIPT", 13, bold: true, bottomSpacing: 10);
         canvas.Separator();
         canvas.Pair("Receipt", job.ReceiptNumber);
-        canvas.Pair("Ticket", $"#{job.DisplayTicketNumber}");
-        canvas.Pair("Barber", $"{job.BarberName} ({job.BarberStationCode})");
-        canvas.Separator();
-        canvas.WrapLeft(job.ServiceName, 11, bold: true, bottomSpacing: 4);
-        canvas.Pair("Service", FormatMoney(job.ServicePrice, job.Currency));
-        if (job.AdditionalAmount > 0)
-        {
-            canvas.Pair("Additional", FormatMoney(job.AdditionalAmount, job.Currency));
-        }
-
-        canvas.Separator();
-        canvas.Pair("TOTAL", FormatMoney(job.Amount, job.Currency), 13, bold: true);
-        canvas.Separator();
         canvas.Pair("Payment", job.PaymentMethod);
         canvas.Pair("Date", job.CollectedAt.ToString("yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture));
         canvas.Pair("Device", job.DeviceId);
+
+        if (job.Lines is { Count: > 0 } lines)
+        {
+            canvas.Pair("Collected by", $"{job.CollectedByName} ({job.CollectedByStationCode})");
+            canvas.Separator();
+            foreach (var line in lines)
+            {
+                canvas.WrapLeft($"#{line.DisplayTicketNumber} - {line.CustomerName}", 11, bold: true, bottomSpacing: 2);
+                canvas.Pair("Barber", $"{line.BarberName} ({line.BarberStationCode})");
+                canvas.WrapLeft(line.ServiceName, 10, bold: false, bottomSpacing: 2);
+                canvas.Pair("Service", FormatMoney(line.ServicePrice, job.Currency));
+                if (line.AdditionalAmount > 0)
+                {
+                    canvas.Pair("Additional", FormatMoney(line.AdditionalAmount, job.Currency));
+                }
+
+                canvas.Pair("Ticket total", FormatMoney(line.Amount, job.Currency), bold: true);
+                canvas.Separator();
+            }
+        }
+        else
+        {
+            canvas.Pair("Ticket", $"#{job.DisplayTicketNumber}");
+            canvas.Pair("Barber", $"{job.BarberName} ({job.BarberStationCode})");
+            canvas.Separator();
+            canvas.WrapLeft(job.ServiceName, 11, bold: true, bottomSpacing: 4);
+            canvas.Pair("Service", FormatMoney(job.ServicePrice, job.Currency));
+            if (job.AdditionalAmount > 0)
+            {
+                canvas.Pair("Additional", FormatMoney(job.AdditionalAmount, job.Currency));
+            }
+
+            canvas.Separator();
+        }
+
+        canvas.Pair("TOTAL", FormatMoney(job.Amount, job.Currency), 13, bold: true);
+        if (job.PaymentMethod == "Cash" && job.TenderedAmount > 0)
+        {
+            canvas.Pair("Tendered", FormatMoney(job.TenderedAmount, job.Currency));
+            canvas.Pair("Change", FormatMoney(job.ChangeAmount, job.Currency), 11, bold: true);
+        }
+        canvas.Separator();
         canvas.Blank(12);
         canvas.Center("Thank you for your visit.", 10, bold: false, bottomSpacing: 8);
     }
-
     private static void DrawDayReport(ReceiptCanvas canvas, DayReportPrintJob job)
     {
         canvas.Center(KioskTicketPrintText.BrandName, 16, bold: true, bottomSpacing: 14);
