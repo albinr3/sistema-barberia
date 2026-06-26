@@ -165,6 +165,8 @@ La ruta web `/tickets-dashboard` es una pantalla de sala read-only protegida par
 
 La pantalla excluye tickets asociados a `appointment_id` como filas normales de espera/llamado, porque esos turnos se usan como registros operativos para Barber Panel/Cash Box. Desktop sigue siendo autoridad para cola, POS, pagos y cambios de estado.
 
+`/tickets-dashboard` usa `barber_operational_status` como proyeccion read-only del estado diario local de cada barbero. Esa tabla se materializa desde `catalog.snapshot` y guarda `business_date`, estado local, `clients_served_today`, check-in diario y posicion en `barber_daily_rotation`. Web la usa solo para ordenar `Barber Status` igual que Desktop: disponibles con cero clientes atendidos primero, empatados por posicion de cola diaria, y fallback por estacion/nombre si la proyeccion aun no existe.
+
 ## 7. Ticket History Web
 
 La ruta `/admin/ticket-history` es un monitor read-only y paginado para consultar el historial de tickets del día o de días anteriores, emulando la página homónima del Desktop. Cuenta con filtros por fecha, barbero, estatus, y número de ticket. Muestra el modal detallado del servicio, recibo, referencia de pago, timeline y estatus de cobro.

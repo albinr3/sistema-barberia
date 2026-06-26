@@ -123,6 +123,11 @@ internal sealed class DesktopSyncService : IDisposable
 
     private static CatalogSnapshot BuildCatalogSnapshot(Microsoft.Data.Sqlite.SqliteConnection connection)
     {
+        var businessDate = OperationalClock.GetBusinessDate(OperationalClock.Now);
+        var businessDateText = businessDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var dailyRotationEntries = new DailyRotationRepository(connection)
+            .ListByDate(businessDate)
+            .ToDictionary(entry => entry.BarberId);
         var barbers = new LocalBarberRepository(connection)
             .ListAll()
             .OrderBy(barber => barber.Id)
@@ -136,12 +141,24 @@ internal sealed class DesktopSyncService : IDisposable
         var payloadBarbers = barbers
             .Select(barber => new
             {
+                dailyEntry = dailyRotationEntries.GetValueOrDefault(barber.Id),
+                barber
+            })
+            .Select(item => new
+            {
                 entity_type = "barber",
-                local_id = barber.Id.ToString(),
-                display_name = barber.DisplayName,
-                station_code = barber.StationCode,
-                is_available_locally = barber.IsActive && barber.State != BarberState.Offline,
-                updated_at = barber.UpdatedAt.ToString("O")
+                local_id = item.barber.Id.ToString(),
+                display_name = item.barber.DisplayName,
+                station_code = item.barber.StationCode,
+                is_available_locally = item.barber.IsActive && item.barber.State != BarberState.Offline,
+                state = item.barber.State.ToString(),
+                clients_served_today = item.barber.ClientsServedToday,
+                checked_in_at = item.barber.CheckedInAt?.ToString("O"),
+                business_date = businessDateText,
+                daily_queue_position = item.dailyEntry?.QueuePosition,
+                daily_arrived_at = item.dailyEntry?.ArrivedAt.ToString("O"),
+                is_checked_in_today = item.dailyEntry is not null,
+                updated_at = item.barber.UpdatedAt.ToString("O")
             });
 
         var payloadServices = services
@@ -158,11 +175,23 @@ internal sealed class DesktopSyncService : IDisposable
         var fingerprintBarbers = barbers
             .Select(barber => new
             {
+                dailyEntry = dailyRotationEntries.GetValueOrDefault(barber.Id),
+                barber
+            })
+            .Select(item => new
+            {
                 entity_type = "barber",
-                local_id = barber.Id.ToString(),
-                display_name = barber.DisplayName,
-                station_code = barber.StationCode,
-                is_available_locally = barber.IsActive && barber.State != BarberState.Offline
+                local_id = item.barber.Id.ToString(),
+                display_name = item.barber.DisplayName,
+                station_code = item.barber.StationCode,
+                is_available_locally = item.barber.IsActive && item.barber.State != BarberState.Offline,
+                state = item.barber.State.ToString(),
+                clients_served_today = item.barber.ClientsServedToday,
+                checked_in_at = item.barber.CheckedInAt?.ToString("O"),
+                business_date = businessDateText,
+                daily_queue_position = item.dailyEntry?.QueuePosition,
+                daily_arrived_at = item.dailyEntry?.ArrivedAt.ToString("O"),
+                is_checked_in_today = item.dailyEntry is not null
             });
 
         var fingerprintServices = services

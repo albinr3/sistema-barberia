@@ -41,7 +41,7 @@ Fase 2 agrega una superficie web autenticada para clientes, barberos y administr
 
 `profiles` usa `auth.users.id` como llave primaria. Supabase Auth conserva la autoridad de credenciales.
 
-Tablas iniciales:
+Tablas principales y proyecciones relevantes:
 
 - `profiles`
 - `barbers`
@@ -52,6 +52,7 @@ Tablas iniciales:
 - `sync_events`
 - `sync_conflicts`
 - `audit_log`
+- `barber_operational_status` como proyeccion read-only del estado diario Desktop para ordenar `Barber Status` en Web.
 
 `tickets` y `ticket_items` no se crean en la primera migracion porque todavia falta definir el contrato de sync POS desde desktop.
 

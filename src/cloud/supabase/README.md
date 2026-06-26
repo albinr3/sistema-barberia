@@ -65,7 +65,7 @@ Production setup checklist:
 Desktop devices authenticate to Edge Functions with `x-device-id` and bearer `deviceSecret`.
 
 - `sync-changes` returns catalog changes, appointment changes with `appointment_code`, customer/barber/service summaries, the current New Jersey operational-day active appointments as a backfill window, pending `ticket_admin_commands`, and pending `payroll_admin_commands`.
-- `sync-events` accepts `catalog.snapshot`, `desktop.sync_heartbeat`, `payroll.snapshot`, appointment events, POS ticket/payment events, ticket command acks, payroll command acks and `sync.conflict`.
+- `sync-events` accepts `catalog.snapshot`, `desktop.sync_heartbeat`, `payroll.snapshot`, appointment events, POS ticket/payment events, ticket command acks, payroll command acks and `sync.conflict`. Barber `catalog.snapshot` rows also materialize `barber_operational_status`, the read-only daily projection used by Web to mirror Desktop's `Barber Status` ordering.
 - `sync-changes` and `sync-events` run with `verify_jwt = false`; they authenticate desktop devices inside the function using `x-device-id` and `Authorization: Bearer <deviceSecret>`.
 - `ticket_admin_commands` orchestrate cross-device ticket operations initiated by admins on the web, executed locally by the Desktop authority, and acknowledged back.
 - `payroll_admin_commands` now expose web payroll recalculation only through `snapshot_requested`; Desktop remains the final authority and auto-pays the closed Friday-Thursday period locally. Manual payroll adjustments are disabled; legacy adjustment tables may remain but are not fed by new snapshots.

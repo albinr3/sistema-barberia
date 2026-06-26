@@ -418,28 +418,27 @@ async function materializeCatalogSnapshot(
         .eq("id", localId)
         .maybeSingle();
 
-      if (existing && new Date(existing.updated_at) >= new Date(updatedAt)) {
-        console.warn(`[Sync] Catalog snapshot updated_at (${updatedAt}) is not newer than cloud (${existing.updated_at}) for ${localId}. Skipping stale snapshot item.`);
-        continue;
+      const staleCatalog = existing && new Date(existing.updated_at) > new Date(updatedAt);
+      if (!staleCatalog) {
+        const catalogChanged =
+          !existing ||
+          existing.display_name !== displayName ||
+          nullableString(existing.station_code) !== stationCode ||
+          existing.is_available_locally !== isAvailableLocally;
+
+        if (catalogChanged) {
+          const { error } = await supabaseAdmin.from("barbers").upsert({
+            id: localId,
+            display_name: displayName,
+            station_code: stationCode,
+            is_available_locally: isAvailableLocally,
+            updated_at: updatedAt,
+          });
+          if (error) throw new Error("Barber upsert failed: " + error.message);
+        }
       }
 
-      if (
-        existing &&
-        existing.display_name === displayName &&
-        nullableString(existing.station_code) === stationCode &&
-        existing.is_available_locally === isAvailableLocally
-      ) {
-        continue;
-      }
-
-      const { error } = await supabaseAdmin.from("barbers").upsert({
-        id: localId,
-        display_name: displayName,
-        station_code: stationCode,
-        is_available_locally: isAvailableLocally,
-        updated_at: updatedAt,
-      });
-      if (error) throw new Error("Barber upsert failed: " + error.message);
+      await materializeBarberOperationalStatus(supabaseAdmin, deviceId, localId, item, updatedAt);
     } else if (entityType === "service") {
       const priceCents = numberValue(item.price_cents) || 0;
       const isActive = booleanValue(item.is_active, true);
@@ -473,6 +472,44 @@ async function materializeCatalogSnapshot(
       if (error) throw new Error("Service upsert failed: " + error.message);
     }
   }
+}
+
+async function materializeBarberOperationalStatus(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  deviceId: string,
+  barberId: string,
+  item: Record<string, unknown>,
+  updatedAt: string,
+) {
+  const businessDate = dateOnlyValue(item.business_date);
+  const state = stringValue(item.state);
+  const clientsServedToday = numberValue(item.clients_served_today);
+  if (!businessDate || !state || clientsServedToday === null) {
+    return;
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from("barber_operational_status")
+    .select("updated_at")
+    .eq("barber_id", barberId)
+    .maybeSingle();
+  if (existing && new Date(existing.updated_at) > new Date(updatedAt)) {
+    return;
+  }
+
+  const { error } = await supabaseAdmin.from("barber_operational_status").upsert({
+    barber_id: barberId,
+    source_device_id: deviceId,
+    business_date: businessDate,
+    state,
+    clients_served_today: clientsServedToday,
+    checked_in_at: stringValue(item.checked_in_at),
+    daily_queue_position: numberValue(item.daily_queue_position),
+    daily_arrived_at: stringValue(item.daily_arrived_at),
+    is_checked_in_today: booleanValue(item.is_checked_in_today, false),
+    updated_at: updatedAt,
+  });
+  if (error) throw new Error("Barber operational status upsert failed: " + error.message);
 }
 
 async function materializePayrollSnapshot(

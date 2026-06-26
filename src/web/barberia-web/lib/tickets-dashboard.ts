@@ -26,6 +26,18 @@ export type TicketDashboardBarberRow = {
   is_available_locally?: boolean | null;
 };
 
+export type TicketDashboardBarberOperationalStatusRow = {
+  barber_id: string;
+  business_date: string;
+  state: string;
+  clients_served_today: number;
+  checked_in_at: string | null;
+  daily_queue_position: number | null;
+  daily_arrived_at: string | null;
+  is_checked_in_today: boolean;
+  updated_at: string;
+};
+
 export type TicketDashboardDeviceRow = {
   id: string;
   name: string | null;
@@ -54,13 +66,21 @@ export type TicketDashboardBarber = TicketDashboardBarberRow & {
   status: "available" | "calling" | "busy" | "offline";
   detail: string;
   activeTicket: TicketDashboardTicketRow | null;
+  operationalStatus: TicketDashboardBarberOperationalStatusRow | null;
 };
 
 const ACTIVE_TICKET_STATUSES = ["waiting", "called", "in_progress"];
 const STALE_SYNC_MINUTES = 15;
 
 export async function getTicketsDashboardSnapshot(supabase: SupabaseClient): Promise<TicketDashboardSnapshot> {
-  const [{ data: tickets, error: ticketsError }, { data: barbers, error: barbersError }, { data: devices }] =
+  const loadedAt = new Date();
+  const businessDate = getLocalTodayString(loadedAt);
+  const [
+    { data: tickets, error: ticketsError },
+    { data: barbers, error: barbersError },
+    { data: devices },
+    { data: operationalStatuses, error: operationalStatusesError },
+  ] =
     await Promise.all([
       supabase
         .from("synced_tickets")
@@ -87,16 +107,22 @@ export async function getTicketsDashboardSnapshot(supabase: SupabaseClient): Pro
         .select("id, display_name, station_code, is_active, is_available_locally")
         .eq("is_active", true),
       supabase.from("sync_devices").select("id, name, last_sync_at").order("last_sync_at", { ascending: false }),
+      supabase
+        .from("barber_operational_status")
+        .select("barber_id, business_date, state, clients_served_today, checked_in_at, daily_queue_position, daily_arrived_at, is_checked_in_today, updated_at")
+        .eq("business_date", businessDate),
     ]);
 
   if (ticketsError) throw new Error("Failed to load synced tickets: " + ticketsError.message);
   if (barbersError) throw new Error("Failed to load synced barbers: " + barbersError.message);
+  if (operationalStatusesError) throw new Error("Failed to load barber operational status: " + operationalStatusesError.message);
 
   return buildTicketsDashboardSnapshot({
     tickets: normalizeTicketRows(tickets ?? []),
     barbers: (barbers ?? []) as TicketDashboardBarberRow[],
+    operationalStatuses: (operationalStatuses ?? []) as TicketDashboardBarberOperationalStatusRow[],
     devices: (devices ?? []) as TicketDashboardDeviceRow[],
-    loadedAt: new Date(),
+    loadedAt,
   });
 }
 
@@ -112,6 +138,7 @@ function normalizeTicketRows(rows: unknown): TicketDashboardTicketRow[] {
 export function buildTicketsDashboardSnapshot(input: {
   tickets: TicketDashboardTicketRow[];
   barbers: TicketDashboardBarberRow[];
+  operationalStatuses?: TicketDashboardBarberOperationalStatusRow[];
   devices?: TicketDashboardDeviceRow[];
   loadedAt: Date;
 }): TicketDashboardSnapshot {
@@ -133,6 +160,10 @@ export function buildTicketsDashboardSnapshot(input: {
   const activeQueue = orderedTickets.filter((ticket) => ["waiting", "called", "in_progress"].includes(ticket.status));
   const activeTicketsByBarber = getActiveTicketsByBarber(orderedTickets);
   const lastSyncAt = getLastSyncAt(input.devices ?? []);
+  const operationalStatusByBarber = new Map(
+    (input.operationalStatuses ?? []).map((status) => [status.barber_id, status]),
+  );
+  const hasOperationalStatus = operationalStatusByBarber.size > 0;
 
   const alerts: TicketAlert[] = [];
   for (const ticket of orderedTickets) {
@@ -164,14 +195,16 @@ export function buildTicketsDashboardSnapshot(input: {
     activeQueue,
     alerts,
     waitingTotal: waiting.length,
-    barbers: [...input.barbers].sort(compareBarbers).map((barber) => {
+    barbers: [...input.barbers].map((barber) => {
       const activeTicket = activeTicketsByBarber.get(barber.id) ?? null;
+      const operationalStatus = operationalStatusByBarber.get(barber.id) ?? null;
       return {
         ...barber,
         activeTicket,
+        operationalStatus,
         ...getBarberDisplay(barber, activeTicket),
       };
-    }),
+    }).sort((left, right) => compareDashboardBarbers(left, right, hasOperationalStatus)),
     lastSyncAt,
     isStale: isSyncStale(lastSyncAt, input.loadedAt),
   };
@@ -242,6 +275,28 @@ function compareBarbers(left: TicketDashboardBarberRow, right: TicketDashboardBa
   const rightStation = stationNumber(right.station_code);
   if (leftStation !== rightStation) return leftStation - rightStation;
   return (left.display_name ?? "").localeCompare(right.display_name ?? "");
+}
+
+function compareDashboardBarbers(left: TicketDashboardBarber, right: TicketDashboardBarber, hasOperationalStatus: boolean) {
+  if (!hasOperationalStatus) {
+    return compareBarbers(left, right);
+  }
+
+  const leftAvailability = left.status === "available" ? 0 : 1;
+  const rightAvailability = right.status === "available" ? 0 : 1;
+  if (leftAvailability !== rightAvailability) return leftAvailability - rightAvailability;
+
+  if (left.status === "available" && right.status === "available") {
+    const leftServicePriority = left.operationalStatus?.clients_served_today === 0 ? 0 : 1;
+    const rightServicePriority = right.operationalStatus?.clients_served_today === 0 ? 0 : 1;
+    if (leftServicePriority !== rightServicePriority) return leftServicePriority - rightServicePriority;
+
+    const leftQueue = left.operationalStatus?.daily_queue_position ?? Number.MAX_SAFE_INTEGER;
+    const rightQueue = right.operationalStatus?.daily_queue_position ?? Number.MAX_SAFE_INTEGER;
+    if (leftQueue !== rightQueue) return leftQueue - rightQueue;
+  }
+
+  return compareBarbers(left, right);
 }
 
 function stationNumber(stationCode: string | null) {
