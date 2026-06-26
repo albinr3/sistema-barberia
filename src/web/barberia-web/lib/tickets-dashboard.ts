@@ -217,7 +217,7 @@ function getBarberDisplay(barber: TicketDashboardBarberRow, activeTicket: Ticket
 
   return {
     status: "available" as const,
-    detail: `Station ${barber.station_code ?? "B-?"} Ready`,
+    detail: `Station ${barber.station_code ?? "B-?"} Selectable`,
   };
 }
 

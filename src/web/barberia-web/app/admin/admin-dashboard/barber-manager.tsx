@@ -34,7 +34,7 @@ function BarberForm({ barber, onCancel }: { barber?: BarberRow; onCancel: () => 
       </label>
       <label className={styles.checkboxLabel}>
         <input name="is_available_locally" type="checkbox" defaultChecked={barber?.is_available_locally ?? true} />
-        Available in Local Shop
+        Selectable in Kiosk
       </label>
       <div className={styles.formActions}>
         <Button type="submit" variant="primary">

@@ -407,6 +407,8 @@ public sealed class LocalAdminService
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+            var dailyRotationRepository = new DailyRotationRepository(connection, sqliteTransaction);
+            var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
             var turn = turnRepository.GetById(turnId)
                 ?? throw new InvalidOperationException("Ticket was not found in the local database.");
 
@@ -440,8 +442,8 @@ public sealed class LocalAdminService
             var reassignment = TryAssignNextWaitingTurn(
                 turnRepository,
                 barberRepository,
-                new DailyRotationRepository(connection, sqliteTransaction),
-                new AppointmentReservationRepository(connection, sqliteTransaction),
+                dailyRotationRepository,
+                appointmentRepository,
                 now);
 
             auditRepository.Add(new AuditEvent(
@@ -525,6 +527,8 @@ public sealed class LocalAdminService
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
+            var dailyRotationRepository = new DailyRotationRepository(connection, sqliteTransaction);
+            var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
             var turn = turnRepository.GetById(turnId)
                 ?? throw new InvalidOperationException("Ticket was not found in the local database.");
             var targetBarber = barberRepository.GetById(targetBarberId)
@@ -552,7 +556,10 @@ public sealed class LocalAdminService
                     ?? throw new InvalidOperationException("Assigned barber was not found in the local database.");
             }
 
-            var resultTurnState = targetBarber.State == BarberState.Available
+            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            var dailyRotationEntries = dailyRotationRepository.ListByDate(businessDate);
+            var targetCheckedInToday = DailyRotationQueue.HasCheckedInToday(targetBarber, dailyRotationEntries, businessDate);
+            var resultTurnState = targetBarber.State == BarberState.Available && targetCheckedInToday
                 ? TurnState.Called
                 : TurnState.Waiting;
 
@@ -582,8 +589,8 @@ public sealed class LocalAdminService
                 reassignment = TryAssignNextWaitingTurn(
                     turnRepository,
                     barberRepository,
-                    new DailyRotationRepository(connection, sqliteTransaction),
-                    new AppointmentReservationRepository(connection, sqliteTransaction),
+                    dailyRotationRepository,
+                    appointmentRepository,
                     now);
             }
 
@@ -674,15 +681,18 @@ public sealed class LocalAdminService
         AppointmentReservationRepository appointmentRepository,
         DateTimeOffset now)
     {
-        var barbers = barberRepository
+        var allBarbers = barberRepository
             .ListAll()
             .Where(barber => barber.IsActive)
             .ToArray();
         var waitingTurns = turnRepository.ListWaiting();
         var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var dailyRotationEntries = dailyRotationRepository.ListByDate(businessDate);
+        var barbers = DailyRotationQueue.CheckedInBarbers(allBarbers, dailyRotationEntries, businessDate)
+            .ToArray();
         var rotationQueue = DailyRotationQueue.Build(
             barbers,
-            dailyRotationRepository.ListByDate(businessDate),
+            dailyRotationEntries,
             businessDate);
         var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
 
@@ -749,22 +759,7 @@ public sealed class LocalAdminService
 
             DateTimeOffset? checkedInAt = barber.CheckedInAt;
             var effectiveUpdatedAt = now > barber.UpdatedAt ? now : barber.UpdatedAt.AddSeconds(1);
-            if (state == BarberState.Available)
-            {
-                var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
-                checkedInAt = checkedInAt is DateTimeOffset existingCheckedInAt
-                    && OperationalClock.GetBusinessDate(existingCheckedInAt) == businessDate
-                        ? existingCheckedInAt
-                        : now;
-
-                barberRepository.SetStateAndCheckedInAt(barberId, state, checkedInAt.Value, effectiveUpdatedAt);
-                new DailyRotationRepository(connection, sqliteTransaction)
-                    .EnsureQueued(businessDate, barberId, checkedInAt.Value, effectiveUpdatedAt);
-            }
-            else
-            {
-                barberRepository.SetState(barberId, state, effectiveUpdatedAt);
-            }
+            barberRepository.SetState(barberId, state, effectiveUpdatedAt);
 
             auditRepository.Add(new AuditEvent(
                 Guid.NewGuid(),
@@ -782,7 +777,7 @@ public sealed class LocalAdminService
                 }),
                 deviceId));
 
-            // When barber becomes available, try to assign the next waiting turn
+            // If this barber already checked in today, availability can release the next waiting turn.
             if (state == BarberState.Available)
             {
                 var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);

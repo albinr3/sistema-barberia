@@ -178,13 +178,16 @@ public sealed class CashBoxCloseService
                 deviceId,
                 now));
 
-            var barbers = barberRepository
+            var dailyRotationEntries = dailyRotationRepository.ListByDate(businessDate);
+            var allBarbers = barberRepository
                 .ListAll()
                 .Where(candidate => candidate.IsActive)
                 .ToArray();
+            var barbers = DailyRotationQueue.CheckedInBarbers(allBarbers, dailyRotationEntries, businessDate)
+                .ToArray();
             var rotationQueue = DailyRotationQueue.Build(
                 barbers,
-                dailyRotationRepository.ListByDate(businessDate),
+                dailyRotationEntries,
                 businessDate);
             var closeResult = _assignmentEngine.CloseServiceAtCashBox(
                 new CashBoxCloseRequest(barberId, rotationQueue));
@@ -195,7 +198,10 @@ public sealed class CashBoxCloseService
                 appointmentRepository.MarkCompleted(appointmentId, now, now);
             }
             barberRepository.ApplyCashBoxClose(closeResult.BarberId, closeResult.BarberState, now);
-            dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
+            if (dailyRotationEntries.Any(entry => entry.BarberId == closeResult.BarberId))
+            {
+                dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
+            }
 
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
 
@@ -619,14 +625,17 @@ public sealed class CashBoxCloseService
                     deviceId));
             }
 
-            var barbers = barberRepository
+            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            var dailyRotationEntries = dailyRotationRepository.ListByDate(businessDate);
+            var allBarbers = barberRepository
                 .ListAll()
                 .Where(candidate => candidate.IsActive)
                 .ToArray();
-            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            var barbers = DailyRotationQueue.CheckedInBarbers(allBarbers, dailyRotationEntries, businessDate)
+                .ToArray();
             var rotationQueue = DailyRotationQueue.Build(
                 barbers,
-                dailyRotationRepository.ListByDate(businessDate),
+                dailyRotationEntries,
                 businessDate);
             var closeResult = _assignmentEngine.CloseServiceAtCashBox(
                 new CashBoxCloseRequest(barberId, rotationQueue));
@@ -657,7 +666,10 @@ public sealed class CashBoxCloseService
                 closeResult.BarberId,
                 closeResult.BarberState,
                 now);
-            dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
+            if (dailyRotationEntries.Any(entry => entry.BarberId == closeResult.BarberId))
+            {
+                dailyRotationRepository.MoveToEnd(businessDate, closeResult.BarberId, barber.CheckedInAt ?? now, now);
+            }
 
             var syncRecorder = new SyncOutboxRecorder(new SyncOutboxRepository(connection, sqliteTransaction));
 
@@ -834,15 +846,18 @@ public sealed class CashBoxCloseService
         AppointmentReservationRepository appointmentRepository,
         DateTimeOffset now)
     {
-        var barbers = barberRepository
+        var allBarbers = barberRepository
             .ListAll()
             .Where(barber => barber.IsActive)
             .ToArray();
         var waitingTurns = turnRepository.ListWaiting();
         var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var dailyRotationEntries = dailyRotationRepository.ListByDate(businessDate);
+        var barbers = DailyRotationQueue.CheckedInBarbers(allBarbers, dailyRotationEntries, businessDate)
+            .ToArray();
         var rotationQueue = DailyRotationQueue.Build(
             barbers,
-            dailyRotationRepository.ListByDate(businessDate),
+            dailyRotationEntries,
             businessDate);
         var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
 

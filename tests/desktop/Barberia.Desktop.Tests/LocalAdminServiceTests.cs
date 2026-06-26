@@ -125,43 +125,26 @@ public class LocalAdminServiceTests
     }
 
     [Fact]
-    public void MarkBarberAvailable_QueuesByFirstArrivalAndPreservesSameDayReentry()
+    public void MarkBarberAvailable_MakesBarberSelectableWithoutCreatingDailyRotation()
     {
         using var database = TestDatabase.Create();
         var service = new LocalAdminService(database.ConnectionFactory);
 
         service.SaveBarber(null, "Ana", 1, null, true, 65);
-        service.SaveBarber(null, "Luis", 2, null, true, 65);
 
         using var verifyConnection = database.ConnectionFactory.OpenConnection();
         var barberRepository = new LocalBarberRepository(verifyConnection);
-        var barbers = barberRepository.ListAll();
-        var anaId = barbers.Single(barber => barber.DisplayName == "Ana").Id;
-        var luisId = barbers.Single(barber => barber.DisplayName == "Luis").Id;
-
-        service.MarkBarberAvailable(anaId);
-        service.MarkBarberAvailable(luisId);
-        service.MarkBarberOffline(anaId);
-        var initialAnaEntry = new DailyRotationRepository(verifyConnection)
-            .ListByDate(DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime))
-            .Single(entry => entry.BarberId == anaId);
+        var anaId = barberRepository.ListAll().Single(barber => barber.DisplayName == "Ana").Id;
 
         service.MarkBarberAvailable(anaId);
 
         var entries = new DailyRotationRepository(verifyConnection)
-            .ListByDate(DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime));
+            .ListByDate(OperationalClock.GetBusinessDate(OperationalClock.Now));
         var savedAna = barberRepository.GetById(anaId);
 
         Assert.Equal(BarberState.Available, savedAna?.State);
-        Assert.NotNull(savedAna?.CheckedInAt);
-        Assert.Collection(
-            entries,
-            entry =>
-            {
-                Assert.Equal(anaId, entry.BarberId);
-                Assert.Equal(initialAnaEntry.ArrivedAt, entry.ArrivedAt);
-            },
-            entry => Assert.Equal(luisId, entry.BarberId));
+        Assert.Null(savedAna?.CheckedInAt);
+        Assert.Empty(entries);
     }
 
     [Fact]
@@ -257,6 +240,7 @@ public class LocalAdminServiceTests
             var turnRepository = new LocalTurnRepository(connection);
             barberRepository.Upsert(new Barber(juanId, "Juan", BarberState.Called, 1, 0, now, stationNumber: 1), now);
             barberRepository.Upsert(new Barber(pedroId, "Pedro", BarberState.Available, 1, 1, now, stationNumber: 2), now);
+            new DailyRotationRepository(connection).EnsureQueued(OperationalClock.GetBusinessDate(now), pedroId, now.AddMinutes(-9), now);
             turnRepository.Upsert(CreateTurn(turnId, "T-008", TurnState.Called, now, juanId), now);
         }
 
@@ -274,6 +258,39 @@ public class LocalAdminServiceTests
         Assert.Equal(BarberState.Available, savedJuan?.State);
         Assert.Equal(BarberState.Called, savedPedro?.State);
         Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "admin_turn_reassigned" && auditEvent.AggregateId == turnId);
+    }
+
+    [Fact]
+    public void ReassignTurn_CalledTicketToAvailableBarberWithoutCheckIn_ReservesTicketForTarget()
+    {
+        using var database = TestDatabase.Create();
+        var now = DateTimeOffset.Now;
+        var juanId = Guid.NewGuid();
+        var pedroId = Guid.NewGuid();
+        var turnId = Guid.NewGuid();
+
+        using (var connection = database.ConnectionFactory.OpenConnection())
+        {
+            var barberRepository = new LocalBarberRepository(connection);
+            var turnRepository = new LocalTurnRepository(connection);
+            barberRepository.Upsert(new Barber(juanId, "Juan", BarberState.Called, 1, 0, now, stationNumber: 1), now);
+            barberRepository.Upsert(new Barber(pedroId, "Pedro", BarberState.Available, 1, 1, now, stationNumber: 2), now);
+            new DailyRotationRepository(connection).EnsureQueued(OperationalClock.GetBusinessDate(now), juanId, now.AddMinutes(-10), now);
+            turnRepository.Upsert(CreateTurn(turnId, "T-008", TurnState.Called, now, juanId), now);
+        }
+
+        new LocalAdminService(database.ConnectionFactory).ReassignTurn(turnId, pedroId);
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var savedTurn = new LocalTurnRepository(verifyConnection).GetById(turnId);
+        var savedJuan = new LocalBarberRepository(verifyConnection).GetById(juanId);
+        var savedPedro = new LocalBarberRepository(verifyConnection).GetById(pedroId);
+
+        Assert.Equal(TurnState.Waiting, savedTurn?.State);
+        Assert.Null(savedTurn?.AssignedBarberId);
+        Assert.Equal([pedroId], savedTurn?.RequestedBarberIds);
+        Assert.Equal(BarberState.Available, savedJuan?.State);
+        Assert.Equal(BarberState.Available, savedPedro?.State);
     }
 
     [Fact]
@@ -324,6 +341,7 @@ public class LocalAdminServiceTests
             var turnRepository = new LocalTurnRepository(connection);
             barberRepository.Upsert(new Barber(juanId, "Juan", BarberState.Called, 1, 0, now, stationNumber: 1), now);
             barberRepository.Upsert(new Barber(pedroId, "Pedro", BarberState.InService, 1, 1, now, stationNumber: 2), now);
+            new DailyRotationRepository(connection).EnsureQueued(OperationalClock.GetBusinessDate(now), juanId, now.AddMinutes(-10), now);
             turnRepository.Upsert(CreateTurn(reassignedTurnId, "T-008", TurnState.Called, now, juanId), now);
             turnRepository.Upsert(CreateTurn(nextTurnId, "T-009", TurnState.Waiting, now.AddMinutes(5)), now);
         }

@@ -38,7 +38,7 @@
                     FontFamily="Inter"
                     FontSize="16"
                     Foreground="#FF444655"
-                    Text="Manage barber availability status." />
+                    Text="Make barbers selectable in the kiosk without defining daily turn order." />
                 <TextBlock
                     x:Name="_messageText"
                     FontFamily="Inter"

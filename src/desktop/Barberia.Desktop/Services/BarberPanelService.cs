@@ -308,22 +308,7 @@ public sealed class BarberPanelService
                 throw new InvalidOperationException("Availability cannot be changed while a ticket is called or in service.");
             }
 
-            if (state == BarberState.Available)
-            {
-                var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
-                var checkedInAt = barber.CheckedInAt is DateTimeOffset existingCheckedInAt
-                    && OperationalClock.GetBusinessDate(existingCheckedInAt) == businessDate
-                        ? existingCheckedInAt
-                        : now;
-
-                barberRepository.SetStateAndCheckedInAt(barberId, state, checkedInAt, now);
-                new DailyRotationRepository(connection, sqliteTransaction)
-                    .EnsureQueued(businessDate, barberId, checkedInAt, now);
-            }
-            else
-            {
-                barberRepository.SetState(barberId, state, now);
-            }
+            barberRepository.SetState(barberId, state, now);
         });
     }
 }

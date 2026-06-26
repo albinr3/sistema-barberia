@@ -43,9 +43,11 @@ internal static class DailyOperationCoordinator
         var activeBeforeToday = turnRepository.ListActiveBefore(businessDate);
         var hasStaleBarberState = barberRepository
             .ListAll()
-            .Any(barber => barber.State != BarberState.Offline
-                && (barber.CheckedInAt is null
-                    || GetBusinessDate(barber.CheckedInAt.Value) < businessDate));
+            .Any(barber => barber.State is BarberState.Called or BarberState.InService
+                ? barber.CheckedInAt is null || GetBusinessDate(barber.CheckedInAt.Value) < businessDate
+                : barber.State == BarberState.Available
+                    && barber.CheckedInAt is DateTimeOffset checkedInAt
+                    && GetBusinessDate(checkedInAt) < businessDate);
         var lastResetDate = stateRepository.GetLastResetDate();
 
         if (lastResetDate is null && activeBeforeToday.Count == 0 && !hasStaleBarberState)
@@ -89,6 +91,30 @@ internal static class DailyRotationQueue
         return OrderBarbers(barbers, entries, businessDate)
             .Select(barber => barber.Id)
             .ToArray();
+    }
+
+    public static IReadOnlyList<Barber> CheckedInBarbers(
+        IEnumerable<Barber> barbers,
+        IEnumerable<DailyRotationEntry> entries,
+        DateOnly businessDate)
+    {
+        var checkedInBarberIds = entries
+            .Where(entry => entry.BusinessDate == businessDate)
+            .Select(entry => entry.BarberId)
+            .ToHashSet();
+
+        return OrderBarbers(
+            barbers.Where(barber => checkedInBarberIds.Contains(barber.Id)),
+            entries,
+            businessDate);
+    }
+
+    public static bool HasCheckedInToday(
+        Barber barber,
+        IEnumerable<DailyRotationEntry> entries,
+        DateOnly businessDate)
+    {
+        return entries.Any(entry => entry.BusinessDate == businessDate && entry.BarberId == barber.Id);
     }
 
     public static IReadOnlyList<Barber> OrderBarbers(

@@ -525,7 +525,7 @@ public sealed partial class KioskPage : Page
             Padding = new Thickness(20),
             Child = new TextBlock
             {
-                Text = "No barbers are available right now. Open Local Admin and mark at least one barber as Available.",
+                Text = "No barbers are selectable right now. Open Barber Public or Local Admin and turn on kiosk availability.",
                 FontSize = 16,
                 Foreground = Brush(147, 0, 10),
                 TextWrapping = TextWrapping.Wrap
@@ -605,7 +605,7 @@ public sealed partial class KioskPage : Page
 
     private static bool IsSelectable(Barber barber)
     {
-        return barber.State is BarberState.Available or BarberState.Called or BarberState.InService;
+        return barber.State is BarberState.NotCheckedIn or BarberState.Available or BarberState.Called or BarberState.InService;
     }
 
     private static string GetInitials(string displayName)

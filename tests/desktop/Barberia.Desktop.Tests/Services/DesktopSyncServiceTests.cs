@@ -66,6 +66,7 @@ public class DesktopSyncServiceTests : IDisposable
         {
             var barberRepo = new LocalBarberRepository(connection);
             barberRepo.Upsert(new Barber(targetBarberId, "Barber 1", BarberState.Available, 0, 1, now, 1, null, true, 50), now);
+            new DailyRotationRepository(connection).EnsureQueued(OperationalClock.GetBusinessDate(now), targetBarberId, now.AddMinutes(-5), now);
 
             var turnRepo = new LocalTurnRepository(connection);
             var turn = new Turn(ticketId, "T1", 1, DateOnly.FromDateTime(now.Date), TurnState.Waiting, TurnSource.WalkIn, now, null, null, Array.Empty<Guid>(), "Customer 1", null, null, null);

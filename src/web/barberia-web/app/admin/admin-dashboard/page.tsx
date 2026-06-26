@@ -123,7 +123,7 @@ export default async function AdminCatalogPage({ searchParams }: CatalogPageProp
 
         <Section
           title="Barbers"
-          description="Manage the web catalog authority for active barbers, stations and image paths."
+          description="Manage the web catalog authority for active barbers, stations, image paths and kiosk selection."
           collapsible
         >
           <BarberManager barbers={data.barbers} />

@@ -64,6 +64,18 @@ describe("tickets dashboard snapshot", () => {
     expect(formatTicketNumber({ ...baseTicket, status: "waiting", display_ticket_number: null })).toBe("W20260615090000000");
   });
 
+  it("shows idle local barbers as kiosk selectable", () => {
+    const snapshot = buildTicketsDashboardSnapshot({
+      loadedAt: new Date("2026-06-15T13:10:00.000Z"),
+      barbers: [baseBarber],
+      tickets: [],
+    });
+
+    expect(snapshot.barbers.map((barber) => [barber.id, barber.status, barber.detail])).toEqual([
+      ["barber-1", "available", "Station B-1 Selectable"],
+    ]);
+  });
+
   it("infers barber display state from active tickets", () => {
     const snapshot = buildTicketsDashboardSnapshot({
       loadedAt: new Date("2026-06-15T13:10:00.000Z"),

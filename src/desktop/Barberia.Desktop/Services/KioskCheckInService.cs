@@ -95,10 +95,16 @@ public sealed class KioskCheckInService
                 .ListAll()
                 .Where(barber => barber.IsActive && barber.State != BarberState.Offline)
                 .ToArray();
+            var dailyRotationEntries = dailyRotationRepository.ListByDate(businessDate);
+            var assignmentBarbers = DailyRotationQueue.CheckedInBarbers(
+                barbers,
+                dailyRotationEntries,
+                businessDate)
+                .ToArray();
 
             if (barbers.Length == 0)
             {
-                throw new InvalidOperationException("No barbers are currently available to take a new ticket.");
+                throw new InvalidOperationException("No barbers are currently selectable for a new ticket.");
             }
 
             var requestedBarbers = ResolveRequestedBarbers(acceptsAnyBarber, requestedIds, barbers);
@@ -123,8 +129,8 @@ public sealed class KioskCheckInService
 
             var waitingTurns = turnRepository.ListWaiting();
             var rotationQueue = DailyRotationQueue.Build(
-                barbers,
-                dailyRotationRepository.ListByDate(businessDate),
+                assignmentBarbers,
+                dailyRotationEntries,
                 businessDate);
             var appointments = appointmentRepository.ListBetween(now.AddMinutes(-1), now.AddMinutes(15));
             string? assignedBarberName = null;
@@ -139,7 +145,7 @@ public sealed class KioskCheckInService
             {
                 decision = _assignmentEngine.AssignNextTurn(new TurnAssignmentRequest(
                     waitingTurns,
-                    barbers,
+                    assignmentBarbers,
                     rotationQueue,
                     now,
                     appointments));
@@ -173,7 +179,7 @@ public sealed class KioskCheckInService
 
             if (decision.TurnId == turn.Id)
             {
-                var assignedBarber = barbers.First(barber => barber.Id == decision.BarberId);
+                var assignedBarber = assignmentBarbers.First(barber => barber.Id == decision.BarberId);
                 assignedBarberName = assignedBarber.DisplayName;
                 assignedBarberStationCode = assignedBarber.StationCode;
                 status = KioskCheckInStatus.Assigned;
