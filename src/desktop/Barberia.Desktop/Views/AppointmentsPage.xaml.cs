@@ -94,7 +94,10 @@ public sealed partial class AppointmentsPage : Page
             var result = _startService.StartService(_stationInput.Text, _scanInput.Text);
             _stationInput.Text = string.Empty;
             _scanInput.Text = string.Empty;
-            SetScanSuccess($"Started #{result.DisplayTicketNumber} - {result.BarberStationCode}");
+            var message = result.Outcome == BarberPanelStartOutcome.ReassignedToWaiting
+                ? $"Moved #{result.DisplayTicketNumber} to waiting for {result.BarberStationCode}"
+                : $"Started #{result.DisplayTicketNumber} - {result.BarberStationCode}";
+            SetScanSuccess(message);
             LoadAppointments();
         }
         catch (Exception exception)

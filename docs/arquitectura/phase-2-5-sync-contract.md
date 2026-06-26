@@ -81,6 +81,10 @@ El Desktop agrupa eventos en un arreglo y los envía. Cada evento representa un 
 }
 ```
 
+Cuando `BarberPanelService.StartService(...)` transfiere automaticamente un ticket walk-in a la estacion escaneada, Desktop conserva la secuencia de eventos existente: si el barbero destino esta `available`, primero encola `ticket.called` con estado `called` y luego `ticket.started` con estado `in_progress`; si el destino ya esta `called` o `in_service`, solo encola `ticket.called` con estado `waiting` y `barber_id` del barbero destino para reflejar la reserva sin iniciar servicio.
+
+Ademas, cada traspaso automatico emite `ticket.auto_reassigned` con `display_ticket_number`, `internal_ticket_number`, barbero/estacion anterior, barbero/estacion destino, `outcome` (`started` o `waiting`) y `previous_barber_released`. Este evento no materializa estado de tickets; queda en `sync_events` como bitacora para Web, incluyendo la seccion final de `/admin/admin-dashboard`.
+
 Desktop consulta cambios periódicamente, enviando el cursor (timestamp del último evento sincronizado).
 
 Nota operativa: Cash Box puede emitir `ticket.completed` antes de `payment.collected` cuando el barbero usa `Pay Later`. En ese caso el servicio termino y el barbero volvio a cola, pero el dinero sigue en `pending_service_payments` local; Web solo debe materializar el cobro cuando reciba `payment.collected`.
