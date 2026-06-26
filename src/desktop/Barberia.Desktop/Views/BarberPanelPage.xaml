@@ -24,7 +24,7 @@
 
         <Grid Padding="24">
             <Border
-                MaxWidth="440"
+                MaxWidth="480"
                 Padding="32"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
@@ -60,13 +60,40 @@
                                 HorizontalAlignment="Center"
                                 FontSize="15"
                                 Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Scan or enter the customer's ticket code to begin."
+                                Text="Scan the barber station first, then the customer ticket code."
                                 TextAlignment="Center"
                                 TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
 
                     <StackPanel Spacing="18">
+                        <StackPanel Spacing="8">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Barber Station" />
+                            <Grid>
+                                <TextBox
+                                    x:Name="_stationInput"
+                                    Padding="14,12,48,12"
+                                    CharacterCasing="Upper"
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    HorizontalContentAlignment="Center"
+                                    KeyDown="OnStationInputKeyDown"
+                                    PlaceholderText="e.g. B-1"
+                                    TextAlignment="Center" />
+                                <FontIcon
+                                    Margin="0,0,14,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    FontSize="20"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Glyph="&#xE713;" />
+                            </Grid>
+                        </StackPanel>
+
                         <StackPanel Spacing="8">
                             <TextBlock
                                 FontSize="14"

@@ -39,7 +39,7 @@ public sealed partial class AppointmentsPage : Page
     {
         LoadAppointments();
         _refreshTimer.Start();
-        QueueScanFocus();
+        QueueStationFocus();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -61,13 +61,22 @@ public sealed partial class AppointmentsPage : Page
         }
         finally
         {
-            QueueScanFocus();
+            QueueStationFocus();
         }
     }
 
     private void OnPageRootTapped(object sender, TappedRoutedEventArgs args)
     {
-        QueueScanFocus();
+        QueueStationFocus();
+    }
+
+    private void OnStationInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
+    {
+        if (args.Key == Windows.System.VirtualKey.Enter)
+        {
+            DispatcherQueue.TryEnqueue(() => _scanInput.Focus(FocusState.Programmatic));
+            args.Handled = true;
+        }
     }
 
     private void OnScanInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
@@ -78,32 +87,32 @@ public sealed partial class AppointmentsPage : Page
             args.Handled = true;
         }
     }
-
     private void StartScannedService()
     {
         try
         {
-            var result = _startService.StartService(_scanInput.Text);
+            var result = _startService.StartService(_stationInput.Text, _scanInput.Text);
+            _stationInput.Text = string.Empty;
             _scanInput.Text = string.Empty;
             SetScanSuccess($"Started #{result.DisplayTicketNumber} - {result.BarberStationCode}");
             LoadAppointments();
         }
         catch (Exception exception)
         {
+            _stationInput.Text = string.Empty;
             _scanInput.Text = string.Empty;
             SetScanError(exception.Message);
         }
         finally
         {
-            QueueScanFocus();
+            QueueStationFocus();
         }
     }
 
-    private void QueueScanFocus()
+    private void QueueStationFocus()
     {
-        DispatcherQueue.TryEnqueue(() => _scanInput.Focus(FocusState.Programmatic));
+        DispatcherQueue.TryEnqueue(() => _stationInput.Focus(FocusState.Programmatic));
     }
-
     private void SetScanSuccess(string message)
     {
         _successPlayer.Play();

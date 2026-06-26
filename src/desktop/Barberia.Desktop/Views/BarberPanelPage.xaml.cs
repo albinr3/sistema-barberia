@@ -24,7 +24,7 @@ public sealed partial class BarberPanelPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
+        QueueStationFocus();
     }
 
     private void OnMenuButtonClick(object sender, RoutedEventArgs args)
@@ -35,6 +35,15 @@ public sealed partial class BarberPanelPage : Page
     private void OnStartServiceClick(object sender, RoutedEventArgs args)
     {
         StartService();
+    }
+
+    private void OnStationInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
+    {
+        if (args.Key == Windows.System.VirtualKey.Enter)
+        {
+            DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
+            args.Handled = true;
+        }
     }
 
     private void OnTicketInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
@@ -50,21 +59,28 @@ public sealed partial class BarberPanelPage : Page
     {
         try
         {
-            var result = _service.StartService(_ticketInput.Text);
+            var result = _service.StartService(_stationInput.Text, _ticketInput.Text);
+            _stationInput.Text = string.Empty;
             _ticketInput.Text = string.Empty;
             _assignedBarberText.Text = $"{result.BarberStationCode} - {result.BarberName}";
             SetSuccessMessage($"Ticket {result.DisplayTicketNumber} started. Payment and closeout remain in Cash Box.");
         }
         catch (Exception exception)
         {
+            _stationInput.Text = string.Empty;
             _ticketInput.Text = string.Empty;
             _assignedBarberText.Text = "Review ticket";
             SetErrorMessage(exception.Message);
         }
         finally
         {
-            DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
+            QueueStationFocus();
         }
+    }
+
+    private void QueueStationFocus()
+    {
+        DispatcherQueue.TryEnqueue(() => _stationInput.Focus(FocusState.Programmatic));
     }
 
     private void SetSuccessMessage(string message)

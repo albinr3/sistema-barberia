@@ -55,8 +55,9 @@ public sealed class BarberPanelService
         UpdateOperationalState(barberId, BarberState.Offline);
     }
 
-    public BarberPanelStartResult StartService(string scannedTicketNumber)
+    public BarberPanelStartResult StartService(string stationInput, string scannedTicketNumber)
     {
+        var stationNumber = ParseStationNumber(stationInput);
         if (string.IsNullOrWhiteSpace(scannedTicketNumber))
         {
             throw new InvalidOperationException("Scan or enter an assigned ticket.");
@@ -74,11 +75,15 @@ public sealed class BarberPanelService
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
             var appointmentRepository = new AppointmentReservationRepository(connection, sqliteTransaction);
 
+            var scannedBarber = barberRepository.GetActiveByStationNumber(stationNumber)
+                ?? throw new InvalidOperationException("Station does not belong to an active barber.");
+
             var turn = turnRepository.GetByTicketInputForToday(scannedTicketNumber, now);
             if (turn is null && IsAppointmentCode(scannedTicketNumber))
             {
                 result = StartAppointmentService(
                     scannedTicketNumber,
+                    scannedBarber,
                     now,
                     barberRepository,
                     turnRepository,
@@ -94,8 +99,12 @@ public sealed class BarberPanelService
 
             var barberId = turn.AssignedBarberId
                 ?? throw new InvalidOperationException("The ticket does not have an assigned barber.");
-            var barber = barberRepository.GetById(barberId)
-                ?? throw new InvalidOperationException("The assigned barber does not exist in the local database.");
+            if (barberId != scannedBarber.Id)
+            {
+                throw new InvalidOperationException("Station does not match the assigned ticket barber.");
+            }
+
+            var barber = scannedBarber;
 
             if (turn.State == TurnState.InService)
             {
@@ -106,6 +115,7 @@ public sealed class BarberPanelService
             {
                 throw new InvalidOperationException($"This ticket was already completed and charged by {barber.DisplayName}.");
             }
+
             if (!barber.IsActive)
             {
                 throw new InvalidOperationException("The assigned barber is disabled by administration.");
@@ -145,6 +155,7 @@ public sealed class BarberPanelService
 
     private static BarberPanelStartResult StartAppointmentService(
         string scannedAppointmentCode,
+        Barber scannedBarber,
         DateTimeOffset now,
         LocalBarberRepository barberRepository,
         LocalTurnRepository turnRepository,
@@ -176,13 +187,12 @@ public sealed class BarberPanelService
             throw new InvalidOperationException("Appointment QR can only be scanned from 15 minutes before to 10 minutes after the appointment time.");
         }
 
-        var barber = barberRepository.GetById(appointment.BarberId)
-            ?? throw new InvalidOperationException("The appointment barber does not exist in the local database.");
-        if (!barber.IsActive)
+        if (appointment.BarberId != scannedBarber.Id)
         {
-            throw new InvalidOperationException("The appointment barber is disabled by administration.");
+            throw new InvalidOperationException("Station does not match the appointment barber.");
         }
 
+        var barber = scannedBarber;
         if (barber.State != BarberState.Available)
         {
             throw new InvalidOperationException("The appointment barber must be available before starting this appointment.");
@@ -240,6 +250,32 @@ public sealed class BarberPanelService
             barber.StationCode ?? throw new InvalidOperationException("The active barber does not have an assigned station."),
             now,
             "Appointment service started locally. Payment and closeout remain in Cash Box.");
+    }
+
+    private static int ParseStationNumber(string stationInput)
+    {
+        if (string.IsNullOrWhiteSpace(stationInput))
+        {
+            throw new InvalidOperationException("Scan or enter the barber station.");
+        }
+
+        var normalized = stationInput.Trim();
+        if (normalized.StartsWith("B", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[1..].Trim();
+        }
+
+        if (normalized.StartsWith("-", StringComparison.Ordinal))
+        {
+            normalized = normalized[1..].Trim();
+        }
+
+        if (!int.TryParse(normalized, out var stationNumber) || stationNumber <= 0)
+        {
+            throw new InvalidOperationException("Station code must use format B-#.");
+        }
+
+        return stationNumber;
     }
 
     private static bool IsAppointmentCode(string value)
