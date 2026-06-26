@@ -147,6 +147,7 @@ public sealed partial class ServicesPage : Page
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         row.Children.Add(new TextBlock
         {
@@ -159,17 +160,29 @@ public sealed partial class ServicesPage : Page
             VerticalAlignment = VerticalAlignment.Center
         });
 
-        var priceText = new TextBlock
+        var desktopPriceText = new TextBlock
         {
-            Text = $"${service.Price:0.00}",
+            Text = $"${service.DesktopPrice:0.00}",
             FontFamily = new FontFamily("Inter"),
             FontSize = 20,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush(26, 28, 30),
             VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetColumn(priceText, 1);
-        row.Children.Add(priceText);
+        Grid.SetColumn(desktopPriceText, 1);
+        row.Children.Add(desktopPriceText);
+
+        var webPriceText = new TextBlock
+        {
+            Text = $"${service.WebPrice:0.00}",
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 20,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush(26, 28, 30),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(webPriceText, 2);
+        row.Children.Add(webPriceText);
 
         var statusBadge = CreateTextBadge(
             service.IsActive ? "Active" : "Archived",
@@ -177,7 +190,7 @@ public sealed partial class ServicesPage : Page
             service.IsActive ? Brush(21, 128, 61) : Brush(68, 70, 85));
         statusBadge.HorizontalAlignment = HorizontalAlignment.Center;
         statusBadge.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(statusBadge, 2);
+        Grid.SetColumn(statusBadge, 3);
         row.Children.Add(statusBadge);
 
         var actions = new StackPanel
@@ -200,7 +213,7 @@ public sealed partial class ServicesPage : Page
         };
         actions.Children.Add(deleteButton);
 
-        Grid.SetColumn(actions, 3);
+        Grid.SetColumn(actions, 4);
         row.Children.Add(actions);
 
         return row;
@@ -233,7 +246,8 @@ public sealed partial class ServicesPage : Page
                 _service.SaveService(
                     _editingServiceId,
                     _serviceNameInput.Text,
-                    ParseServicePrice(),
+                    ParseServicePrice(_serviceDesktopPriceInput.Text),
+                    ParseServicePrice(_serviceWebPriceInput.Text),
                     _serviceActiveCheckBox.IsChecked == true,
                     ParseServiceDisplayOrder());
                 _editingServiceId = null;
@@ -345,7 +359,8 @@ public sealed partial class ServicesPage : Page
     private void LoadServiceIntoEditor(Service service)
     {
         _serviceNameInput.Text = service.Name;
-        _servicePriceInput.Text = $"{service.Price:0.00}";
+        _serviceDesktopPriceInput.Text = $"{service.DesktopPrice:0.00}";
+        _serviceWebPriceInput.Text = $"{service.WebPrice:0.00}";
         _serviceDisplayOrderInput.Text = service.DisplayOrder.ToString();
         _serviceActiveCheckBox.IsChecked = service.IsActive;
         _deleteServiceButton.IsEnabled = true;
@@ -354,7 +369,8 @@ public sealed partial class ServicesPage : Page
     private void ClearServiceEditor()
     {
         _serviceNameInput.Text = string.Empty;
-        _servicePriceInput.Text = string.Empty;
+        _serviceDesktopPriceInput.Text = string.Empty;
+        _serviceWebPriceInput.Text = string.Empty;
         _serviceDisplayOrderInput.Text = _nextServiceDisplayOrder.ToString();
         _serviceActiveCheckBox.IsChecked = true;
         _deleteServiceButton.IsEnabled = false;
@@ -368,14 +384,14 @@ public sealed partial class ServicesPage : Page
             : $"Editing: {serviceName}";
     }
 
-    private decimal ParseServicePrice()
+    private decimal ParseServicePrice(string textValue)
     {
-        var text = _servicePriceInput.Text.Trim().Replace("$", string.Empty).Trim();
+        var text = textValue.Trim().Replace("$", string.Empty).Trim();
         if ((!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var price)
                 && !decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out price))
             || price <= 0)
         {
-            throw new InvalidOperationException("Service price must be greater than zero.");
+            throw new InvalidOperationException("Service prices must be greater than zero.");
         }
 
         return price;

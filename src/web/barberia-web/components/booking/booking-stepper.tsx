@@ -89,7 +89,7 @@ export function BookingStepper({ services, barbers }: any) {
                   {s.description && <p className={styles.serviceDesc}>{s.description}</p>}
                 </div>
                 <div className={styles.servicePrice}>
-                  ${(s.base_price_cents / 100).toFixed(2)}
+                  ${(s.web_price_cents / 100).toFixed(2)}
                 </div>
               </div>
             ))}
@@ -185,7 +185,7 @@ export function BookingStepper({ services, barbers }: any) {
                 <span className={styles.receiptValue}>{selectedService?.name}</span>
               </div>
               <div className={styles.receiptPrice}>
-                ${(selectedService?.base_price_cents / 100).toFixed(2)}
+                ${(selectedService?.web_price_cents / 100).toFixed(2)}
               </div>
             </div>
             <div className={styles.receiptRow}>

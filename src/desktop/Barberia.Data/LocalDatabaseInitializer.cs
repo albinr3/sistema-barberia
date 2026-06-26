@@ -151,12 +151,14 @@ public sealed class LocalDatabaseInitializer
             CREATE TABLE IF NOT EXISTS services (
                 id TEXT NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,
-                price_cents INTEGER NOT NULL,
+                desktop_price_cents INTEGER NOT NULL,
+                web_price_cents INTEGER NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 display_order INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                CHECK (price_cents > 0)
+                CHECK (desktop_price_cents > 0),
+                CHECK (web_price_cents > 0)
             );
 
             CREATE TABLE IF NOT EXISTS audit_events (
@@ -313,9 +315,45 @@ public sealed class LocalDatabaseInitializer
         EnsureColumn(connection, "cash_payments", "additional_cents", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "cash_payments", "payment_method", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "cash_payments", "payment_reference", "TEXT NULL");
+        EnsureDualServicePrices(connection);
         NormalizeInactiveBarbers(connection);
         NormalizeBarberStations(connection);
         EnsureActiveStationIndex(connection);
+    }
+
+    private static void EnsureDualServicePrices(SqliteConnection connection)
+    {
+        EnsureColumn(connection, "services", "desktop_price_cents", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "services", "web_price_cents", "INTEGER NOT NULL DEFAULT 0");
+
+        var hasPriceCents = false;
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('services')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                if (reader.GetString(1) == "price_cents")
+                {
+                    hasPriceCents = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasPriceCents)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = """
+                    UPDATE services
+                    SET desktop_price_cents = price_cents,
+                        web_price_cents = price_cents
+                    WHERE desktop_price_cents = 0;
+                    """;
+                command.ExecuteNonQuery();
+            }
+        }
     }
 
     private static void NormalizeInactiveBarbers(SqliteConnection connection)

@@ -24,7 +24,7 @@ export async function getAdminCatalogData(supabase: SupabaseClient): Promise<Adm
         .order("display_name", { ascending: true }),
       supabase
         .from("services")
-        .select("id, name, description, base_price_cents, duration_minutes, sort_order, is_active")
+        .select("id, name, description, desktop_price_cents, web_price_cents, duration_minutes, sort_order, is_active")
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
       supabase

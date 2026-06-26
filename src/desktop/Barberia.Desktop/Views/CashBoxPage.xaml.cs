@@ -545,7 +545,7 @@ public sealed partial class CashBoxPage : Page
         decimal changeAmount = 0;
         if (paymentMethod == CustomerPaymentMethod.Cash)
         {
-            var totalAmount = selectedService.Price + _additionalAmount;
+            var totalAmount = selectedService.DesktopPrice + _additionalAmount;
             var dialog = new ChangeCalculationDialog(totalAmount)
             {
                 XamlRoot = this.XamlRoot
@@ -648,9 +648,9 @@ public sealed partial class CashBoxPage : Page
             _cashTotalText.Text = "$0.00";
             return;
         }
-        _amountText.Text = $"${selectedService.Price:0.00}";
+        _amountText.Text = $"${selectedService.DesktopPrice:0.00}";
         _commissionText.Text = $"${_additionalAmount:0.00}";
-        _cashTotalText.Text = $"${selectedService.Price + _additionalAmount:0.00}";
+        _cashTotalText.Text = $"${selectedService.DesktopPrice + _additionalAmount:0.00}";
     }
 
     private void SyncServiceOptions()
@@ -711,7 +711,7 @@ public sealed partial class CashBoxPage : Page
 
         var priceText = new TextBlock
         {
-            Text = $"${service.Price:0.00}",
+            Text = $"${service.DesktopPrice:0.00}",
             FontSize = 18,
             FontWeight = Microsoft.UI.Text.FontWeights.Bold,
             Foreground = Brush(0, 32, 194)

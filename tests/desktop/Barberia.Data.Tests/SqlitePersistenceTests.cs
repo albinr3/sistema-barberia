@@ -307,10 +307,10 @@ public sealed class SqlitePersistenceTests
         var inactiveId = Guid.NewGuid();
         var repository = new ServiceRepository(database.Connection);
 
-        repository.Add(new Service(activeId, "Corte", 20m, isActive: true, 1, now, now));
-        repository.Add(new Service(Guid.NewGuid(), "Barba", 15m, isActive: true, 0, now, now));
-        repository.Add(new Service(inactiveId, "Gratis", 5m, isActive: false, 2, now, now));
-        repository.Update(new Service(activeId, "Corte Clasico", 22m, isActive: true, 1, now, now.AddMinutes(1)));
+        repository.Add(new Service(activeId, "Corte", 20m, 20m, isActive: true, 1, now, now));
+        repository.Add(new Service(Guid.NewGuid(), "Barba", 15m, 15m, isActive: true, 0, now, now));
+        repository.Add(new Service(inactiveId, "Gratis", 5m, 5m, isActive: false, 2, now, now));
+        repository.Update(new Service(activeId, "Corte Clasico", 22m, 25m, isActive: true, 1, now, now.AddMinutes(1)));
 
         var all = repository.ListAll();
         var active = repository.ListActive();
@@ -322,7 +322,8 @@ public sealed class SqlitePersistenceTests
             {
                 Assert.Equal(activeId, service.Id);
                 Assert.Equal("Corte Clasico", service.Name);
-                Assert.Equal(2200, service.PriceCents);
+                Assert.Equal(2200, service.DesktopPriceCents);
+                Assert.Equal(2500, service.WebPriceCents);
             },
             service =>
             {
@@ -801,7 +802,7 @@ public sealed class SqlitePersistenceTests
         turnRepository.Upsert(CreateTurn(waitingTurnId, "A-003", TurnState.Waiting, TurnSource.WalkIn, from.AddHours(11)), from.AddHours(11));
         turnRepository.Upsert(CreateTurn(noShowTurnId, "A-004", TurnState.NoShow, TurnSource.WalkIn, from.AddHours(12)), from.AddHours(12));
         turnRepository.Upsert(CreateTurn(oldTurnId, "OLD-001", TurnState.Completed, TurnSource.WalkIn, from.AddDays(-1), luisId), from.AddDays(-1));
-        serviceRepository.Add(new Service(cutServiceId, "Corte", 20m, isActive: true, 0, from, from));
+        serviceRepository.Add(new Service(cutServiceId, "Corte", 20m, 20m, isActive: true, 0, from, from));
 
         paymentRepository.Add(new CashPayment(
             Guid.NewGuid(),

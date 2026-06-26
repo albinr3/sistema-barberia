@@ -30,7 +30,8 @@ const serviceSchema = z.object({
   id: optionalUuid,
   name: z.string().trim().min(2, "Service name is required."),
   description: z.string().trim().optional(),
-  base_price: z.string().trim().min(1, "Base price is required."),
+  desktop_price: z.string().trim().min(1, "Desktop price is required."),
+  web_price: z.string().trim().min(1, "Web price is required."),
   duration_minutes: z.coerce.number().int().positive("Duration must be greater than zero."),
   sort_order: z.coerce.number().int(),
   is_active: z.boolean(),
@@ -126,22 +127,25 @@ export async function saveService(formData: FormData) {
       id: formData.get("id")?.toString() ?? "",
       name: formData.get("name")?.toString() ?? "",
       description: formData.get("description")?.toString() ?? "",
-      base_price: formData.get("base_price")?.toString() ?? "",
+      desktop_price: formData.get("desktop_price")?.toString() ?? "",
+      web_price: formData.get("web_price")?.toString() ?? "",
       duration_minutes: formData.get("duration_minutes")?.toString() ?? "",
       sort_order: formData.get("sort_order")?.toString() ?? "0",
       is_active: checked(formData, "is_active"),
     });
-    const basePriceCents = centsFromDollarInput(values.base_price);
+    const desktopPriceCents = centsFromDollarInput(values.desktop_price);
+    const webPriceCents = centsFromDollarInput(values.web_price);
 
-    if (!Number.isFinite(basePriceCents) || basePriceCents <= 0) {
-      redirect(statusUrl("error", "Base price must be greater than zero."));
+    if (!Number.isFinite(desktopPriceCents) || desktopPriceCents <= 0 || !Number.isFinite(webPriceCents) || webPriceCents <= 0) {
+      redirect(statusUrl("error", "Prices must be greater than zero."));
     }
 
     const payload = {
       ...(values.id ? { id: values.id } : {}),
       name: values.name,
       description: values.description || null,
-      base_price_cents: basePriceCents,
+      desktop_price_cents: desktopPriceCents,
+      web_price_cents: webPriceCents,
       duration_minutes: values.duration_minutes,
       sort_order: values.sort_order,
       is_active: values.is_active,

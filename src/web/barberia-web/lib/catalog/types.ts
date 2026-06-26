@@ -11,7 +11,8 @@ export type ServiceRow = {
   id: string;
   name: string;
   description: string | null;
-  base_price_cents: number;
+  desktop_price_cents: number;
+  web_price_cents: number;
   duration_minutes: number;
   sort_order: number;
   is_active: boolean;

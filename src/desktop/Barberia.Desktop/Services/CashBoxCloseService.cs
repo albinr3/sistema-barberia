@@ -153,7 +153,7 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException("This service is deactivated by administration.");
             }
 
-            var servicePrice = service.Price;
+            var servicePrice = service.DesktopPrice;
             if (servicePrice <= 0)
             {
                 throw new InvalidOperationException("The service base price must be greater than zero.");
@@ -212,7 +212,7 @@ public sealed class CashBoxCloseService
                     "completed",
                     barberId,
                     now,
-                    new[] { new { service_id = service.Id, price_cents = service.PriceCents, local_item_id = $"{pendingId}:service" } })),
+                    new[] { new { service_id = service.Id, price_cents = service.DesktopPriceCents, local_item_id = $"{pendingId}:service" } })),
                 deviceId), now);
 
             if (turn.AppointmentId is Guid completedAppointmentId)
@@ -543,7 +543,7 @@ public sealed class CashBoxCloseService
                 throw new InvalidOperationException("This service is deactivated by administration.");
             }
 
-            var servicePrice = service.Price;
+            var servicePrice = service.DesktopPrice;
             if (servicePrice <= 0)
             {
                 throw new InvalidOperationException("The service base price must be greater than zero.");
@@ -680,7 +680,7 @@ public sealed class CashBoxCloseService
                     "completed",
                     barberId,
                     now,
-                    new[] { new { service_id = service.Id, price_cents = service.PriceCents, local_item_id = Guid.NewGuid().ToString() } })),
+                    new[] { new { service_id = service.Id, price_cents = service.DesktopPriceCents, local_item_id = Guid.NewGuid().ToString() } })),
                 deviceId), now);
 
             syncRecorder.Enqueue(new LocalSyncEvent(
