@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function getActiveServices(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, description, base_price_cents, duration_minutes, sort_order")
+    .select("id, name, description, web_price_cents, duration_minutes, sort_order")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });

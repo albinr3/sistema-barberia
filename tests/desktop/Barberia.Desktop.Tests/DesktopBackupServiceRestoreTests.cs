@@ -222,9 +222,9 @@ public sealed class DesktopBackupServiceRestoreTests : IDisposable
                 var paymentId = Guid.NewGuid();
                 command.CommandText = """
                     INSERT INTO services (
-                        id, name, price_cents, is_active, display_order, created_at, updated_at
+                        id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at
                     ) VALUES (
-                        $service_id, 'Regular Cut', 3000, 1, 0, $created_at, $updated_at
+                        $service_id, 'Regular Cut', 3000, 3000, 1, 0, $created_at, $updated_at
                     );
 
                     INSERT INTO turns (

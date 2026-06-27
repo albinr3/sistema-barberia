@@ -81,6 +81,10 @@ El Desktop agrupa eventos en un arreglo y los envía. Cada evento representa un 
 }
 ```
 
+Cuando `BarberPanelService.StartService(...)` transfiere automaticamente un ticket walk-in a la estacion escaneada, Desktop conserva la secuencia de eventos existente: si el barbero destino esta `available`, primero encola `ticket.called` con estado `called` y luego `ticket.started` con estado `in_progress`; si el destino ya esta `called` o `in_service`, solo encola `ticket.called` con estado `waiting` y `barber_id` del barbero destino para reflejar la reserva sin iniciar servicio.
+
+Ademas, cada traspaso automatico emite `ticket.auto_reassigned` con `display_ticket_number`, `internal_ticket_number`, barbero/estacion anterior, barbero/estacion destino, `outcome` (`started` o `waiting`) y `previous_barber_released`. Este evento no materializa estado de tickets; queda en `sync_events` como bitacora para Web, incluyendo la seccion final de `/admin/admin-dashboard`.
+
 Desktop consulta cambios periódicamente, enviando el cursor (timestamp del último evento sincronizado).
 
 Nota operativa: Cash Box puede emitir `ticket.completed` antes de `payment.collected` cuando el barbero usa `Pay Later`. En ese caso el servicio termino y el barbero volvio a cola, pero el dinero sigue en `pending_service_payments` local; Web solo debe materializar el cobro cuando reciba `payment.collected`.
@@ -164,6 +168,8 @@ Si hay incongruencias (e.g. Desktop envía un pago para un ticket que no existe 
 La ruta web `/tickets-dashboard` es una pantalla de sala read-only protegida para `admin`/`owner`. Consume `synced_tickets` materializados desde Desktop y no ejecuta acciones operativas sobre tickets. Para copiar el display local, `synced_tickets` conserva `display_ticket_number`, `ticket_date` y `checked_in_at`; los eventos antiguos que no incluyan esos campos no deben borrar valores ya materializados.
 
 La pantalla excluye tickets asociados a `appointment_id` como filas normales de espera/llamado, porque esos turnos se usan como registros operativos para Barber Panel/Cash Box. Desktop sigue siendo autoridad para cola, POS, pagos y cambios de estado.
+
+`/tickets-dashboard` usa `barber_operational_status` como proyeccion read-only del estado diario local de cada barbero. Esa tabla se materializa desde `catalog.snapshot` y guarda `business_date`, estado local, `clients_served_today`, check-in diario y posicion en `barber_daily_rotation`. Web la usa solo para ordenar `Barber Status` igual que Desktop: disponibles con cero clientes atendidos primero, empatados por posicion de cola diaria, y fallback por estacion/nombre si la proyeccion aun no existe.
 
 ## 7. Ticket History Web
 

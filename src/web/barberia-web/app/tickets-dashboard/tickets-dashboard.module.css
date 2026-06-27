@@ -264,10 +264,17 @@
   border-radius: 8px;
   padding: 16px 16px 16px 0;
   display: grid;
-  grid-template-columns: 4px 64px minmax(0, 1fr);
+  grid-template-columns: 4px auto 64px minmax(0, 1fr);
   gap: 14px;
   align-items: center;
   background: #ffffff;
+}
+
+.orderNumber {
+  font-size: 28px;
+  font-weight: 900;
+  color: #001387;
+  padding-left: 12px;
 }
 
 .barberHeading {
@@ -372,9 +379,13 @@
   }
 
   .callingCard,
-  .waitingCard,
-  .barberCard {
+  .waitingCard {
     grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .barberCard {
+    grid-template-columns: auto 64px 1fr;
     padding: 14px;
   }
 

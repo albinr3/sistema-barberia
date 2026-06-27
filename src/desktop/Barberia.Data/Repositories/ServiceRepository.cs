@@ -18,7 +18,7 @@ public sealed class ServiceRepository
     {
         using var command = CreateCommand();
         command.CommandText = """
-            SELECT id, name, price_cents, is_active, display_order, created_at, updated_at
+            SELECT id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at
             FROM services
             WHERE is_active = 1
             ORDER BY display_order, name, id;
@@ -31,7 +31,7 @@ public sealed class ServiceRepository
     {
         using var command = CreateCommand();
         command.CommandText = """
-            SELECT id, name, price_cents, is_active, display_order, created_at, updated_at
+            SELECT id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at
             FROM services
             ORDER BY display_order, name, id;
             """;
@@ -43,7 +43,7 @@ public sealed class ServiceRepository
     {
         using var command = CreateCommand();
         command.CommandText = """
-            SELECT id, name, price_cents, is_active, display_order, created_at, updated_at
+            SELECT id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at
             FROM services
             WHERE id = $id OR id = $id_n;
             """;
@@ -60,9 +60,9 @@ public sealed class ServiceRepository
         using var command = CreateCommand();
         command.CommandText = """
             INSERT INTO services (
-                id, name, price_cents, is_active, display_order, created_at, updated_at
+                id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at
             ) VALUES (
-                $id, $name, $price_cents, $is_active, $display_order, $created_at, $updated_at
+                $id, $name, $desktop_price_cents, $web_price_cents, $is_active, $display_order, $created_at, $updated_at
             );
             """;
         AddServiceParameters(command, service);
@@ -77,7 +77,8 @@ public sealed class ServiceRepository
         command.CommandText = """
             UPDATE services
             SET name = $name,
-                price_cents = $price_cents,
+                desktop_price_cents = $desktop_price_cents,
+                web_price_cents = $web_price_cents,
                 is_active = $is_active,
                 display_order = $display_order,
                 updated_at = $updated_at
@@ -122,7 +123,8 @@ public sealed class ServiceRepository
     {
         command.AddText("$id", service.Id.ToString());
         command.AddText("$name", service.Name);
-        command.AddInteger("$price_cents", service.PriceCents);
+        command.AddInteger("$desktop_price_cents", service.DesktopPriceCents);
+        command.AddInteger("$web_price_cents", service.WebPriceCents);
         command.AddInteger("$is_active", service.IsActive ? 1 : 0);
         command.AddInteger("$display_order", service.DisplayOrder);
         command.AddText("$created_at", service.CreatedAt.ToString("O"));
@@ -153,10 +155,11 @@ public sealed class ServiceRepository
             Guid.Parse(reader.GetString(0)),
             reader.GetString(1),
             reader.GetInt64(2),
-            reader.GetInt32(3) == 1,
-            reader.GetInt32(4),
-            DateTimeOffset.Parse(reader.GetString(5)),
-            DateTimeOffset.Parse(reader.GetString(6)));
+            reader.GetInt64(3),
+            reader.GetInt32(4) == 1,
+            reader.GetInt32(5),
+            DateTimeOffset.Parse(reader.GetString(6)),
+            DateTimeOffset.Parse(reader.GetString(7)));
     }
 
     private static void Validate(Service service)
@@ -171,9 +174,14 @@ public sealed class ServiceRepository
             throw new ArgumentException("Service name is required.", nameof(service));
         }
 
-        if (service.PriceCents <= 0)
+        if (service.DesktopPriceCents <= 0)
         {
-            throw new ArgumentException("Service price must be greater than zero.", nameof(service));
+            throw new ArgumentException("Service desktop price must be greater than zero.", nameof(service));
+        }
+
+        if (service.WebPriceCents <= 0)
+        {
+            throw new ArgumentException("Service web price must be greater than zero.", nameof(service));
         }
 
         if (service.DisplayOrder < 0)

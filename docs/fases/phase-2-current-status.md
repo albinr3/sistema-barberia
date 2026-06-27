@@ -120,6 +120,7 @@ Alertas Web y Active Queue Monitor implementado a nivel de codigo:
 - `/admin/tickets` (Active Queue Monitor) permite visualizar todos los tickets en `waiting`, `called`, o `in_progress` del día de hoy.
 - Se ha evolucionado el sistema de `ticket_admin_commands` para soportar **Cancelación Remota** (`command_type = 'cancel'`) y **Reasignación Remota** (`command_type = 'reassign'`).
 - Los comandos de la nube son procesados por el `DesktopSyncService` de Desktop, aplicando de manera local y encolando la actualización resultante.
+- `/admin/admin-dashboard` muestra al final una bitacora de traspasos automaticos (`ticket.auto_reassigned`) enviados por Desktop cuando un ticket walk-in cambia de barbero desde el inicio de servicio.
 
 La Fase 2.5 de sincronización Windows-Supabase ha sido implementada a nivel de código, incluyendo el contrato técnico en `docs/arquitectura/phase-2-5-sync-contract.md`, tablas POS cloud en la base de datos (e.g. `synced_tickets`, `synced_payments`), Edge Functions (`sync-events`, `sync-changes`), operaciones y comandos remotos para Active Queue, y el dashboard web `/admin/sync`. También se modificó el Desktop para enviar los eventos a través de un Outbox hacia la nube.
 

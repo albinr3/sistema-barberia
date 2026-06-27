@@ -190,14 +190,15 @@ public class LocalAdminServiceTests
             using var command = connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO services (
-                    id, name, price_cents, is_active, display_order, created_at, updated_at
+                    id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at
                 ) VALUES (
-                    $id, $name, $price_cents, $is_active, $display_order, $created_at, $updated_at
+                    $id, $name, $desktop_price_cents, $web_price_cents, $is_active, $display_order, $created_at, $updated_at
                 );
                 """;
             command.Parameters.AddWithValue("$id", serviceId.ToString("N"));
             command.Parameters.AddWithValue("$name", "REGULAR HAIRCUT");
-            command.Parameters.AddWithValue("$price_cents", 2500);
+            command.Parameters.AddWithValue("$desktop_price_cents", 2500);
+            command.Parameters.AddWithValue("$web_price_cents", 2500);
             command.Parameters.AddWithValue("$is_active", 1);
             command.Parameters.AddWithValue("$display_order", 0);
             command.Parameters.AddWithValue("$created_at", now.ToString("O"));
@@ -209,6 +210,7 @@ public class LocalAdminServiceTests
             serviceId,
             "REGULAR HAIRCUT",
             30m,
+            35m,
             isActive: false,
             3);
 
@@ -219,7 +221,8 @@ public class LocalAdminServiceTests
 
         Assert.Equal(serviceId, saved.Id);
         Assert.Equal("REGULAR HAIRCUT", saved.Name);
-        Assert.Equal(30m, saved.Price);
+        Assert.Equal(30m, saved.DesktopPrice);
+        Assert.Equal(35m, saved.WebPrice);
         Assert.False(saved.IsActive);
         Assert.Equal(3, saved.DisplayOrder);
         Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "admin_service_updated" && auditEvent.AggregateId == serviceId);

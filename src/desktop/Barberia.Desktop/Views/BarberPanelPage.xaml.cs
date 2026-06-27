@@ -63,7 +63,10 @@ public sealed partial class BarberPanelPage : Page
             _stationInput.Text = string.Empty;
             _ticketInput.Text = string.Empty;
             _assignedBarberText.Text = $"{result.BarberStationCode} - {result.BarberName}";
-            SetSuccessMessage($"Ticket {result.DisplayTicketNumber} started. Payment and closeout remain in Cash Box.");
+            var message = result.Outcome == BarberPanelStartOutcome.ReassignedToWaiting
+                ? $"Ticket {result.DisplayTicketNumber} moved to waiting for {result.BarberStationCode}."
+                : $"Ticket {result.DisplayTicketNumber} started. Payment and closeout remain in Cash Box.";
+            SetSuccessMessage(message);
         }
         catch (Exception exception)
         {

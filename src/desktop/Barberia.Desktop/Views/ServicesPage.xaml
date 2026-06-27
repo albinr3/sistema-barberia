@@ -144,12 +144,14 @@
                                         <ColumnDefinition Width="1*" />
                                         <ColumnDefinition Width="1*" />
                                         <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Service Name" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Price" />
-                                    <TextBlock Grid.Column="2" HorizontalAlignment="Center" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Status" />
-                                    <TextBlock Grid.Column="3" HorizontalAlignment="Right" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Actions" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Desktop Price" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Web Price" />
+                                    <TextBlock Grid.Column="3" HorizontalAlignment="Center" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Status" />
+                                    <TextBlock Grid.Column="4" HorizontalAlignment="Right" Style="{StaticResource ServiceTableHeaderTextStyle}" Text="Actions" />
                                 </Grid>
 
                                 <StackPanel
@@ -248,9 +250,9 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Spacing="6">
-                                <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Base Price" />
+                                <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Desktop Price" />
                                 <TextBox
-                                    x:Name="_servicePriceInput"
+                                    x:Name="_serviceDesktopPriceInput"
                                     MinHeight="44"
                                     PlaceholderText="30.00"
                                     TextWrapping="NoWrap" />
@@ -259,6 +261,22 @@
                             <StackPanel
                                 Grid.Column="1"
                                 Spacing="6">
+                                <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Web Price" />
+                                <TextBox
+                                    x:Name="_serviceWebPriceInput"
+                                    MinHeight="44"
+                                    PlaceholderText="35.00"
+                                    TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Spacing="6">
                                 <TextBlock Style="{StaticResource ServiceFormLabelTextStyle}" Text="Display Order" />
                                 <TextBox
                                     x:Name="_serviceDisplayOrderInput"

@@ -78,8 +78,8 @@ export default async function TicketsDashboardPage() {
 
           {snapshot.barbers.length > 0 ? (
             <div className={styles.barberGrid}>
-              {snapshot.barbers.map((barber) => (
-                <BarberCard key={barber.id} barber={barber} />
+              {snapshot.barbers.map((barber, index) => (
+                <BarberCard key={barber.id} barber={barber} order={index + 1} />
               ))}
             </div>
           ) : (
@@ -127,14 +127,15 @@ function WaitingCard({ ticket }: { ticket: TicketDashboardTicketRow }) {
   );
 }
 
-function BarberCard({ barber }: { barber: TicketDashboardBarber }) {
+function BarberCard({ barber, order }: { barber: TicketDashboardBarber; order: number }) {
   return (
     <article className={`${styles.barberCard} ${styles[barber.status]}`}>
       <div className={styles.statusStripe} />
+      <div className={styles.orderNumber}>{barber.status === "available" ? order : null}</div>
       <div className={styles.avatar}>{initials(barber.display_name)}</div>
       <div className={styles.barberDetails}>
         <div className={styles.barberHeading}>
-          <b>{barber.display_name ?? "Local barber"}</b>
+          <b>{barber.display_name ?? "Local barber"}({barber.station_code ?? "B-?"})</b>
           <span>{statusLabel(barber.status)}</span>
         </div>
         <p>{barber.detail}</p>

@@ -174,12 +174,12 @@ public sealed class LocalAdminService
         return ProfileImageCatalog.ListProfileImages();
     }
 
-    public void SaveService(Guid? serviceId, string name, decimal price, bool isActive, int displayOrder)
+    public void SaveService(Guid? serviceId, string name, decimal desktopPrice, decimal webPrice, bool isActive, int displayOrder)
     {
         var normalizedName = NormalizeServiceName(name);
-        if (price <= 0)
+        if (desktopPrice <= 0 || webPrice <= 0)
         {
-            throw new InvalidOperationException("Service price must be greater than zero.");
+            throw new InvalidOperationException("Service prices must be greater than zero.");
         }
 
         if (displayOrder < 0)
@@ -204,7 +204,8 @@ public sealed class LocalAdminService
             var service = new Service(
                 serviceId ?? Guid.NewGuid(),
                 normalizedName,
-                price,
+                desktopPrice,
+                webPrice,
                 isActive,
                 displayOrder,
                 existing?.CreatedAt ?? now,
@@ -229,8 +230,10 @@ public sealed class LocalAdminService
                 {
                     serviceId = service.Id,
                     serviceName = service.Name,
-                    price = service.Price,
-                    service.PriceCents,
+                    desktopPrice = service.DesktopPrice,
+                    desktopPriceCents = service.DesktopPriceCents,
+                    webPrice = service.WebPrice,
+                    webPriceCents = service.WebPriceCents,
                     service.IsActive,
                     service.DisplayOrder
                 }),

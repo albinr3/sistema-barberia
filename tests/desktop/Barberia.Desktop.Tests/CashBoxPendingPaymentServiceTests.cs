@@ -380,7 +380,7 @@ public sealed class CashBoxPendingPaymentServiceTests
     private static Service CreateService(TestDatabase database)
     {
         var now = GetNewJerseyNow();
-        var service = new Service(Guid.NewGuid(), "Kids Cut", 23m, true, 1, now, now);
+        var service = new Service(Guid.NewGuid(), "Kids Cut", 23m, 23m, true, 1, now, now);
         using var connection = database.ConnectionFactory.OpenConnection();
         new ServiceRepository(connection).Add(service);
         return service;
@@ -389,16 +389,17 @@ public sealed class CashBoxPendingPaymentServiceTests
     private static Service CreateServiceWithCompactStoredId(TestDatabase database)
     {
         var now = GetNewJerseyNow();
-        var service = new Service(Guid.NewGuid(), "Compact Id Cut", 25m, true, 1, now, now);
+        var service = new Service(Guid.NewGuid(), "Compact Id Cut", 25m, 25m, true, 1, now, now);
         using var connection = database.ConnectionFactory.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO services (id, name, price_cents, is_active, display_order, created_at, updated_at)
-            VALUES ($id, $name, $price_cents, $is_active, $display_order, $created_at, $updated_at);
+            INSERT INTO services (id, name, desktop_price_cents, web_price_cents, is_active, display_order, created_at, updated_at)
+            VALUES ($id, $name, $desktop_price_cents, $web_price_cents, $is_active, $display_order, $created_at, $updated_at);
             """;
         command.Parameters.AddWithValue("$id", service.Id.ToString("N"));
         command.Parameters.AddWithValue("$name", service.Name);
-        command.Parameters.AddWithValue("$price_cents", service.PriceCents);
+        command.Parameters.AddWithValue("$desktop_price_cents", service.DesktopPriceCents);
+        command.Parameters.AddWithValue("$web_price_cents", service.WebPriceCents);
         command.Parameters.AddWithValue("$is_active", 1);
         command.Parameters.AddWithValue("$display_order", service.DisplayOrder);
         command.Parameters.AddWithValue("$created_at", service.CreatedAt.ToString("O"));

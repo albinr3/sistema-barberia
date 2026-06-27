@@ -462,6 +462,73 @@
   line-height: 18px;
 }
 
+.reassignmentList {
+  display: grid;
+  gap: 10px;
+}
+
+.reassignmentRow {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.reassignmentMain {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reassignmentMain div {
+  display: grid;
+  gap: 4px;
+}
+
+.reassignmentMain strong {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.reassignmentTicket {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reassignmentOutcome {
+  border: 1px solid rgba(17, 105, 88, 0.25);
+  border-radius: var(--radius);
+  color: var(--success);
+  background: rgba(17, 105, 88, 0.08);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.reassignmentMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reassignmentMeta span {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  background: var(--surface-low);
+}
+
 @media (max-width: 960px) {
   .secondaryGrid {
     grid-template-columns: 1fr;
@@ -514,5 +581,13 @@
 
   .scheduleRowClosed {
     border-style: solid;
+  }
+
+  .reassignmentMain {
+    display: grid;
+  }
+
+  .reassignmentOutcome {
+    width: fit-content;
   }
 }

@@ -50,10 +50,13 @@
                     </StackPanel>
                 </Grid>
 
-                <StackPanel
-                    x:Name="_navigationItems"
+                <ScrollViewer
                     Grid.Row="1"
-                    Spacing="4" />
+                    VerticalScrollBarVisibility="Auto">
+                    <StackPanel
+                        x:Name="_navigationItems"
+                        Spacing="4" />
+                </ScrollViewer>
 
                 <Border
                     Grid.Row="2"

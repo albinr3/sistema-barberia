@@ -167,7 +167,7 @@ public sealed partial class PublicDisplayPage : Page
             .ToArray();
 
         var items = new List<FrameworkElement>();
-        items.AddRange(availableBarbers.Select(barber => CreateBarberCard(
+        items.AddRange(OrderAvailableBarbersForStatus(availableBarbers).Select(barber => CreateBarberCard(
             barber,
             false,
             activeTurnsByBarber.GetValueOrDefault(barber.Id))));
@@ -183,6 +183,13 @@ public sealed partial class PublicDisplayPage : Page
             activeTurnsByBarber.GetValueOrDefault(barber.Id))));
 
         return items;
+    }
+
+    internal static IReadOnlyList<Barber> OrderAvailableBarbersForStatus(IEnumerable<Barber> barbers)
+    {
+        return barbers
+            .OrderBy(barber => barber.ClientsServedToday == 0 ? 0 : 1)
+            .ToArray();
     }
 
     private static FrameworkElement CreateNowCallingCard(Turn turn, IReadOnlyList<Barber> barbers)

@@ -3,7 +3,8 @@ namespace Barberia.Data.Models;
 public sealed record Service(
     Guid Id,
     string Name,
-    long PriceCents,
+    long DesktopPriceCents,
+    long WebPriceCents,
     bool IsActive,
     int DisplayOrder,
     DateTimeOffset CreatedAt,
@@ -12,7 +13,8 @@ public sealed record Service(
     public Service(
         Guid id,
         string name,
-        decimal price,
+        decimal desktopPrice,
+        decimal webPrice,
         bool isActive,
         int displayOrder,
         DateTimeOffset createdAt,
@@ -20,7 +22,8 @@ public sealed record Service(
         : this(
             id,
             name,
-            Money.ToCents(price),
+            Money.ToCents(desktopPrice),
+            Money.ToCents(webPrice),
             isActive,
             displayOrder,
             createdAt,
@@ -28,7 +31,9 @@ public sealed record Service(
     {
     }
 
-    public decimal Price => Money.FromCents(PriceCents);
+    public decimal DesktopPrice => Money.FromCents(DesktopPriceCents);
+    
+    public decimal WebPrice => Money.FromCents(WebPriceCents);
 
-    public string DisplayNameWithPrice => $"{Name} (${Price:0.00})";
+    public string DisplayNameWithPrice => $"{Name} (${DesktopPrice:0.00})";
 }

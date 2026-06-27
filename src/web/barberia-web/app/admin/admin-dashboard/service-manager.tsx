@@ -21,13 +21,23 @@ function ServiceForm({ service, onCancel }: { service?: ServiceRow; onCancel: ()
         <input name="description" type="text" defaultValue={service?.description ?? ""} />
       </label>
       <label>
-        Price
+        Desktop Price
         <input
-          name="base_price"
+          name="desktop_price"
           required
           type="text"
           inputMode="decimal"
-          defaultValue={service ? (service.base_price_cents / 100).toFixed(2) : ""}
+          defaultValue={service ? (service.desktop_price_cents / 100).toFixed(2) : ""}
+        />
+      </label>
+      <label>
+        Web Price
+        <input
+          name="web_price"
+          required
+          type="text"
+          inputMode="decimal"
+          defaultValue={service ? (service.web_price_cents / 100).toFixed(2) : ""}
         />
       </label>
       <label>
@@ -100,7 +110,7 @@ export function ServiceManager({ services }: { services: ServiceRow[] }) {
                 <div className={styles.rowInfo}>
                   <strong>{service.name}</strong>
                   <span>
-                    {formatPriceFromCents(service.base_price_cents)} / {service.duration_minutes} min
+                    D: {formatPriceFromCents(service.desktop_price_cents)} | W: {formatPriceFromCents(service.web_price_cents)} / {service.duration_minutes} min
                   </span>
                 </div>
                 <div className={styles.rowActions}>

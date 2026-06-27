@@ -53,6 +53,44 @@ public class DesktopSyncServiceTests : IDisposable
         method!.Invoke(service, new object[] { settings, command, now });
     }
 
+    private static string InvokeBuildCatalogSnapshotPayload(SqliteConnection connection)
+    {
+        var method = typeof(DesktopSyncService).GetMethod("BuildCatalogSnapshot", BindingFlags.NonPublic | BindingFlags.Static);
+        var snapshot = method!.Invoke(null, new object[] { connection })!;
+        return (string)snapshot.GetType().GetProperty("Payload")!.GetValue(snapshot)!;
+    }
+
+    [Fact]
+    public void BuildCatalogSnapshot_IncludesBarberOperationalStatus()
+    {
+        var now = OperationalClock.Now;
+        var businessDate = OperationalClock.GetBusinessDate(now);
+        var barberId = Guid.NewGuid();
+        var arrivedAt = now.AddMinutes(-30);
+
+        using (var connection = _connectionFactory.OpenConnection())
+        {
+            new LocalBarberRepository(connection).Upsert(
+                new Barber(barberId, "B5", BarberState.Available, 0, 0, arrivedAt, stationNumber: 5, updatedAt: now),
+                now);
+            new DailyRotationRepository(connection).EnsureQueued(businessDate, barberId, arrivedAt, now);
+
+            var payload = InvokeBuildCatalogSnapshotPayload(connection);
+            using var document = JsonDocument.Parse(payload);
+            var barberItem = document.RootElement.GetProperty("items")
+                .EnumerateArray()
+                .Single(item => item.GetProperty("entity_type").GetString() == "barber");
+
+            Assert.Equal("Available", barberItem.GetProperty("state").GetString());
+            Assert.Equal(0, barberItem.GetProperty("clients_served_today").GetInt32());
+            Assert.Equal(businessDate.ToString("yyyy-MM-dd"), barberItem.GetProperty("business_date").GetString());
+            Assert.Equal(0, barberItem.GetProperty("daily_queue_position").GetInt32());
+            Assert.Equal(arrivedAt.ToString("O"), barberItem.GetProperty("checked_in_at").GetString());
+            Assert.Equal(arrivedAt.ToString("O"), barberItem.GetProperty("daily_arrived_at").GetString());
+            Assert.True(barberItem.GetProperty("is_checked_in_today").GetBoolean());
+        }
+    }
+
     [Fact]
     public void ApplyTicketCommand_Success_ReassignsTurnAndEnqueuesAck()
     {
