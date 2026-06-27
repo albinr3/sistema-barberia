@@ -315,6 +315,10 @@ public sealed class PosHardwareTests
 
         var result = printer.PrintDayReport(new DayReportPrintJob(
             25m,
+            100m,
+            25m,
+            0m,
+            125m,
             [new BarberDayReport("Luis (B-1)", 1, 25m)],
             DateTimeOffset.Parse("2026-06-04T12:00:00Z"),
             ""));

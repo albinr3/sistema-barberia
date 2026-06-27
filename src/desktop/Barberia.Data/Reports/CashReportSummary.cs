@@ -10,4 +10,7 @@ public sealed record CashReportSummary(
     long CommissionCents,
     int PaymentsMissingCommission,
     int CashDrawerOpenCount,
+    bool CashBoxOpened,
+    long OpeningBalanceCents,
+    long CashInDrawerCents,
     string Currency);

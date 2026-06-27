@@ -64,7 +64,7 @@ public sealed partial class LocalAdminPage : Page
         _checkInsText.Text = snapshot.Operations.CheckIns.ToString();
         _availableBarbersText.Text = $"{availableCount}/{activeCount}";
         _salesTotalText.Text = FormatMoney(snapshot.Cash.TotalSalesCents, snapshot.Cash.Currency);
-        _salesBreakdownText.Text = $"Cash: {FormatMoney(snapshot.Cash.CashSalesCents, snapshot.Cash.Currency)} | Zelle: {FormatMoney(snapshot.Cash.ZelleSalesCents, snapshot.Cash.Currency)}";
+        _salesBreakdownText.Text = $"Cash: {FormatMoney(snapshot.Cash.CashSalesCents, snapshot.Cash.Currency)} | Zelle: {FormatMoney(snapshot.Cash.ZelleSalesCents, snapshot.Cash.Currency)} | Drawer: {FormatMoney(snapshot.Cash.CashInDrawerCents, snapshot.Cash.Currency)}";
         _lastRefreshText.Text = $"Updated: {snapshot.GeneratedAt:hh:mm tt}";
         _waitingCountText.Text = $"{snapshot.ActiveTurns.Count(turn => turn.State == TurnState.Waiting)} Waiting";
         UpdateReassignmentControls(snapshot);
@@ -650,7 +650,7 @@ public sealed partial class LocalAdminPage : Page
         _checkInsText.Text = "0";
         _availableBarbersText.Text = "0/0";
         _salesTotalText.Text = "$0";
-        _salesBreakdownText.Text = "Cash: $0 | Zelle: $0";
+        _salesBreakdownText.Text = "Cash: $0 | Zelle: $0 | Drawer: $0";
         _lastRefreshText.Text = "No local snapshot loaded";
         _waitingCountText.Text = "0 Waiting";
         _reassignTicketComboBox.ItemsSource = null;

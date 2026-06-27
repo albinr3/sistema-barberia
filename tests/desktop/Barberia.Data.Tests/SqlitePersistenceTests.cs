@@ -772,6 +772,42 @@ public sealed class SqlitePersistenceTests
     }
 
     [Fact]
+    public void LocalDatabaseInitializer_CreatesCashBoxDailyOpeningsTable()
+    {
+        using var database = TestDatabase.Create();
+        using var command = database.Connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name = 'cash_box_daily_openings';
+            """;
+
+        Assert.Equal(1, Convert.ToInt32(command.ExecuteScalar()));
+    }
+
+    [Fact]
+    public void CashBoxDailyOpeningRepository_SavesAndCorrectsOpeningBalance()
+    {
+        using var database = TestDatabase.Create();
+        var repository = new CashBoxDailyOpeningRepository(database.Connection);
+        var businessDate = DateOnly.Parse("2026-06-04");
+        var openedAt = DateTimeOffset.Parse("2026-06-04T08:00:00-04:00");
+        var correctedAt = openedAt.AddHours(1);
+
+        repository.Save(new CashBoxDailyOpening(businessDate, 15000, "USD", openedAt, "front-pos", openedAt, "front-pos"));
+        repository.Save(new CashBoxDailyOpening(businessDate, 17500, "USD", correctedAt, "other-pos", correctedAt, "manager-pos"));
+
+        var opening = repository.GetByBusinessDate(businessDate);
+
+        Assert.NotNull(opening);
+        Assert.Equal(17500, opening.OpeningBalanceCents);
+        Assert.Equal(openedAt, opening.OpenedAt);
+        Assert.Equal("front-pos", opening.OpenedDeviceId);
+        Assert.Equal(correctedAt, opening.UpdatedAt);
+        Assert.Equal("manager-pos", opening.UpdatedDeviceId);
+    }
+    [Fact]
     public void AdminReportRepository_ReturnsDailyOperationsCashAndCommissions()
     {
         using var database = TestDatabase.Create();
@@ -802,6 +838,7 @@ public sealed class SqlitePersistenceTests
         turnRepository.Upsert(CreateTurn(noShowTurnId, "A-004", TurnState.NoShow, TurnSource.WalkIn, from.AddHours(12)), from.AddHours(12));
         turnRepository.Upsert(CreateTurn(oldTurnId, "OLD-001", TurnState.Completed, TurnSource.WalkIn, from.AddDays(-1), luisId), from.AddDays(-1));
         serviceRepository.Add(new Service(cutServiceId, "Corte", 20m, isActive: true, 0, from, from));
+        new CashBoxDailyOpeningRepository(database.Connection).Save(new CashBoxDailyOpening(DateOnly.Parse("2026-06-04"), 10000, "USD", from.AddHours(8), "autocaja-1", from.AddHours(8), "autocaja-1"));
 
         paymentRepository.Add(new CashPayment(
             Guid.NewGuid(),
@@ -826,8 +863,10 @@ public sealed class SqlitePersistenceTests
             from.AddHours(10).AddMinutes(20),
             "autocaja-1",
             "R-002",
-            true,
-            null));
+            false,
+            null,
+            CustomerPaymentMethod.Zelle,
+            "Z-002"));
         paymentRepository.Add(new CashPayment(
             Guid.NewGuid(),
             oldTurnId,
@@ -851,9 +890,14 @@ public sealed class SqlitePersistenceTests
         Assert.Equal(1, snapshot.Operations.NoShows);
         Assert.Equal(2, snapshot.Cash.TotalPaymentCount);
         Assert.Equal(6500, snapshot.Cash.TotalSalesCents);
+        Assert.Equal(2500, snapshot.Cash.CashSalesCents);
+        Assert.Equal(4000, snapshot.Cash.ZelleSalesCents);
+        Assert.True(snapshot.Cash.CashBoxOpened);
+        Assert.Equal(10000, snapshot.Cash.OpeningBalanceCents);
+        Assert.Equal(12500, snapshot.Cash.CashInDrawerCents);
         Assert.Equal(500, snapshot.Cash.CommissionCents);
         Assert.Equal(1, snapshot.Cash.PaymentsMissingCommission);
-        Assert.Equal(2, snapshot.Cash.CashDrawerOpenCount);
+        Assert.Equal(1, snapshot.Cash.CashDrawerOpenCount);
 
         Assert.Collection(
             snapshot.Barbers,

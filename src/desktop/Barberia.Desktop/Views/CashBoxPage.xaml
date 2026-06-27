@@ -389,6 +389,7 @@
                                 </Border>
 
                                 <Button
+                                    x:Name="_completeTransactionButton"
                                     MinHeight="58"
                                     HorizontalAlignment="Stretch"
                                     Background="#FF0020C2"
@@ -508,6 +509,28 @@
                                     FontSize="16"
                                     FontWeight="SemiBold"
                                     Text="Reprint Receipts" />
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button
+                            x:Name="_openCashBoxButton"
+                            MinHeight="48"
+                            HorizontalAlignment="Stretch"
+                            Background="#FFF3F3F6"
+                            BorderBrush="#FFE2E2E5"
+                            BorderThickness="1"
+                            Click="OnOpenCashBoxClick"
+                            Foreground="#FF001387">
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="8">
+                                <FontIcon FontSize="18" Glyph="&#xE8C7;" />
+                                <TextBlock
+                                    x:Name="_openCashBoxButtonText"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

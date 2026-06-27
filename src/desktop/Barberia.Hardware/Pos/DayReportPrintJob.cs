@@ -7,7 +7,11 @@ public sealed record BarberDayReport(
 );
 
 public sealed record DayReportPrintJob(
-    decimal TotalCash,
+    decimal TotalSales,
+    decimal OpeningCash,
+    decimal CashCollected,
+    decimal ZelleCollected,
+    decimal CashInDrawer,
     IReadOnlyList<BarberDayReport> Barbers,
     DateTimeOffset GeneratedAt,
     string DeviceId

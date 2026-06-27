@@ -1,4 +1,5 @@
 using Barberia.Core.Domain;
+using Barberia.Data.Repositories;
 using Microsoft.Data.Sqlite;
 
 namespace Barberia.Data.Reports;
@@ -88,6 +89,9 @@ public sealed class LocalAdminReportRepository
 
     private CashReportSummary LoadCash(DateTimeOffset fromInclusive, DateTimeOffset toExclusive)
     {
+        var businessDate = DateOnly.FromDateTime(fromInclusive.DateTime);
+        var opening = new CashBoxDailyOpeningRepository(_connection, _transaction).GetByBusinessDate(businessDate);
+
         using var command = CreateCommand();
         command.CommandText = """
             SELECT
@@ -106,27 +110,34 @@ public sealed class LocalAdminReportRepository
               AND collected_at < $to;
             """;
         AddRange(command, fromInclusive, toExclusive);
-        command.AddText("$currency", DefaultCurrency);
+        command.AddText("$currency", opening?.Currency ?? DefaultCurrency);
 
         using var reader = command.ExecuteReader();
         if (!reader.Read())
         {
-            return new CashReportSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, DefaultCurrency);
+            var fallbackOpeningCents = opening?.OpeningBalanceCents ?? 0;
+            return new CashReportSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, opening is not null, fallbackOpeningCents, fallbackOpeningCents, opening?.Currency ?? DefaultCurrency);
         }
+
+        var cashSalesCents = reader.GetInt64(2);
+        var openingBalanceCents = opening?.OpeningBalanceCents ?? 0;
+        var currency = opening?.Currency ?? reader.GetString(9);
 
         return new CashReportSummary(
             reader.GetInt32(0),
             reader.GetInt64(1),
-            reader.GetInt64(2),
+            cashSalesCents,
             reader.GetInt64(3),
             reader.GetInt32(4),
             reader.GetInt32(5),
             reader.GetInt64(6),
             reader.GetInt32(7),
             reader.GetInt32(8),
-            reader.GetString(9));
+            opening is not null,
+            openingBalanceCents,
+            openingBalanceCents + cashSalesCents,
+            currency);
     }
-
     private IReadOnlyList<BarberReportRow> LoadBarbers(DateTimeOffset fromInclusive, DateTimeOffset toExclusive)
     {
         using var command = CreateCommand();

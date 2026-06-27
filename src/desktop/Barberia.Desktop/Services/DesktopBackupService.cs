@@ -17,6 +17,7 @@ internal sealed class DesktopBackupService : IDisposable
     private static readonly string[] RequiredRestoreTables =
     [
         "barbers",
+        "cash_box_daily_openings",
         "turns",
         "cash_payments",
         "pending_service_payments",

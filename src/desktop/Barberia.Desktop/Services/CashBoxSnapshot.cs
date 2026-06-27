@@ -5,4 +5,10 @@ namespace Barberia.Desktop.Services;
 public sealed record CashBoxSnapshot(
     DateTimeOffset LoadedAt,
     IReadOnlyList<Service> Services,
-    int PendingPaymentCount = 0);
+    int PendingPaymentCount,
+    bool IsCashBoxOpened,
+    decimal OpeningBalance,
+    decimal CashCollected,
+    decimal ZelleCollected,
+    decimal CashInDrawer,
+    string Currency);

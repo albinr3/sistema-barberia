@@ -43,6 +43,17 @@ public sealed class LocalDatabaseInitializer
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS cash_box_daily_openings (
+                business_date TEXT NOT NULL PRIMARY KEY,
+                opening_balance_cents INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                opened_at TEXT NOT NULL,
+                opened_device_id TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                updated_device_id TEXT NOT NULL,
+                CHECK (opening_balance_cents >= 0)
+            );
+
             CREATE TABLE IF NOT EXISTS barber_daily_rotation (
                 business_date TEXT NOT NULL,
                 barber_id TEXT NOT NULL,

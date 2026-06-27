@@ -92,6 +92,7 @@ public sealed class CashBoxPendingPaymentServiceTests
         using (var connection = database.ConnectionFactory.OpenConnection())
         {
             var pending = Assert.Single(new PendingServicePaymentRepository(connection).ListOpenByBusinessDate(scenario.BusinessDate));
+            cashBox.SaveOpeningBalance(100m);
             var collection = cashBox.CollectPendingPayments([pending.Id], CustomerPaymentMethod.Cash, null, 1);
 
             Assert.Equal(1, collection.PaymentCount);
@@ -125,6 +126,8 @@ public sealed class CashBoxPendingPaymentServiceTests
         {
             pendingId = Assert.Single(new PendingServicePaymentRepository(connection).ListOpenByBusinessDate(scenario.BusinessDate)).Id;
         }
+
+        cashBox.SaveOpeningBalance(100m);
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             cashBox.CollectPendingPayments([pendingId], CustomerPaymentMethod.Cash, null, 99));
@@ -164,6 +167,8 @@ public sealed class CashBoxPendingPaymentServiceTests
                 .Select(row => row.Id)
                 .ToArray();
         }
+
+        cashBox.SaveOpeningBalance(100m);
 
         var result = cashBox.CollectPendingPayments(pendingIds, CustomerPaymentMethod.Cash, null, 9);
 
@@ -206,12 +211,99 @@ public sealed class CashBoxPendingPaymentServiceTests
             pendingId = Assert.Single(new PendingServicePaymentRepository(connection).ListOpenByBusinessDate(scenario.BusinessDate)).Id;
         }
 
+        cashBox.SaveOpeningBalance(100m);
         cashBox.CollectPendingPayments([pendingId], CustomerPaymentMethod.Cash, null, 1);
 
         Assert.Throws<InvalidOperationException>(() =>
             cashBox.CollectPendingPayments([pendingId], CustomerPaymentMethod.Cash, null, 1));
     }
 
+    [Fact]
+    public void SaveOpeningBalance_RecordsOpenAndCorrectionAuditEvents()
+    {
+        using var database = TestDatabase.Create();
+        var cashBox = new CashBoxCloseService(
+            database.ConnectionFactory,
+            new SimulatedCashBoxReceiptPrinter(),
+            new SimulatedCashDrawer());
+
+        var opened = cashBox.SaveOpeningBalance(50m);
+        var corrected = cashBox.SaveOpeningBalance(60m);
+
+        using var connection = database.ConnectionFactory.OpenConnection();
+        var opening = new CashBoxDailyOpeningRepository(connection).GetByBusinessDate(opened.BusinessDate);
+        var auditEvents = new AuditEventRepository(connection).ListAll();
+
+        Assert.False(opened.WasCorrection);
+        Assert.True(corrected.WasCorrection);
+        Assert.Equal(6000, opening?.OpeningBalanceCents);
+        Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "cash_box_opened");
+        Assert.Contains(auditEvents, auditEvent => auditEvent.EventType == "cash_box_opening_corrected");
+    }
+    [Fact]
+    public void CollectPendingPayments_RequiresOpenedCashBoxBeforeCollectingPayment()
+    {
+        using var database = TestDatabase.Create();
+        var scenario = SeedInServiceScenario(database);
+        var service = CreateService(database);
+        var printer = new RecordingCashBoxReceiptPrinter();
+        var cashBox = new CashBoxCloseService(database.ConnectionFactory, printer, new RecordingCashDrawer());
+        cashBox.MarkServicePendingPayment(scenario.DisplayTicketNumber.ToString(), service.Id, 0m);
+
+        Guid pendingId;
+        using (var connection = database.ConnectionFactory.OpenConnection())
+        {
+            pendingId = Assert.Single(new PendingServicePaymentRepository(connection).ListOpenByBusinessDate(scenario.BusinessDate)).Id;
+        }
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            cashBox.CollectPendingPayments([pendingId], CustomerPaymentMethod.Cash, null, 1));
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        Assert.Contains("Open the cash box", exception.Message);
+        Assert.Single(new PendingServicePaymentRepository(verifyConnection).ListOpenByBusinessDate(scenario.BusinessDate));
+        Assert.Empty(new CashPaymentRepository(verifyConnection).ListByTurn(scenario.TurnId));
+        Assert.Equal(0, printer.PrintCount);
+    }
+
+    [Fact]
+    public void CloseService_RequiresOpenedCashBoxBeforeCollectingPayment()
+    {
+        using var database = TestDatabase.Create();
+        var scenario = SeedInServiceScenario(database);
+        var service = CreateService(database);
+        var printer = new RecordingCashBoxReceiptPrinter();
+        var cashBox = new CashBoxCloseService(database.ConnectionFactory, printer, new RecordingCashDrawer());
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            cashBox.CloseService(scenario.DisplayTicketNumber.ToString(), service.Id, 0m, CustomerPaymentMethod.Cash, null));
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        Assert.Contains("Open the cash box", exception.Message);
+        Assert.Empty(new CashPaymentRepository(verifyConnection).ListByTurn(scenario.TurnId));
+        Assert.Equal(0, printer.PrintCount);
+    }
+
+    [Fact]
+    public void PrintDayReport_SendsOpeningCashAndDrawerTotalsToPrinter()
+    {
+        using var database = TestDatabase.Create();
+        var scenario = SeedInServiceScenario(database);
+        var service = CreateService(database);
+        var printer = new RecordingCashBoxReceiptPrinter();
+        var cashBox = new CashBoxCloseService(database.ConnectionFactory, printer, new RecordingCashDrawer());
+
+        cashBox.SaveOpeningBalance(100m);
+        cashBox.CloseService(scenario.DisplayTicketNumber.ToString(), service.Id, 2m, CustomerPaymentMethod.Cash, null);
+        cashBox.PrintDayReport();
+
+        Assert.NotNull(printer.LastDayReportJob);
+        Assert.Equal(25m, printer.LastDayReportJob!.TotalSales);
+        Assert.Equal(100m, printer.LastDayReportJob.OpeningCash);
+        Assert.Equal(25m, printer.LastDayReportJob.CashCollected);
+        Assert.Equal(0m, printer.LastDayReportJob.ZelleCollected);
+        Assert.Equal(125m, printer.LastDayReportJob.CashInDrawer);
+    }
     [Fact]
     public void MarkServicePendingPayment_AssignsNextWaitingTurn()
     {
@@ -333,6 +425,8 @@ public sealed class CashBoxPendingPaymentServiceTests
 
         public CashReceiptPrintJob? LastJob { get; private set; }
 
+        public DayReportPrintJob? LastDayReportJob { get; private set; }
+
         public HardwareOperationResult Print(CashReceiptPrintJob job)
         {
             PrintCount++;
@@ -342,6 +436,7 @@ public sealed class CashBoxPendingPaymentServiceTests
 
         public HardwareOperationResult PrintDayReport(DayReportPrintJob job)
         {
+            LastDayReportJob = job;
             return HardwareOperationResult.Success();
         }
     }

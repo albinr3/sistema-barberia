@@ -42,15 +42,82 @@ public sealed class CashBoxCloseService
     public CashBoxSnapshot Load()
     {
         var now = OperationalClock.Now;
-        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, Environment.MachineName);
+        var deviceId = Environment.MachineName;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, deviceId);
 
         using var connection = _connectionFactory.OpenConnection();
         var services = new ServiceRepository(connection).ListActive();
         var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
         var pendingPaymentCount = new PendingServicePaymentRepository(connection).CountOpenByBusinessDate(businessDate);
-        return new CashBoxSnapshot(now, services, pendingPaymentCount);
+        var from = OperationalClock.StartOfDay(businessDate);
+        var to = OperationalClock.StartOfDay(businessDate.AddDays(1));
+        var report = new LocalAdminReportRepository(connection).Load(from, to, now);
+
+        return new CashBoxSnapshot(
+            now,
+            services,
+            pendingPaymentCount,
+            report.Cash.CashBoxOpened,
+            Money.FromCents(report.Cash.OpeningBalanceCents),
+            Money.FromCents(report.Cash.CashSalesCents),
+            Money.FromCents(report.Cash.ZelleSalesCents),
+            Money.FromCents(report.Cash.CashInDrawerCents),
+            report.Cash.Currency);
     }
 
+    public CashBoxOpeningResult SaveOpeningBalance(decimal openingBalance)
+    {
+        if (openingBalance < 0)
+        {
+            throw new InvalidOperationException("Opening balance cannot be negative.");
+        }
+
+        var now = OperationalClock.Now;
+        var deviceId = Environment.MachineName;
+        var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+        var openingBalanceCents = Money.ToCents(openingBalance);
+        CashBoxOpeningResult? result = null;
+
+        var transaction = new LocalDataTransaction(_connectionFactory);
+        transaction.Execute((connection, sqliteTransaction) =>
+        {
+            DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+
+            var openingRepository = new CashBoxDailyOpeningRepository(connection, sqliteTransaction);
+            var auditRepository = new AuditEventRepository(connection, sqliteTransaction);
+            var existing = openingRepository.GetByBusinessDate(businessDate);
+            var opening = existing is null
+                ? new CashBoxDailyOpening(businessDate, openingBalanceCents, Currency, now, deviceId, now, deviceId)
+                : existing with
+                {
+                    OpeningBalanceCents = openingBalanceCents,
+                    Currency = Currency,
+                    UpdatedAt = now,
+                    UpdatedDeviceId = deviceId
+                };
+
+            openingRepository.Save(opening);
+
+            auditRepository.Add(new AuditEvent(
+                Guid.NewGuid(),
+                now,
+                existing is null ? "cash_box_opened" : "cash_box_opening_corrected",
+                "cash_box",
+                Guid.NewGuid(),
+                JsonSerializer.Serialize(new
+                {
+                    businessDate = businessDate.ToString("yyyy-MM-dd"),
+                    previousOpeningBalanceCents = existing?.OpeningBalanceCents,
+                    openingBalanceCents,
+                    currency = Currency
+                }),
+                deviceId));
+
+            result = new CashBoxOpeningResult(businessDate, Money.FromCents(openingBalanceCents), existing is not null);
+        });
+
+        return result ?? throw new InvalidOperationException("Could not save cash box opening balance.");
+    }
     public CashBoxTicketLookupResult LookupTicket(string ticketNumber)
     {
         if (string.IsNullOrWhiteSpace(ticketNumber))
@@ -303,6 +370,8 @@ public sealed class CashBoxCloseService
         transaction.Execute((connection, sqliteTransaction) =>
         {
             DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+            var cashBoxBusinessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            RequireCashBoxOpening(new CashBoxDailyOpeningRepository(connection, sqliteTransaction), cashBoxBusinessDate);
 
             var pendingRepository = new PendingServicePaymentRepository(connection, sqliteTransaction);
             var paymentRepository = new CashPaymentRepository(connection, sqliteTransaction);
@@ -514,6 +583,8 @@ public sealed class CashBoxCloseService
         transaction.Execute((connection, sqliteTransaction) =>
         {
             DailyOperationCoordinator.EnsureDailyReset(connection, sqliteTransaction, now, deviceId);
+            var cashBoxBusinessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            RequireCashBoxOpening(new CashBoxDailyOpeningRepository(connection, sqliteTransaction), cashBoxBusinessDate);
 
             var barberRepository = new LocalBarberRepository(connection, sqliteTransaction);
             var turnRepository = new LocalTurnRepository(connection, sqliteTransaction);
@@ -777,12 +848,18 @@ public sealed class CashBoxCloseService
     {
         var now = OperationalClock.Now;
         var deviceId = Environment.MachineName;
+        DailyOperationCoordinator.EnsureDailyReset(_connectionFactory, now, deviceId);
+
         var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
         var from = OperationalClock.StartOfDay(businessDate);
         var to = OperationalClock.StartOfDay(businessDate.AddDays(1));
 
         using var connection = _connectionFactory.OpenConnection();
         var report = new LocalAdminReportRepository(connection).Load(from, to, now);
+        if (!report.Cash.CashBoxOpened)
+        {
+            throw new InvalidOperationException("Open the cash box with today's opening cash before printing the day report.");
+        }
 
         var barberReports = report.Barbers
             .Select(b => new BarberDayReport(b.DisplayNameWithStation, b.ServicesClosed, b.CashCollectedCents / 100m))
@@ -790,6 +867,10 @@ public sealed class CashBoxCloseService
 
         var job = new DayReportPrintJob(
             report.Cash.TotalSalesCents / 100m,
+            report.Cash.OpeningBalanceCents / 100m,
+            report.Cash.CashSalesCents / 100m,
+            report.Cash.ZelleSalesCents / 100m,
+            report.Cash.CashInDrawerCents / 100m,
             barberReports,
             now,
             deviceId);
@@ -801,6 +882,11 @@ public sealed class CashBoxCloseService
         }
     }
 
+    private static CashBoxDailyOpening RequireCashBoxOpening(CashBoxDailyOpeningRepository openingRepository, DateOnly businessDate)
+    {
+        return openingRepository.GetByBusinessDate(businessDate)
+            ?? throw new InvalidOperationException("Open the cash box with today's opening cash before collecting payments.");
+    }
     private static int ParseCollectorStationNumber(string stationNumberInput)
     {
         if (!int.TryParse(stationNumberInput.Trim(), out var stationNumber) || stationNumber <= 0)

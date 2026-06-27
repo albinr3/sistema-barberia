@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Windows.Media.Core;
 using Windows.Media.Playback;
@@ -30,6 +31,8 @@ public sealed partial class CashBoxPage : Page
     private decimal _additionalAmount;
     private bool _hasLoadedTicket;
     private string? _loadedTicketInput;
+    private CashBoxSnapshot? _cashBoxSnapshot;
+    private bool _hasPromptedOpeningCash;
 
     public event EventHandler? ShellMenuRequested;
 
@@ -179,12 +182,24 @@ public sealed partial class CashBoxPage : Page
         try
         {
             var snapshot = _service.Load();
+            _cashBoxSnapshot = snapshot;
             _services = snapshot.Services;
             SyncServiceOptions();
             _lastRefreshText.Text = $"Updated: {snapshot.LoadedAt:hh:mm tt}";
             SetPendingPaymentsButtonText(snapshot.PendingPaymentCount);
-            SetMessage("Waiting for ticket and service.", SuccessTextBrush);
+            UpdateCashBoxOpeningSummary(snapshot);
+            SetMessage(
+                snapshot.IsCashBoxOpened
+                    ? "Waiting for ticket and service."
+                    : "Open the cash box with today's opening cash before collecting payments.",
+                snapshot.IsCashBoxOpened ? SuccessTextBrush : ErrorTextBrush);
             UpdateServiceTotal();
+
+            if (!snapshot.IsCashBoxOpened && !_hasPromptedOpeningCash)
+            {
+                _hasPromptedOpeningCash = true;
+                DispatcherQueue.TryEnqueue(() => OnOpenCashBoxClick(this, new RoutedEventArgs()));
+            }
         }
         catch (Exception exception)
         {
@@ -920,4 +935,119 @@ public sealed partial class CashBoxPage : Page
 
     [DllImport("user32.dll")]
     private static extern bool MessageBeep(uint uType);
+
+    private async void OnOpenCashBoxClick(object sender, RoutedEventArgs args)
+    {
+        var isCorrection = _cashBoxSnapshot?.IsCashBoxOpened == true;
+
+        if (isCorrection)
+        {
+            var passwordBox = new PasswordBox { PlaceholderText = "Admin password" };
+            var authDialog = new ContentDialog
+            {
+                Title = "Correct Opening Cash",
+                Content = passwordBox,
+                PrimaryButtonText = "Submit",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.XamlRoot
+            };
+
+            var authResult = await authDialog.ShowAsync();
+            if (authResult != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            if (passwordBox.Password != "G1234")
+            {
+                ShowError("Invalid password.");
+                return;
+            }
+        }
+
+        var openingInput = new TextBox
+        {
+            Header = "Opening cash",
+            PlaceholderText = "0.00",
+            Text = isCorrection && _cashBoxSnapshot is not null ? _cashBoxSnapshot.OpeningBalance.ToString("0.00", CultureInfo.InvariantCulture) : string.Empty,
+            MinHeight = 56,
+            FontSize = 20,
+            Padding = new Thickness(14, 8, 14, 8)
+        };
+        var statusText = new TextBlock
+        {
+            Text = "Enter the cash physically placed in the drawer before collecting payments.",
+            FontSize = 14,
+            Foreground = NeutralTextBrush,
+            TextWrapping = TextWrapping.WrapWholeWords
+        };
+        var content = new StackPanel
+        {
+            Spacing = 12,
+            Children =
+            {
+                openingInput,
+                statusText
+            }
+        };
+        var dialog = new ContentDialog
+        {
+            Title = isCorrection ? "Correct Opening Cash" : "Open Cash Box",
+            Content = content,
+            PrimaryButtonText = isCorrection ? "Save Correction" : "Open Cash Box",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (!TryParseMoney(openingInput.Text, out var openingBalance))
+        {
+            ShowError("Enter a valid opening cash amount.");
+            return;
+        }
+
+        try
+        {
+            var saveResult = _service.SaveOpeningBalance(openingBalance);
+            LoadCashBox();
+            SetMessage(
+                saveResult.WasCorrection
+                    ? $"Opening cash corrected to ${saveResult.OpeningBalance:0.00}."
+                    : $"Cash box opened with ${saveResult.OpeningBalance:0.00}.",
+                SuccessTextBrush);
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception.Message);
+        }
+        finally
+        {
+            DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
+        }
+    }
+
+    private void UpdateCashBoxOpeningSummary(CashBoxSnapshot snapshot)
+    {
+        _openCashBoxButtonText.Text = snapshot.IsCashBoxOpened ? "Correct Opening Cash" : "Open Cash Box";
+        _completeTransactionButton.IsEnabled = snapshot.IsCashBoxOpened;
+    }
+
+    private static string FormatMoney(decimal amount)
+    {
+        return string.Create(CultureInfo.InvariantCulture, $"${amount:0.00}");
+    }
+
+    private static bool TryParseMoney(string value, out decimal amount)
+    {
+        var normalized = value.Trim();
+        return decimal.TryParse(normalized, NumberStyles.Currency, CultureInfo.CurrentCulture, out amount)
+            || decimal.TryParse(normalized, NumberStyles.Currency, CultureInfo.InvariantCulture, out amount);
+    }
 }

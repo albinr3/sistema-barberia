@@ -240,7 +240,11 @@ public sealed class WindowsGraphicsCashBoxReceiptPrinter : ICashBoxReceiptPrinte
         canvas.Pair("Device", job.DeviceId);
         canvas.Separator();
         canvas.Pair("Tickets", job.Barbers.Sum(barber => barber.ServicesClosed).ToString(CultureInfo.InvariantCulture));
-        canvas.Pair("Total", FormatMoney(job.TotalCash, "USD"), 13, bold: true);
+        canvas.Pair("Opening cash", FormatMoney(job.OpeningCash, "USD"));
+        canvas.Pair("Cash collected", FormatMoney(job.CashCollected, "USD"));
+        canvas.Pair("Zelle collected", FormatMoney(job.ZelleCollected, "USD"));
+        canvas.Pair("Sales total", FormatMoney(job.TotalSales, "USD"));
+        canvas.Pair("Cash in drawer", FormatMoney(job.CashInDrawer, "USD"), 13, bold: true);
         canvas.Separator();
 
         if (job.Barbers.Count == 0)
@@ -255,7 +259,6 @@ public sealed class WindowsGraphicsCashBoxReceiptPrinter : ICashBoxReceiptPrinte
             canvas.Pair($"  {barber.ServicesClosed} tickets", FormatMoney(barber.CashCollected, "USD"));
         }
     }
-
     private static string FormatMoney(decimal amount, string currency)
     {
         var prefix = string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase) ? "$" : $"{currency} ";
