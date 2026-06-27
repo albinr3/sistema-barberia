@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Media;
 using System;
 using System.Globalization;
 using Windows.System;
+using Barberia.Desktop.Services;
 
 namespace Barberia.Desktop.Views;
 
@@ -92,6 +93,8 @@ public sealed partial class ChangeCalculationDialog : ContentDialog
             _changeAmount = 0;
             SetStatus(false, "Invalid amount");
         }
+        
+        CashBoxCustomerDisplayState.Current.UpdateCashPayment(_tenderedAmount, Math.Max(0, _changeAmount));
     }
 
     private void SetStatus(bool isValid, string changeText)

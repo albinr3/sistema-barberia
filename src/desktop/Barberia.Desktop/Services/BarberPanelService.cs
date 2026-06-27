@@ -84,6 +84,8 @@ public sealed class BarberPanelService
 
             var scannedBarber = barberRepository.GetActiveByStationNumber(stationNumber)
                 ?? throw new InvalidOperationException("Station does not belong to an active barber.");
+            var businessDate = DailyOperationCoordinator.GetBusinessDate(now);
+            EnsureBarberCheckedInToday(scannedBarber, dailyRotationRepository, businessDate);
 
             var turn = turnRepository.GetByTicketInputForToday(scannedTicketNumber, now);
             if (turn is null && IsAppointmentCode(scannedTicketNumber))
@@ -530,6 +532,17 @@ public sealed class BarberPanelService
     private static bool HasAssignedOrReservedBarber(Turn turn)
     {
         return turn.AssignedBarberId is not null || turn.RequestedBarberIds?.Count > 0;
+    }
+
+    private static void EnsureBarberCheckedInToday(
+        Barber barber,
+        DailyRotationRepository dailyRotationRepository,
+        DateOnly businessDate)
+    {
+        if (dailyRotationRepository.Get(businessDate, barber.Id) is null)
+        {
+            throw new InvalidOperationException("The barber must check in for today's rotation before starting service.");
+        }
     }
 
     private static BarberPanelStartResult StartAppointmentService(

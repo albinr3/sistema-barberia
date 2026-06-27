@@ -22,6 +22,7 @@ public sealed class BarberPanelServiceTests
             var barberRepository = new LocalBarberRepository(connection);
             var turnRepository = new LocalTurnRepository(connection);
             barberRepository.Upsert(new Barber(barberId, "Ana", BarberState.Called, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
+            CheckInBarber(connection, barberId, now.AddMinutes(-10), now);
             turnRepository.Upsert(CreateTurn(turnId, "W202606261000001", 77, TurnState.Called, now.AddMinutes(-5), barberId), now);
         }
 
@@ -56,6 +57,8 @@ public sealed class BarberPanelServiceTests
             var turnRepository = new LocalTurnRepository(connection);
             barberRepository.Upsert(new Barber(assignedBarberId, "Ana", BarberState.Called, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
             barberRepository.Upsert(new Barber(scannedBarberId, "Luis", BarberState.Available, 0, 1, now.AddMinutes(-8), stationNumber: 2), now);
+            CheckInBarber(connection, assignedBarberId, now.AddMinutes(-10), now);
+            CheckInBarber(connection, scannedBarberId, now.AddMinutes(-8), now);
             turnRepository.Upsert(CreateTurn(turnId, "W202606261000002", 78, TurnState.Called, now.AddMinutes(-5), assignedBarberId), now);
         }
 
@@ -99,6 +102,8 @@ public sealed class BarberPanelServiceTests
             var turnRepository = new LocalTurnRepository(connection);
             barberRepository.Upsert(new Barber(assignedBarberId, "Ana", BarberState.Called, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
             barberRepository.Upsert(new Barber(scannedBarberId, "Luis", busyState, 0, 1, now.AddMinutes(-8), stationNumber: 2), now);
+            CheckInBarber(connection, assignedBarberId, now.AddMinutes(-10), now);
+            CheckInBarber(connection, scannedBarberId, now.AddMinutes(-8), now);
             turnRepository.Upsert(CreateTurn(turnId, "W202606261000004", 80, TurnState.Called, now.AddMinutes(-5), assignedBarberId), now);
         }
 
@@ -153,7 +158,7 @@ public sealed class BarberPanelServiceTests
         var savedScannedBarber = barberRepositoryVerify.GetById(scannedBarberId);
         var savedTurn = new LocalTurnRepository(verifyConnection).GetById(turnId);
 
-        Assert.Contains("available, called, or in service", exception.Message);
+        Assert.Contains("check in for today's rotation", exception.Message);
         Assert.Equal(BarberState.Called, savedAssignedBarber?.State);
         Assert.Equal(unavailableState, savedScannedBarber?.State);
         Assert.Equal(TurnState.Called, savedTurn?.State);
@@ -177,6 +182,7 @@ public sealed class BarberPanelServiceTests
             var turnRepository = new LocalTurnRepository(connection);
             barberRepository.Upsert(new Barber(requestedBarberId, "Ana", BarberState.InService, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
             barberRepository.Upsert(new Barber(scannedBarberId, "Luis", BarberState.Available, 0, 1, now.AddMinutes(-8), stationNumber: 2), now);
+            CheckInBarber(connection, scannedBarberId, now.AddMinutes(-8), now);
             turnRepository.Upsert(CreateTurn(
                 turnId,
                 "W202606261000006",
@@ -221,6 +227,7 @@ public sealed class BarberPanelServiceTests
             barberRepository.Upsert(new Barber(previousBarberId, "Ana", BarberState.Called, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
             barberRepository.Upsert(new Barber(scannedBarberId, "Luis", BarberState.Available, 0, 1, now.AddMinutes(-8), stationNumber: 2), now);
             new DailyRotationRepository(connection).EnsureQueued(businessDate, previousBarberId, now.AddMinutes(-10), now);
+            CheckInBarber(connection, scannedBarberId, now.AddMinutes(-8), now);
             turnRepository.Upsert(CreateTurn(transferredTurnId, "W202606261000007", 83, TurnState.Called, now.AddMinutes(-5), previousBarberId), now);
             turnRepository.Upsert(CreateTurn(nextTurnId, "W202606261000008", 84, TurnState.Waiting, now.AddMinutes(-4)), now);
         }
@@ -244,6 +251,43 @@ public sealed class BarberPanelServiceTests
         Assert.Equal(previousBarberId, savedNextTurn?.AssignedBarberId);
         Assert.Contains(outboxEvents, outboxEvent => outboxEvent.EventType == "ticket.called" && outboxEvent.AggregateId == nextTurnId);
         Assert.Contains(outboxEvents, outboxEvent => outboxEvent.EventType == "ticket.auto_reassigned" && outboxEvent.AggregateId == transferredTurnId);
+    }
+
+    [Fact]
+    public void StartService_WithDifferentAvailableStationWithoutDailyCheckIn_RejectsWithoutMutatingState()
+    {
+        using var database = TestDatabase.Create();
+        var now = OperationalClock.Now;
+        var assignedBarberId = Guid.NewGuid();
+        var scannedBarberId = Guid.NewGuid();
+        var turnId = Guid.NewGuid();
+
+        using (var connection = database.ConnectionFactory.OpenConnection())
+        {
+            var barberRepository = new LocalBarberRepository(connection);
+            var turnRepository = new LocalTurnRepository(connection);
+            barberRepository.Upsert(new Barber(assignedBarberId, "Ana", BarberState.Called, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
+            barberRepository.Upsert(new Barber(scannedBarberId, "Luis", BarberState.Available, 0, 1, now.AddMinutes(-8), stationNumber: 2), now);
+            CheckInBarber(connection, assignedBarberId, now.AddMinutes(-10), now);
+            turnRepository.Upsert(CreateTurn(turnId, "W202606261000009", 85, TurnState.Called, now.AddMinutes(-5), assignedBarberId), now);
+        }
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => new BarberPanelService(database.ConnectionFactory).StartService("B-2", "85"));
+
+        using var verifyConnection = database.ConnectionFactory.OpenConnection();
+        var barberRepositoryVerify = new LocalBarberRepository(verifyConnection);
+        var savedAssignedBarber = barberRepositoryVerify.GetById(assignedBarberId);
+        var savedScannedBarber = barberRepositoryVerify.GetById(scannedBarberId);
+        var savedTurn = new LocalTurnRepository(verifyConnection).GetById(turnId);
+
+        Assert.Contains("check in for today's rotation", exception.Message);
+        Assert.Equal(BarberState.Called, savedAssignedBarber?.State);
+        Assert.Equal(BarberState.Available, savedScannedBarber?.State);
+        Assert.Equal(TurnState.Called, savedTurn?.State);
+        Assert.Equal(assignedBarberId, savedTurn?.AssignedBarberId);
+        Assert.Null(savedTurn?.StartedAt);
+        Assert.Empty(new SyncOutboxRepository(verifyConnection).ListAll());
     }
 
     [Fact]
@@ -291,6 +335,7 @@ public sealed class BarberPanelServiceTests
             var barberRepository = new LocalBarberRepository(connection);
             barberRepository.Upsert(new Barber(appointmentBarberId, "Ana", BarberState.Available, 0, 0, now.AddMinutes(-10), stationNumber: 1), now);
             barberRepository.Upsert(new Barber(scannedBarberId, "Luis", BarberState.Available, 0, 1, now.AddMinutes(-8), stationNumber: 2), now);
+            CheckInBarber(connection, scannedBarberId, now.AddMinutes(-8), now);
             new AppointmentReservationRepository(connection).Upsert(
                 new AppointmentReservation(
                     appointmentId,
@@ -318,6 +363,19 @@ public sealed class BarberPanelServiceTests
         Assert.Equal(BarberState.Available, barberRepositoryVerify.GetById(appointmentBarberId)?.State);
         Assert.Equal(BarberState.Available, barberRepositoryVerify.GetById(scannedBarberId)?.State);
         Assert.Empty(new SyncOutboxRepository(verifyConnection).ListAll());
+    }
+
+    private static void CheckInBarber(
+        Microsoft.Data.Sqlite.SqliteConnection connection,
+        Guid barberId,
+        DateTimeOffset arrivedAt,
+        DateTimeOffset updatedAt)
+    {
+        new DailyRotationRepository(connection).EnsureQueued(
+            OperationalClock.GetBusinessDate(arrivedAt),
+            barberId,
+            arrivedAt,
+            updatedAt);
     }
 
     private static Turn CreateTurn(

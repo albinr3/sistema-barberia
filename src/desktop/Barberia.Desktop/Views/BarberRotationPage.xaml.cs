@@ -1,8 +1,11 @@
 using Barberia.Core.Domain;
 using Barberia.Data.Models;
 using Barberia.Desktop.Services;
+using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
@@ -12,14 +15,14 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
-using Microsoft.UI.Text;
-using Barberia.Desktop.Shell;
+using Windows.System;
 
 namespace Barberia.Desktop.Views;
 
-public sealed partial class BarberPublicPage : Page
+public sealed partial class BarberRotationPage : Page
 {
-    private readonly LocalAdminService _service = new();
+    private readonly LocalAdminService _localAdminService = new();
+    private readonly BarberCheckInService _checkInService = new();
     private IReadOnlyList<Barber> _barbers = [];
     private IReadOnlyDictionary<Guid, DailyRotationEntry> _dailyRotationEntries = new Dictionary<Guid, DailyRotationEntry>();
     private int _currentPage = 1;
@@ -27,30 +30,70 @@ public sealed partial class BarberPublicPage : Page
 
     public event EventHandler? ShellMenuRequested;
 
-    public BarberPublicPage()
+    public BarberRotationPage()
     {
         InitializeComponent();
     }
 
     private void OnMenuButtonClick(object sender, RoutedEventArgs args) => ShellMenuRequested?.Invoke(this, EventArgs.Empty);
+
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         LoadData();
+        QueueStationFocus();
+    }
+
+    private void OnCheckInClick(object sender, RoutedEventArgs args)
+    {
+        CheckIn();
+    }
+
+    private void OnStationInputKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key == VirtualKey.Enter)
+        {
+            CheckIn();
+            args.Handled = true;
+        }
+    }
+
+    private void CheckIn()
+    {
+        try
+        {
+            var result = _checkInService.CheckIn(_stationInput.Text);
+            _stationInput.Text = string.Empty;
+            var assignedText = result.AssignedDisplayTicketNumber is int displayTicketNumber
+                ? $" Next ticket called: {displayTicketNumber}."
+                : string.Empty;
+            SetStatus($"{result.BarberStationCode} - {result.BarberName} checked in as #{result.QueuePosition}.{assignedText}", success: true);
+            LoadData();
+        }
+        catch (Exception exception)
+        {
+            SetStatus(exception.Message, success: false);
+        }
+        finally
+        {
+            QueueStationFocus();
+        }
     }
 
     private void LoadData()
     {
         try
         {
-            var snapshot = _service.Load();
+            var snapshot = _localAdminService.Load();
             _barbers = snapshot.Barbers
                 .Where(b => b.IsActive)
                 .OrderBy(b => b.StationNumber ?? int.MaxValue)
                 .ThenBy(b => b.DisplayName)
                 .ToList();
             _dailyRotationEntries = snapshot.DailyRotationEntries.ToDictionary(entry => entry.BarberId);
+            
             _currentPage = 1;
             UpdatePagination();
+            RenderRotation(snapshot.Barbers);
             SetStatus("", success: true);
         }
         catch (Exception exception)
@@ -77,8 +120,8 @@ public sealed partial class BarberPublicPage : Page
         {
             var barber = pagedBarbers[i];
             var card = CreateBarberCard(barber);
-            Grid.SetRow(card, i / 4);
-            Grid.SetColumn(card, i % 4);
+            Grid.SetRow(card, i / 2);
+            Grid.SetColumn(card, i % 2);
             _rosterGrid.Children.Add(card);
         }
 
@@ -145,8 +188,8 @@ public sealed partial class BarberPublicPage : Page
     {
         var card = new Border
         {
-            Background = Brush(255, 255, 255),
-            BorderBrush = Brush(226, 226, 229),
+            Background = (Brush)Application.Current.Resources["SurfaceBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["BorderSubtleBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16)
@@ -176,7 +219,7 @@ public sealed partial class BarberPublicPage : Page
             FontFamily = new FontFamily("Inter"),
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
-            Foreground = Brush(26, 28, 30),
+            Foreground = (Brush)Application.Current.Resources["TextPrimaryBrush"],
             TextWrapping = TextWrapping.WrapWholeWords
         });
         details.Children.Add(new TextBlock
@@ -184,14 +227,14 @@ public sealed partial class BarberPublicPage : Page
             Text = barber.StationCode ?? "Unassigned",
             FontFamily = new FontFamily("Inter"),
             FontSize = 13,
-            Foreground = Brush(68, 70, 85)
+            Foreground = (Brush)Application.Current.Resources["TextSecondaryBrush"]
         });
         details.Children.Add(new TextBlock
         {
             Text = FormatDailyRotationText(barber),
             FontFamily = new FontFamily("Inter"),
             FontSize = 12,
-            Foreground = Brush(68, 70, 85),
+            Foreground = (Brush)Application.Current.Resources["TextSecondaryBrush"],
             TextWrapping = TextWrapping.WrapWholeWords
         });
 
@@ -208,7 +251,7 @@ public sealed partial class BarberPublicPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             FontFamily = new FontFamily("Inter"),
             FontSize = 14,
-            Foreground = Brush(26, 28, 30)
+            Foreground = (Brush)Application.Current.Resources["TextPrimaryBrush"]
         };
         toggleContainer.Children.Add(stateLabel);
 
@@ -228,11 +271,11 @@ public sealed partial class BarberPublicPage : Page
             {
                 if (stateSwitch.IsOn)
                 {
-                    _service.MarkBarberAvailable(barber.Id);
+                    _localAdminService.MarkBarberAvailable(barber.Id);
                 }
                 else
                 {
-                    _service.MarkBarberOffline(barber.Id);
+                    _localAdminService.MarkBarberOffline(barber.Id);
                 }
                 LoadData();
             }
@@ -240,6 +283,10 @@ public sealed partial class BarberPublicPage : Page
             {
                 SetStatus(ex.Message, success: false);
                 stateSwitch.IsOn = barber.State != BarberState.Offline; // Revert visually
+            }
+            finally
+            {
+                QueueStationFocus();
             }
         };
 
@@ -362,4 +409,138 @@ public sealed partial class BarberPublicPage : Page
             imageElement.Visibility = Visibility.Collapsed;
         }
     }
+
+    private void RenderRotation(IReadOnlyList<Barber> barbers)
+    {
+        _rotationPanel.Children.Clear();
+
+        if (barbers.Count == 0)
+        {
+            _rotationPanel.Children.Add(new TextBlock
+            {
+                Padding = new Thickness(16),
+                FontFamily = new FontFamily("Inter"),
+                FontSize = 14,
+                Foreground = (Brush)Application.Current.Resources["TextSecondaryBrush"],
+                Text = "No active barbers are configured."
+            });
+            return;
+        }
+
+        foreach (var barber in barbers)
+        {
+            _rotationPanel.Children.Add(CreateRotationRow(barber));
+        }
+    }
+
+    private FrameworkElement CreateRotationRow(Barber barber)
+    {
+        _dailyRotationEntries.TryGetValue(barber.Id, out var entry);
+
+        var container = new Border
+        {
+            BorderBrush = (Brush)Application.Current.Resources["BorderSubtleBrush"],
+            BorderThickness = new Thickness(0, 0, 0, 1)
+        };
+
+        var row = new Grid
+        {
+            Padding = new Thickness(16, 14, 16, 14),
+            ColumnSpacing = 16
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(72) });
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+
+        var position = new Border
+        {
+            Width = 48,
+            Height = 36,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = entry is null ? Brush(243, 243, 246) : Brush(223, 224, 255),
+            BorderBrush = entry is null ? Brush(226, 226, 229) : Brush(0, 19, 135),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Child = new TextBlock
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontFamily = new FontFamily("Inter"),
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = entry is null ? Brush(68, 70, 85) : Brush(0, 11, 98),
+                Text = entry is null ? "--" : $"#{entry.QueuePosition + 1}"
+            }
+        };
+        row.Children.Add(position);
+
+        var details = new StackPanel
+        {
+            Spacing = 4
+        };
+        Grid.SetColumn(details, 1);
+        details.Children.Add(new TextBlock
+        {
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)Application.Current.Resources["TextPrimaryBrush"],
+            Text = barber.DisplayNameWithStation,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        details.Children.Add(new TextBlock
+        {
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 13,
+            Foreground = (Brush)Application.Current.Resources["TextSecondaryBrush"],
+            Text = entry is null
+                ? "Not checked in today"
+                : $"Checked in at {entry.ArrivedAt:hh:mm tt}",
+            TextWrapping = TextWrapping.WrapWholeWords
+        });
+        row.Children.Add(details);
+
+        var state = new TextBlock
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            FontFamily = new FontFamily("Inter"),
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = GetStateBrush(barber.State),
+            Text = FormatState(barber.State),
+            TextAlignment = TextAlignment.Right,
+            TextWrapping = TextWrapping.WrapWholeWords
+        };
+        Grid.SetColumn(state, 2);
+        row.Children.Add(state);
+
+        container.Child = row;
+        return container;
+    }
+
+    private void QueueStationFocus()
+    {
+        DispatcherQueue.TryEnqueue(() => _stationInput.Focus(FocusState.Programmatic));
+    }
+
+    private static string FormatState(BarberState state) => state switch
+    {
+        BarberState.Available => "Available",
+        BarberState.NotCheckedIn => "Selectable",
+        BarberState.Offline => "Offline",
+        BarberState.Called => "Called",
+        BarberState.InService => "In service",
+        _ => state.ToString()
+    };
+
+    private static SolidColorBrush GetStateBrush(BarberState state) => state switch
+    {
+        BarberState.Available => Brush(17, 105, 88),
+        BarberState.NotCheckedIn => Brush(68, 70, 85),
+        BarberState.Offline => Brush(147, 0, 10),
+        BarberState.Called => Brush(0, 32, 194),
+        BarberState.InService => Brush(101, 65, 0),
+        _ => Brush(68, 70, 85)
+    };
 }

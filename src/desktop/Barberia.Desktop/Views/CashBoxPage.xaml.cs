@@ -5,9 +5,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Windowing;
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.InteropServices;
+using Windows.Graphics;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 
@@ -33,6 +36,7 @@ public sealed partial class CashBoxPage : Page
     private string? _loadedTicketInput;
     private CashBoxSnapshot? _cashBoxSnapshot;
     private bool _hasPromptedOpeningCash;
+    private static CustomerCashBoxWindow? _customerWindow;
 
     public event EventHandler? ShellMenuRequested;
 
@@ -49,6 +53,52 @@ public sealed partial class CashBoxPage : Page
         LoadCashBox();
         ShowReadyState();
         DispatcherQueue.TryEnqueue(() => _ticketInput.Focus(FocusState.Programmatic));
+        OpenCustomerDisplay();
+    }
+
+    private void OpenCustomerDisplay()
+    {
+        if (_customerWindow != null) return;
+
+        _customerWindow = new CustomerCashBoxWindow();
+        _customerWindow.Closed += (s, e) => _customerWindow = null;
+        
+        var appWindow = _customerWindow.AppWindow;
+        if (appWindow != null)
+        {
+            var displayAreas = DisplayArea.FindAll();
+            var mainMonitor = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Primary);
+            
+            DisplayArea secondMonitor = null;
+            if (mainMonitor != null)
+            {
+                for (int i = 0; i < displayAreas.Count; i++)
+                {
+                    var d = displayAreas[i];
+                    if (d.DisplayId.Value != mainMonitor.DisplayId.Value)
+                    {
+                        secondMonitor = d;
+                        break;
+                    }
+                }
+            }
+            if (secondMonitor != null)
+            {
+                appWindow.MoveAndResize(new RectInt32(
+                    secondMonitor.WorkArea.X, 
+                    secondMonitor.WorkArea.Y,
+                    secondMonitor.WorkArea.Width,
+                    secondMonitor.WorkArea.Height
+                ));
+                
+                if (appWindow.Presenter is OverlappedPresenter presenter)
+                {
+                    presenter.Maximize();
+                }
+            }
+        }
+        
+        _customerWindow.Activate();
     }
 
     private async void OnCloseClick(object sender, RoutedEventArgs args)
@@ -133,9 +183,11 @@ public sealed partial class CashBoxPage : Page
 
     private void OnPaymentMethodSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        var method = CustomerPaymentMethod.Cash;
         if (_paymentMethodComboBox?.SelectedItem is ComboBoxItem item && item.Tag?.ToString() == "1")
         {
             if (_paymentReferenceInput != null) _paymentReferenceInput.Visibility = Visibility.Visible;
+            method = CustomerPaymentMethod.Zelle;
         }
         else
         {
@@ -145,6 +197,7 @@ public sealed partial class CashBoxPage : Page
                 _paymentReferenceInput.Text = string.Empty;
             }
         }
+        CashBoxCustomerDisplayState.Current.UpdatePaymentMethod(method);
     }
 
     private void OnInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
@@ -220,13 +273,15 @@ public sealed partial class CashBoxPage : Page
         {
             var result = _service.MarkServicePendingPayment(_ticketInput.Text, selectedService.Id, _additionalAmount);
 
+            CashBoxCustomerDisplayState.Current.SetPendingPayment();
+
             _serviceReceiptText.Text = result.AdditionalAmount > 0
                 ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
                 : $"{result.ServiceName} {result.ServicePrice:0.00}";
             SetMessage($"{result.DisplayTicketNumber} - {result.BarberStationCode} - {result.Message}", SuccessTextBrush);
 
             _ticketInput.Text = string.Empty;
-            ClearTicketDetails();
+            ClearTicketDetails(preserveCustomerDisplay: true);
             _additionalAmount = 0;
             SyncAdditionalButtons(null);
             if (_paymentMethodComboBox != null) _paymentMethodComboBox.SelectedIndex = 0;
@@ -578,6 +633,8 @@ public sealed partial class CashBoxPage : Page
         {
             var result = _service.CloseService(_ticketInput.Text, selectedService.Id, _additionalAmount, paymentMethod, reference, tenderedAmount, changeAmount);
 
+            CashBoxCustomerDisplayState.Current.SetCompleted();
+
             _serviceReceiptText.Text = result.AdditionalAmount > 0
                 ? $"{result.ServiceName} {result.ServicePrice:0.00} + addition {result.AdditionalAmount:0.00}"
                 : $"{result.ServiceName} {result.ServicePrice:0.00}";
@@ -593,7 +650,7 @@ public sealed partial class CashBoxPage : Page
             }
 
             _ticketInput.Text = string.Empty;
-            ClearTicketDetails();
+            ClearTicketDetails(preserveCustomerDisplay: true);
             _additionalAmount = 0;
             SyncAdditionalButtons(null);
             if (_paymentMethodComboBox != null) _paymentMethodComboBox.SelectedIndex = 0;
@@ -612,6 +669,7 @@ public sealed partial class CashBoxPage : Page
 
     private void ShowReadyState()
     {
+        CashBoxCustomerDisplayState.Current.SetIdle();
         _amountText.Text = "$0.00";
         _commissionText.Text = "$0.00";
         _serviceReceiptText.Text = "No service";
@@ -633,6 +691,7 @@ public sealed partial class CashBoxPage : Page
             _loadedTicketInput = NormalizeTicketInput(_ticketInput.Text);
             SetServiceOptionsEnabled(true);
             SetMessage($"Ticket {ticket.DisplayTicketNumber} found. Verify customer and barber before completing.", SuccessTextBrush);
+            CashBoxCustomerDisplayState.Current.SetTicketLoaded(ticket.DisplayTicketNumber.ToString(), ticket.CustomerName, ticket.BarberName, ticket.BarberStationCode.ToString());
         }
         catch (Exception exception)
         {
@@ -641,7 +700,7 @@ public sealed partial class CashBoxPage : Page
         }
     }
 
-    private void ClearTicketDetails()
+    private void ClearTicketDetails(bool preserveCustomerDisplay = false)
     {
         _ticketCustomerText.Text = "No ticket";
         _ticketBarberText.Text = "No ticket";
@@ -652,6 +711,11 @@ public sealed partial class CashBoxPage : Page
         _additionalAmount = 0;
         SyncAdditionalButtons(null);
         UpdateServiceTotal();
+        
+        if (!preserveCustomerDisplay)
+        {
+            CashBoxCustomerDisplayState.Current.SetIdle();
+        }
     }
 
     private void UpdateServiceTotal()
@@ -661,11 +725,21 @@ public sealed partial class CashBoxPage : Page
             _amountText.Text = "$0.00";
             _commissionText.Text = "$0.00";
             _cashTotalText.Text = "$0.00";
+            
+            if (_hasLoadedTicket)
+            {
+                var barberParts = _ticketBarberText.Text.Split(" - ");
+                var station = barberParts.Length > 0 ? barberParts[0].Trim() : "";
+                var barber = barberParts.Length > 1 ? barberParts[1].Trim() : "";
+                CashBoxCustomerDisplayState.Current.SetTicketLoaded(_loadedTicketInput ?? "", _ticketCustomerText.Text, barber, station);
+            }
             return;
         }
         _amountText.Text = $"${selectedService.DesktopPrice:0.00}";
         _commissionText.Text = $"${_additionalAmount:0.00}";
         _cashTotalText.Text = $"${selectedService.DesktopPrice + _additionalAmount:0.00}";
+        
+        CashBoxCustomerDisplayState.Current.SetServiceSelected(selectedService.Name, selectedService.DesktopPrice, _additionalAmount);
     }
 
     private void SyncServiceOptions()

@@ -1,0 +1,242 @@
+<Page
+    x:Class="Barberia.Desktop.Views.BarberRotationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded">
+
+    <Grid Background="{StaticResource AppBackgroundBrush}">
+        <!-- Floating Hamburger Menu Button -->
+        <Button
+            Canvas.ZIndex="1"
+            Width="48"
+            Height="48"
+            Margin="24,24,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderSubtleBrush}"
+            Click="OnMenuButtonClick"
+            ToolTipService.ToolTip="Show menu">
+            <FontIcon
+                FontSize="20"
+                Foreground="{StaticResource TextPrimaryBrush}"
+                Glyph="&#xE700;" />
+        </Button>
+
+        <ScrollViewer
+            Padding="32,48,32,32"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            
+            <Grid RowSpacing="32" HorizontalAlignment="Stretch">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Unified Page Header (Offset margin to clear the hamburger button) -->
+                <StackPanel Grid.Row="0" Margin="64,0,0,0" Spacing="4">
+                    <TextBlock
+                        FontFamily="Inter"
+                        FontSize="32"
+                        FontWeight="Bold"
+                        Foreground="{StaticResource TextPrimaryBrush}"
+                        Text="Barber Rotation &amp; Check-In" />
+                    <TextBlock
+                        FontFamily="Inter"
+                        FontSize="16"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Manage kiosk availability and register station arrivals to build the daily rotation." />
+                    <TextBlock
+                        x:Name="_messageText"
+                        FontFamily="Inter"
+                        FontSize="13"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- 50/50 Split Grid -->
+                <Grid Grid.Row="1" ColumnSpacing="32" HorizontalAlignment="Stretch">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Column: Barber Roster (Public Availability) -->
+                    <StackPanel Grid.Column="0" Spacing="24" HorizontalAlignment="Stretch">
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                FontFamily="Inter"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Kiosk Availability" />
+                            <TextBlock
+                                FontFamily="Inter"
+                                FontSize="13"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Toggle switches to show/hide barbers on the kiosk screen." />
+                        </StackPanel>
+
+                        <Grid
+                            x:Name="_rosterGrid"
+                            RowSpacing="16"
+                            ColumnSpacing="16"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                        </Grid>
+
+                        <Grid
+                            Padding="16"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="0,1,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                x:Name="_footerText"
+                                VerticalAlignment="Center"
+                                FontFamily="Inter"
+                                FontSize="14"
+                                Foreground="{StaticResource TextSecondaryBrush}" />
+                            <StackPanel
+                                x:Name="_paginationPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="4">
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Column 1: Vertical Divider Line -->
+                    <Border
+                        Grid.Column="1"
+                        Width="1"
+                        Margin="16,0"
+                        Background="{StaticResource BorderSubtleBrush}"
+                        VerticalAlignment="Stretch" />
+
+                    <!-- Right Column: Barber Check-In -->
+                    <StackPanel Grid.Column="2" Spacing="24" HorizontalAlignment="Stretch">
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                FontFamily="Inter"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Station Check-In" />
+                            <TextBlock
+                                FontFamily="Inter"
+                                FontSize="13"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Register daily station arrivals to activate turn order." />
+                        </StackPanel>
+
+                        <!-- Station Input Card -->
+                        <Border
+                            MaxWidth="600"
+                            HorizontalAlignment="Stretch"
+                            Padding="18"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <StackPanel Spacing="12">
+                                <TextBlock
+                                    FontFamily="Inter"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="Station" />
+                                <Grid>
+                                    <TextBox
+                                        x:Name="_stationInput"
+                                        MinHeight="52"
+                                        Padding="14,10,48,10"
+                                        CharacterCasing="Upper"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        HorizontalContentAlignment="Center"
+                                        KeyDown="OnStationInputKeyDown"
+                                        PlaceholderText="B-1"
+                                        TextAlignment="Center" />
+                                    <FontIcon
+                                        Margin="0,0,14,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        FontSize="20"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Glyph="&#xE8FB;" />
+                                </Grid>
+                                <Button
+                                    MinHeight="48"
+                                    HorizontalAlignment="Stretch"
+                                    Background="#FF0020C2"
+                                    BorderBrush="#FF0020C2"
+                                    Click="OnCheckInClick"
+                                    Foreground="White"
+                                    ToolTipService.ToolTip="Check in station">
+                                    <StackPanel
+                                        HorizontalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="8">
+                                        <FontIcon Glyph="&#xE73E;" />
+                                        <TextBlock
+                                            FontFamily="Inter"
+                                            FontSize="15"
+                                            FontWeight="SemiBold"
+                                            Text="Check In" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Today's Rotation List -->
+                        <Border
+                            MaxWidth="600"
+                            HorizontalAlignment="Stretch"
+                            Padding="0"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <StackPanel>
+                                <Grid
+                                    Padding="16"
+                                    Background="{StaticResource SurfaceMutedBrush}"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="0,0,0,1">
+                                    <TextBlock
+                                        FontFamily="Inter"
+                                        FontSize="15"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Text="Today's Rotation" />
+                                </Grid>
+                                <StackPanel
+                                    x:Name="_rotationPanel"
+                                    Spacing="0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>
