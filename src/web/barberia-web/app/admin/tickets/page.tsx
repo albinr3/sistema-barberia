@@ -40,11 +40,11 @@ export default async function AdminTicketsPage() {
               <tbody>
                 {activeQueue.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td><strong>#{formatTicketNumber(ticket)}</strong></td>
-                    <td>{ticket.customer_name || "Walk-in"}</td>
-                    <td><span className={styles.statusBadge}>{ticket.status}</span></td>
-                    <td>{ticket.barber?.display_name || "Any available"}</td>
-                    <td className={styles.actionsCell}>
+                    <td data-label="Ticket"><strong>#{formatTicketNumber(ticket)}</strong></td>
+                    <td data-label="Customer">{ticket.customer_name || "Walk-in"}</td>
+                    <td data-label="Status"><span className={styles.statusBadge}>{ticket.status}</span></td>
+                    <td data-label="Assigned To">{ticket.barber?.display_name || "Any available"}</td>
+                    <td className={styles.actionsCell} data-label="Actions">
                       {["waiting", "called"].includes(ticket.status) && (
                         <ReassignForm ticket={ticket} barbers={snapshot.barbers} />
                       )}

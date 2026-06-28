@@ -115,7 +115,7 @@ public sealed partial class KioskPage : Page
         else
         {
             _anyBarberButton.VerticalAlignment = VerticalAlignment.Bottom;
-            _printTicketButton.HorizontalAlignment = HorizontalAlignment.Right;
+            _printTicketButton.HorizontalAlignment = HorizontalAlignment.Center;
         }
 
         var nextColumnCount = width < 680 ? 1 : width < 940 ? 2 : width < 1120 ? 3 : width < 1460 ? 4 : 5;

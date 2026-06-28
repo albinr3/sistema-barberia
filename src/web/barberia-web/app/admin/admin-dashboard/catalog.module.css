@@ -529,6 +529,26 @@
   background: var(--surface-low);
 }
 
+.formHelp {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  line-height: 1.6;
+}
+
+.formHelp ul {
+  margin: 6px 0 0 16px;
+  padding: 0;
+}
+
+.formHelp li {
+  margin-bottom: 4px;
+}
+
 @media (max-width: 960px) {
   .secondaryGrid {
     grid-template-columns: 1fr;
@@ -589,5 +609,9 @@
 
   .reassignmentOutcome {
     width: fit-content;
+  }
+
+  .scheduleClosedState {
+    grid-column: 1 / -1 !important;
   }
 }

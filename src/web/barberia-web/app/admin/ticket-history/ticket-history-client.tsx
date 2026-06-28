@@ -9,7 +9,6 @@ import {
   type TicketHistoryResult,
   type TicketHistoryRow,
   formatCurrency,
-  formatDateTime,
   formatStatus,
   getStatusCssKey,
 } from "@/lib/ticket-history";
@@ -173,17 +172,17 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
 
                 return (
                   <tr key={ticket.id}>
-                    <td className={styles.ticketIdCell}>
+                    <td className={styles.ticketIdCell} data-label="Ticket ID">
                       <strong>
                         {ticket.display_ticket_number || ticket.local_ticket_id.split("-")[0]}
                       </strong>
                     </td>
-                    <td>
+                    <td data-label="Date & Time">
                       <span className={styles.dateText}>{datePart}</span>
                       <span className={styles.timeText}>{timePart.replace('am', 'a.m.').replace('pm', 'p.m.')}</span>
                     </td>
-                    <td>{ticket.customer_name || "Walk-in customer"}</td>
-                    <td>
+                    <td data-label="Customer">{ticket.customer_name || "Walk-in customer"}</td>
+                    <td data-label="Barber">
                       {ticket.barber ? (
                         <div className={styles.barberCell}>
                           <span className={styles.avatar}>{(ticket.barber.display_name || "B").charAt(0).toUpperCase()}</span>
@@ -196,12 +195,12 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
                         </div>
                       )}
                     </td>
-                    <td>{serviceName}</td>
-                    <td>{totalAmount > 0 ? formatCurrency(totalAmount) : "-"}</td>
-                    <td>
+                    <td data-label="Service">{serviceName}</td>
+                    <td data-label="Total">{totalAmount > 0 ? formatCurrency(totalAmount) : "-"}</td>
+                    <td data-label="Method">
                       {ticket.payment ? ticket.payment.payment_method.toUpperCase() : "-"}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span className={`${styles.statusBadge} ${styles[getStatusCssKey(ticket.status)] || ""}`}>
                         {formatStatus(ticket.status)}
                       </span>
@@ -211,7 +210,7 @@ export function TicketHistoryClient({ initialData }: { initialData: TicketHistor
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Action">
                       <button
                         className={styles.actionButton}
                         onClick={() => setSelectedTicket(ticket)}

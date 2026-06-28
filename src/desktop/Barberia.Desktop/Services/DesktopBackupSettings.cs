@@ -4,7 +4,7 @@ namespace Barberia.Desktop.Services;
 
 internal sealed record DesktopBackupSettings(
     bool Enabled,
-    string TimeOfDay, // "HH:mm" format, default "20:00"
+    string TimeOfDay, // "HH:mm" format, default "21:00"
     string? EncryptedPassword, // Base64 encoded DPAPI protected string
     int LocalRetentionDays,
     int CloudRetentionDays)
@@ -14,7 +14,7 @@ internal sealed record DesktopBackupSettings(
         var path = Path.Combine(LocalAppPaths.ConfigDirectory, "backup-settings.json");
         if (!File.Exists(path))
         {
-            return new DesktopBackupSettings(true, "20:00", null, 7, 7);
+            return new DesktopBackupSettings(true, "21:00", null, 7, 7);
         }
 
         try
@@ -25,7 +25,7 @@ internal sealed record DesktopBackupSettings(
 
             if (settings is null)
             {
-                return new DesktopBackupSettings(true, "20:00", null, 7, 7);
+                return new DesktopBackupSettings(true, "21:00", null, 7, 7);
             }
 
             return settings with 
@@ -36,11 +36,11 @@ internal sealed record DesktopBackupSettings(
         }
         catch (JsonException)
         {
-            return new DesktopBackupSettings(true, "20:00", null, 7, 7);
+            return new DesktopBackupSettings(true, "21:00", null, 7, 7);
         }
         catch (IOException)
         {
-            return new DesktopBackupSettings(true, "20:00", null, 7, 7);
+            return new DesktopBackupSettings(true, "21:00", null, 7, 7);
         }
     }
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Route } from "next";
-import { CalendarDays, ClipboardList, DollarSign, Scissors, Settings, UserRound, Tv, Wrench, History } from "lucide-react";
+import { CalendarDays, ClipboardList, DollarSign, Scissors, Settings, UserRound, Tv, Wrench, History, Menu, X } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 import styles from "./app-shell.module.css";
 import logo from "../../logo(2).png";
@@ -45,10 +45,27 @@ export function AppShell({ title, variant, children }: AppShellProps) {
 
   return (
     <div className={`${styles.shell} ${styles[variant]}`}>
+      <input type="checkbox" id="mobile-menu-toggle" className={styles.menuToggle} aria-hidden="true" />
+      <label htmlFor="mobile-menu-toggle" className={styles.backdrop} aria-hidden="true" />
+      
+      <header className={styles.mobileHeader}>
+        <label htmlFor="mobile-menu-toggle" className={styles.hamburger} aria-label="Open menu">
+          <Menu size={24} />
+        </label>
+        <Link href={homeHref} style={{ display: 'flex', alignItems: 'center' }}>
+          <Image src={logo} alt="Logo" style={{ height: "36px", width: "auto" }} priority />
+        </Link>
+        <div style={{ width: 40 }}></div>
+      </header>
+
       <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <label htmlFor="mobile-menu-toggle" className={styles.sidebarClose} aria-label="Close menu">
+            <X size={24} />
+          </label>
+        </div>
         <Link className={styles.brand} href={homeHref} style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
           <Image src={logo} alt="Logo" style={{ height: "64px", width: "auto" }} priority />
-
         </Link>
         <nav aria-label={`${variant} navigation`}>
           {navItems[variant].map((item) => {

@@ -2,6 +2,14 @@
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  --color-bg-card: var(--surface);
+  --color-bg-hover: var(--surface-low);
+  --color-bg-input: var(--surface-low);
+  --color-border: var(--line);
+  --color-primary: var(--accent);
+  --color-primary-dark: var(--accent-strong);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--muted);
 }
 
 .header {
@@ -445,4 +453,99 @@
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   margin-top: 0.25rem;
+}
+
+@media (max-width: 760px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+    gap: 12px;
+  }
+
+  .filterGroup {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .searchButton, .resetButton {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .tableContainer {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .historyTable, .historyTable tbody, .historyTable tr, .historyTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .historyTable thead {
+    display: none;
+  }
+
+  .historyTable tr {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    padding: 8px;
+  }
+
+  .historyTable td {
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .historyTable td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    flex: 1;
+    margin-right: 12px;
+  }
+
+  .historyTable td:last-child {
+    border-bottom: none;
+  }
+
+  .barberCell {
+    justify-content: flex-end;
+  }
+
+  .dateText, .timeText {
+    text-align: right;
+  }
+
+  .modalContent {
+    margin: 1rem;
+    max-height: 95vh;
+  }
+
+  .modalHeader, .modalBody {
+    padding: 1rem;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }

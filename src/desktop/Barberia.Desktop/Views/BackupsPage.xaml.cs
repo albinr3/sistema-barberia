@@ -12,7 +12,7 @@ namespace Barberia.Desktop.Views;
 public sealed partial class BackupsPage : Page
 {
     private const string DummyPassword = "********";
-    private DesktopBackupSettings _currentSettings = new DesktopBackupSettings(true, "20:00", null, 7, 7);
+    private DesktopBackupSettings _currentSettings = new DesktopBackupSettings(true, "21:00", null, 7, 7);
 
     public event EventHandler? ShellMenuRequested;
 
@@ -46,7 +46,7 @@ public sealed partial class BackupsPage : Page
             }
             else
             {
-                _timePicker.Time = new TimeSpan(20, 0, 0);
+                _timePicker.Time = new TimeSpan(21, 0, 0);
             }
 
             if (!string.IsNullOrEmpty(_currentSettings.EncryptedPassword))

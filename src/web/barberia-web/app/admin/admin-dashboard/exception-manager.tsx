@@ -25,6 +25,13 @@ function ExceptionForm({
   return (
     <form action={saveAvailabilityException} className={styles.inlineForm}>
       <input name="id" type="hidden" value={exception?.id ?? ""} />
+      <div className={styles.formHelp}>
+        ℹ️ <strong>How exceptions work:</strong>
+        <ul>
+          <li><strong>Custom Hours:</strong> Setting a <strong>Start</strong> and <strong>End</strong> time replaces the normal schedule for this date. <strong>Only</strong> the hours between these times will be available for booking.</li>
+          <li><strong>Fully Closed:</strong> Checking <strong>Closed</strong> makes the barber completely unavailable for the entire day.</li>
+        </ul>
+      </div>
       <label>
         Barber
         <select name="barber_id" required defaultValue={exception?.barber_id ?? ""}>

@@ -195,3 +195,73 @@
   gap: 8px;
   flex-direction: column;
 }
+
+@media (max-width: 760px) {
+  .tableContainer {
+    border: none;
+    background: transparent;
+  }
+
+  .queueTable, .queueTable tbody, .queueTable tr, .queueTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .queueTable thead {
+    display: none;
+  }
+
+  .queueTable tr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-soft);
+    padding: 8px;
+  }
+
+  .queueTable td {
+    border-bottom: 1px solid var(--surface-low);
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right;
+  }
+
+  .queueTable td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    flex: 1;
+    margin-right: 12px;
+  }
+
+  .queueTable td:last-child {
+    border-bottom: none;
+  }
+
+  .queueTable td.actionsCell {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .queueTable td.actionsCell::before {
+    margin-bottom: 10px;
+  }
+
+  .formRow {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .formRow select,
+  .formRow button {
+    width: 100%;
+  }
+}
