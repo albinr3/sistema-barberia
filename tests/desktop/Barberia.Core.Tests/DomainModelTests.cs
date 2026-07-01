@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Barberia.Core.Domain;
 using Xunit;
 
@@ -187,6 +188,33 @@ public sealed class DomainModelTests
         Assert.Equal("Marcus", barber.DisplayNameWithStation);
     }
 
+    [Fact]
+    public void Barber_RoundTripsThroughSystemTextJson()
+    {
+        var updatedAt = DateTimeOffset.Parse("2026-06-30T21:15:00-04:00");
+        var barber = new Barber(
+            Guid.NewGuid(),
+            "Marcus",
+            BarberState.Available,
+            2,
+            1,
+            checkedInAt: updatedAt.AddHours(-1),
+            stationNumber: 3,
+            profileImagePath: "Assets/barber1.png",
+            isActive: true,
+            commissionPercentage: 70,
+            updatedAt: updatedAt);
+
+        var json = JsonSerializer.Serialize(barber);
+        var deserialized = JsonSerializer.Deserialize<Barber>(json);
+
+        Assert.NotNull(deserialized);
+        Assert.Equal(barber.Id, deserialized.Id);
+        Assert.Equal(barber.DisplayName, deserialized.DisplayName);
+        Assert.Equal(barber.State, deserialized.State);
+        Assert.Equal(barber.StationNumber, deserialized.StationNumber);
+        Assert.Equal(barber.UpdatedAt, deserialized.UpdatedAt);
+    }
     [Fact]
     public void AppointmentReservation_UsesConfirmedProtectionWindow()
     {

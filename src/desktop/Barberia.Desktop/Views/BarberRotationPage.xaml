@@ -174,7 +174,7 @@
                                         FontWeight="SemiBold"
                                         HorizontalContentAlignment="Center"
                                         KeyDown="OnStationInputKeyDown"
-                                        PlaceholderText="B-1"
+                                        PlaceholderText="ENTER STATION CODE, E.G. B-1"
                                         TextAlignment="Center" />
                                     <FontIcon
                                         Margin="0,0,14,0"

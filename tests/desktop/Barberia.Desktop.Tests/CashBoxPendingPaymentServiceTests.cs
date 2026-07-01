@@ -410,14 +410,19 @@ public sealed class CashBoxPendingPaymentServiceTests
 
     private static DateTimeOffset GetNewJerseyNow()
     {
+        TimeZoneInfo zone;
         try
         {
-            return TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
+            zone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
         }
         catch (TimeZoneNotFoundException)
         {
-            return TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("America/New_York"));
+            zone = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
         }
+
+        var currentNewJerseyTime = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone);
+        var stableBusinessMidday = currentNewJerseyTime.Date.AddHours(12);
+        return new DateTimeOffset(stableBusinessMidday, zone.GetUtcOffset(stableBusinessMidday));
     }
 
     private sealed class RecordingCashBoxReceiptPrinter : ICashBoxReceiptPrinter
@@ -488,3 +493,5 @@ public sealed class CashBoxPendingPaymentServiceTests
         }
     }
 }
+
+

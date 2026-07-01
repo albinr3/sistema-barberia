@@ -15,7 +15,7 @@ public sealed record Barber
         string? profileImagePath = null,
         bool isActive = true,
         int commissionPercentage = DefaultCommissionPercentage,
-        DateTimeOffset? updatedAt = null)
+        DateTimeOffset updatedAt = default)
     {
         if (id == Guid.Empty)
         {
@@ -62,7 +62,7 @@ public sealed record Barber
         ProfileImagePath = string.IsNullOrWhiteSpace(profileImagePath) ? null : profileImagePath.Trim();
         IsActive = isActive;
         CommissionPercentage = commissionPercentage;
-        UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
+        UpdatedAt = updatedAt == default ? DateTimeOffset.UtcNow : updatedAt;
     }
 
     public Guid Id { get; }

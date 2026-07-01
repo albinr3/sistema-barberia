@@ -28,11 +28,68 @@ public sealed class BarberCheckInServiceTests
             .ListByDate(OperationalClock.GetBusinessDate(result.CheckedInAt));
 
         Assert.Equal(KioskCheckInStatus.Waiting, result.Status);
+        Assert.Equal(result.InternalTicketNumber, result.QrPayload);
         Assert.Equal(TurnState.Waiting, savedTurn?.State);
         Assert.Null(savedTurn?.AssignedBarberId);
         Assert.Equal(BarberState.Available, savedBarber?.State);
         Assert.Null(savedBarber?.CheckedInAt);
         Assert.Empty(rotationEntries);
+    }
+
+    [Fact]
+    public void RemoteKioskPrintTicketLocally_PrintsTicketWithPc1DeviceId()
+    {
+        var printedJobs = new List<KioskTicketPrintJob>();
+        var printer = new CapturingKioskTicketPrinter(printedJobs, HardwareOperationResult.Success());
+        var checkedInAt = DateTimeOffset.Parse("2026-06-30T21:00:00-04:00");
+        var result = new KioskCheckInResult(
+            12,
+            "W20260630210000001",
+            "W20260630210000001",
+            "Cliente",
+            checkedInAt,
+            "Ana",
+            "B-1",
+            ["Ana"],
+            ["B-1"],
+            AcceptsAnyBarber: false,
+            KioskCheckInStatus.Assigned,
+            "Ticket printed.");
+
+        RemoteKioskStationService.PrintTicketLocally(result, printer, "PC1-KIOSK");
+
+        var job = Assert.Single(printedJobs);
+        Assert.Equal(12, job.DisplayTicketNumber);
+        Assert.Equal(result.QrPayload, job.QrPayload);
+        Assert.Equal("PC1-KIOSK", job.DeviceId);
+        Assert.Equal(result.RequestedBarberNames, job.RequestedBarberNames);
+        Assert.Equal(result.RequestedBarberStationCodes, job.RequestedBarberStationCodes);
+    }
+
+    [Fact]
+    public void RemoteKioskPrintTicketLocally_WhenPrinterFails_ReportsRegisteredTicket()
+    {
+        var printer = new CapturingKioskTicketPrinter([], HardwareOperationResult.Failure("No default printer."));
+        var result = new KioskCheckInResult(
+            12,
+            "W20260630210000001",
+            "W20260630210000001",
+            "Cliente",
+            DateTimeOffset.Parse("2026-06-30T21:00:00-04:00"),
+            null,
+            null,
+            [],
+            [],
+            AcceptsAnyBarber: true,
+            KioskCheckInStatus.Waiting,
+            "Ticket printed.");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            RemoteKioskStationService.PrintTicketLocally(result, printer, "PC1-KIOSK"));
+
+        Assert.Contains("registered on PC3", exception.Message);
+        Assert.Contains("No default printer", exception.Message);
+
     }
 
     [Fact]
@@ -143,6 +200,24 @@ public sealed class BarberCheckInServiceTests
                 stationNumber: stationNumber,
                 updatedAt: now),
             now);
+    }
+
+    private sealed class CapturingKioskTicketPrinter : IKioskTicketPrinter
+    {
+        private readonly List<KioskTicketPrintJob> _printedJobs;
+        private readonly HardwareOperationResult _result;
+
+        public CapturingKioskTicketPrinter(List<KioskTicketPrintJob> printedJobs, HardwareOperationResult result)
+        {
+            _printedJobs = printedJobs;
+            _result = result;
+        }
+
+        public HardwareOperationResult Print(KioskTicketPrintJob job)
+        {
+            _printedJobs.Add(job);
+            return _result;
+        }
     }
 
     private sealed class TestDatabase : IDisposable

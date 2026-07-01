@@ -11,7 +11,7 @@ using Barberia.Sync.Outbox;
 
 namespace Barberia.Desktop.Services;
 
-public sealed class CashBoxCloseService
+public sealed class CashBoxCloseService : ICashBoxStationService
 {
     private const string Currency = "USD";
 
@@ -1014,3 +1014,4 @@ public sealed class CashBoxCloseService
     }
 
 }
+

@@ -23,6 +23,35 @@ Shell y UI actual:
 - Perfil de publicacion `Properties/PublishProfiles/Phase1LocalWinX64.pubxml` y artefactos base en `Packaging/` para preparar instalacion/update sin publicar instaladores.
 - Guard de arquitectura en `tests/desktop/Barberia.Desktop.Tests` para evitar nuevas pantallas C# puras sin XAML.
 
+
+Modo LAN por estaciones:
+
+- El arranque normal de desarrollo sigue abriendo una sola ventana con menu, iniciando en `Kiosk` como antes.
+- En produccion se usan tres roles de estacion: `KioskRotation`, `CashBox` y `OperationsHost`.
+- `OperationsHost` es PC3: mantiene la SQLite local, inicia `DesktopSyncService`, `PayrollAutoPayService`, `DesktopBackupService` y expone la API LAN en `LanListenUrl`; no requiere impresora para aceptar tickets de kiosko remotos.
+- `KioskRotation` es PC1: antes de operar exige `/health` de PC3 y abre dos ventanas, `Kiosk` y `Barber Rotation`; registra tickets/check-ins contra PC3 por HTTP y los tickets de kiosko se imprimen localmente en la impresora predeterminada de PC1.
+- `CashBox` es PC2: antes de operar exige `/health` de PC3 y abre `Cash Box`; sus acciones operativas usan adaptadores HTTP hacia PC3.
+- PC1 y PC2 no ejecutan sync cloud, backups, nomina automatica ni reset diario propio; esas responsabilidades quedan centralizadas en PC3.
+- Supabase sigue siendo sincronizacion cloud externa Desktop-Supabase, no el mecanismo de comunicacion inmediata entre PCs.
+- El perfil puede venir por argumento (`--station KioskRotation`, `--station CashBox`, `--station OperationsHost`), por nombre del ejecutable publicado (`Barberia.KioskRotation`, `Barberia.CashBox`, `Barberia.Operations`) o por `%LocalAppData%\BarberiaSystem\config\station-settings.json`.
+
+Ejemplo de `station-settings.json` para PC1/PC2:
+
+```json
+{
+  "role": "KioskRotation",
+  "lanServerUrl": "http://192.168.1.50:5128",
+  "lanListenUrl": "http://0.0.0.0:5128",
+  "deviceId": "PC1-KIOSK",
+  "lanSharedSecret": "replace-with-shared-lan-secret",
+  "startLanHostInDevelopment": false
+}
+```
+
+- En PC2 cambiar `role` a `CashBox` y `deviceId` a la estacion real.
+- En PC3 usar `role: "OperationsHost"`, configurar IP fija/reserva DHCP y permitir el puerto LAN en firewall.
+- Si `lanSharedSecret` esta vacio, la API LAN acepta clientes sin secreto; para produccion debe configurarse el mismo secreto en las tres PCs.
+- El endpoint `/health` expone `apiVersion`; PC1/PC2 bloquean si la version no coincide para evitar operar con releases mezclados.
 Sync cloud:
 
 ```json
@@ -42,7 +71,7 @@ Sync cloud:
 - Las citas sincronizadas se guardan en `appointment_reservations` con `appointment_code`, cliente, servicio, hora de inicio/fin y estado local.
 - `AppointmentsPage` muestra las citas del dia como una lista operativa directa; al refrescar aplica localmente las citas vencidas a `NoShow` antes de renderizar, las filas priorizan citas activas y conservan el QR/codigo visible para operacion. Tambien incluye un micro panel visible de escaneo fisico que exige estacion de barbero y luego QR/codigo, mantiene foco en estacion y reutiliza `BarberPanelService.StartService(...)` para iniciar servicios desde QR de cita o tickets llamados sin cambiar de pantalla; si un ticket walk-in escaneado pertenece a otro barbero, aplica el mismo traspaso automatico del Barber Panel.
 - Barber Rotation (`BarberRotationPage`) unifica el control de disponibilidad de barberos en el kiosko (lado izquierdo) y el check-in diario por estación (`B-#`, `b-#` o número) para construir la rotación (lado derecho); al hacer check-in intenta llamar el próximo ticket `waiting` compatible.
-- El kiosko permite imprimir tickets para barberos seleccionables aunque todavia no hayan hecho check-in. Esos tickets quedan `waiting` hasta que exista al menos un barbero compatible con entrada de rotacion del dia operativo New Jersey/Eastern.
+- El kiosko permite imprimir tickets para barberos seleccionables aunque todavia no hayan hecho check-in. En modo PC1/PC3, PC3 registra el ticket y PC1 imprime localmente; si la impresora local de PC1 falla, el ticket puede quedar registrado y debe atenderse el incidente antes de crear otro ticket. Esos tickets quedan `waiting` hasta que exista al menos un barbero compatible con entrada de rotacion del dia operativo New Jersey/Eastern.
 - En `PublicDisplayPage`, la seccion `Barber Status` muestra arriba los barberos disponibles que todavia tienen `0` clientes atendidos hoy; si hay varios con `0`, conserva el orden de la cola diaria por llegada. Despues muestra los disponibles que ya atendieron clientes, tambien conservando la cola diaria.
 - Barber Panel exige escanear/digitar primero la estacion fija del barbero (`B-#`) y luego el ticket o QR. Para tickets walk-in, si la estacion coincide con el ticket llamado inicia el servicio normalmente; si el ticket estaba asignado o reservado para otro barbero y la estacion escaneada esta `Available` con check-in del dia en `barber_daily_rotation`, lo reasigna, emite `ticket.called`, lo marca `InService` y registra `ticket.auto_reassigned`; si esa estacion esta `Called` o `InService`, mueve el ticket a `waiting` reservado para ese barbero sin iniciar servicio y tambien registra `ticket.auto_reassigned`. En ambos traspasos, si el barbero anterior estaba `Called`, vuelve a `Available` y se intenta llamar el siguiente ticket `waiting` compatible. Para citas acepta el QR `appointment_code` dentro de la ventana de 15 minutos antes a 10 minutos despues, exige que la estacion escaneada tenga check-in diario, valida que coincida con el barbero de la cita, crea un turno `Appointment`, lo marca `InService` y sube `appointment.checked_in`.
 - Cash Box exige abrir la caja una vez por dia operativo New Jersey/Eastern con `Opening Cash` antes de registrar cobros inmediatos o cobrar pendientes. El saldo inicial puede corregirse el mismo dia sin contrasena y cada apertura/correccion queda auditada como `cash_box_opened` o `cash_box_opening_corrected`. `Pay Later` sigue permitido sin apertura porque no registra dinero cobrado.
@@ -68,3 +97,4 @@ Restricciones actuales:
 - No contiene reglas de negocio.
 - No mover persistencia, hardware ni sincronizacion al code-behind de UI.
 - No publica MSIX, MSI, EXE ni App Installer sin aprobacion humana.
+

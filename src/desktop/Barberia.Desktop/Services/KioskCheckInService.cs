@@ -11,7 +11,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Barberia.Desktop.Services;
 
-public sealed class KioskCheckInService
+public sealed class KioskCheckInService : IKioskStationService
 {
     private readonly SqliteConnectionFactory _connectionFactory;
     private readonly IKioskTicketPrinter _ticketPrinter;
@@ -263,6 +263,7 @@ public sealed class KioskCheckInService
         return new KioskCheckInResult(
             turn.DisplayTicketNumber,
             turn.TicketNumber,
+            CreateTicketQrPayload(turn),
             GetPrintedCustomerName(turn.CustomerName),
             checkedInAt,
             assignedBarberName,
@@ -339,3 +340,4 @@ public sealed class KioskCheckInService
         return turn.TicketNumber;
     }
 }
+

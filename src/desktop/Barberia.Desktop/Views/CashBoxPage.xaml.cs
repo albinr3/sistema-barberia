@@ -26,7 +26,7 @@ public sealed partial class CashBoxPage : Page
     private static readonly SolidColorBrush ErrorTextBrush = Brush(154, 58, 47);
     private static readonly SolidColorBrush NeutralTextBrush = Brush(26, 28, 30);
 
-    private readonly CashBoxCloseService _service = new();
+    private readonly ICashBoxStationService _service = StationServiceFactory.CreateCashBoxService();
     private readonly MediaPlayer _successPlayer;
     private IReadOnlyList<Service> _services = [];
     private Service? _selectedService;
@@ -1125,3 +1125,4 @@ public sealed partial class CashBoxPage : Page
             || decimal.TryParse(normalized, NumberStyles.Currency, CultureInfo.InvariantCulture, out amount);
     }
 }
+

@@ -26,6 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Barberia.Desktop.Tests" />
   </ItemGroup>
 
@@ -41,3 +45,7 @@
     <ProjectReference Include="..\Barberia.ApiClient\Barberia.ApiClient.csproj" />
   </ItemGroup>
 </Project>
+
+
+
+

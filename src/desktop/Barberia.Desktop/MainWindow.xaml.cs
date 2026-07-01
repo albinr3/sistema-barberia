@@ -1,5 +1,4 @@
 using Barberia.Desktop.Shell;
-using Barberia.Desktop.Views;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -12,12 +11,18 @@ namespace Barberia.Desktop;
 public sealed partial class MainWindow : Window
 {
     private readonly IReadOnlyDictionary<ShellModuleKey, ShellModuleDefinition> _modules;
+    private readonly IReadOnlySet<ShellModuleKey>? _visibleShellModules;
     private readonly Dictionary<ShellModuleKey, Button> _moduleButtons = [];
+    private readonly ShellModuleKey _initialModuleKey;
     private ShellModuleKey? _currentModuleKey;
 
-    public MainWindow()
+    public MainWindow(
+        ShellModuleKey initialModuleKey = ShellModuleKey.Kiosk,
+        IReadOnlySet<ShellModuleKey>? visibleShellModules = null)
     {
         _modules = ShellModuleCatalog.Modules.ToDictionary(module => module.Key);
+        _initialModuleKey = initialModuleKey;
+        _visibleShellModules = visibleShellModules;
 
         InitializeComponent();
         LoadBrandLogo();
@@ -42,6 +47,7 @@ public sealed partial class MainWindow : Window
         foreach (var module in ShellModuleCatalog.Modules)
         {
             if (module.Key == ShellModuleKey.PayrollHistory) continue;
+            if (_visibleShellModules is not null && !_visibleShellModules.Contains(module.Key)) continue;
 
             var button = CreateNavigationButton(module);
             _moduleButtons.Add(module.Key, button);
@@ -110,13 +116,18 @@ public sealed partial class MainWindow : Window
 
     private void SelectInitialModule()
     {
-        NavigateTo(ShellModuleKey.Kiosk);
+        NavigateTo(_initialModuleKey);
     }
 
     private async void OnNavigationButtonClick(object sender, RoutedEventArgs args)
     {
         if (sender is not Button button ||
             button.Tag is not ShellModuleKey moduleKey)
+        {
+            return;
+        }
+
+        if (_visibleShellModules is not null && !_visibleShellModules.Contains(moduleKey))
         {
             return;
         }
@@ -158,6 +169,11 @@ public sealed partial class MainWindow : Window
 
     internal void NavigateTo(ShellModuleKey moduleKey)
     {
+        if (_visibleShellModules is not null && !_visibleShellModules.Contains(moduleKey))
+        {
+            return;
+        }
+
         if (!_modules.TryGetValue(moduleKey, out var module))
         {
             return;
@@ -172,7 +188,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _contentHost.Content = CreateModulePage(module);
+        _contentHost.Content = ShellPageFactory.Create(module, ShowShellMenu);
         _currentModuleKey = moduleKey;
         UpdateNavigationState(moduleKey);
     }
@@ -183,63 +199,6 @@ public sealed partial class MainWindow : Window
         _navigationColumn.Width = usesFullScreenChrome ? new GridLength(0) : new GridLength(256);
         _sidebar.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
         _moduleHeader.Visibility = usesFullScreenChrome ? Visibility.Collapsed : Visibility.Visible;
-    }
-
-    private Page CreateModulePage(ShellModuleDefinition module)
-    {
-        var page = Activator.CreateInstance(module.PageType) as Page
-            ?? throw new InvalidOperationException($"Could not create shell page '{module.PageType.FullName}'.");
-
-        if (page is KioskPage kioskPage)
-        {
-            kioskPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is PublicDisplayPage publicDisplayPage)
-        {
-            publicDisplayPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is BarberPanelPage barberPanelPage)
-        {
-            barberPanelPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is CashBoxPage cashBoxPage)
-        {
-            cashBoxPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is LocalAdminPage localAdminPage)
-        {
-            localAdminPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is BarbersPage barbersPage)
-        {
-            barbersPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is ServicesPage servicesPage)
-        {
-            servicesPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is TicketHistoryPage ticketHistoryPage)
-        {
-            ticketHistoryPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is PayrollPage payrollPage)
-        {
-            payrollPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is BarberRotationPage barberRotationPage)
-        {
-            barberRotationPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is BackupsPage backupsPage)
-        {
-            backupsPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-        else if (page is AppointmentsPage appointmentsPage)
-        {
-            appointmentsPage.ShellMenuRequested += (_, _) => ShowShellMenu();
-        }
-
-        return page;
     }
 
     private void ShowShellMenu()

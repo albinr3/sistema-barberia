@@ -21,8 +21,7 @@ namespace Barberia.Desktop.Views;
 
 public sealed partial class BarberRotationPage : Page
 {
-    private readonly LocalAdminService _localAdminService = new();
-    private readonly BarberCheckInService _checkInService = new();
+    private readonly IBarberRotationStationService _rotationService = StationServiceFactory.CreateBarberRotationService();
     private IReadOnlyList<Barber> _barbers = [];
     private IReadOnlyDictionary<Guid, DailyRotationEntry> _dailyRotationEntries = new Dictionary<Guid, DailyRotationEntry>();
     private int _currentPage = 1;
@@ -61,7 +60,7 @@ public sealed partial class BarberRotationPage : Page
     {
         try
         {
-            var result = _checkInService.CheckIn(_stationInput.Text);
+            var result = _rotationService.CheckIn(_stationInput.Text);
             _stationInput.Text = string.Empty;
             var assignedText = result.AssignedDisplayTicketNumber is int displayTicketNumber
                 ? $" Next ticket called: {displayTicketNumber}."
@@ -71,7 +70,7 @@ public sealed partial class BarberRotationPage : Page
         }
         catch (Exception exception)
         {
-            SetStatus(exception.Message, success: false);
+            SetStatus(FormatErrorDetails(exception), success: false);
         }
         finally
         {
@@ -83,7 +82,7 @@ public sealed partial class BarberRotationPage : Page
     {
         try
         {
-            var snapshot = _localAdminService.Load();
+            var snapshot = _rotationService.Load();
             _barbers = snapshot.Barbers
                 .Where(b => b.IsActive)
                 .OrderBy(b => b.StationNumber ?? int.MaxValue)
@@ -98,7 +97,7 @@ public sealed partial class BarberRotationPage : Page
         }
         catch (Exception exception)
         {
-            SetStatus(exception.Message, success: false);
+            SetStatus(FormatErrorDetails(exception), success: false);
         }
     }
 
@@ -271,17 +270,17 @@ public sealed partial class BarberRotationPage : Page
             {
                 if (stateSwitch.IsOn)
                 {
-                    _localAdminService.MarkBarberAvailable(barber.Id);
+                    _rotationService.MarkBarberAvailable(barber.Id);
                 }
                 else
                 {
-                    _localAdminService.MarkBarberOffline(barber.Id);
+                    _rotationService.MarkBarberOffline(barber.Id);
                 }
                 LoadData();
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, success: false);
+                SetStatus(FormatErrorDetails(ex), success: false);
                 stateSwitch.IsOn = barber.State != BarberState.Offline; // Revert visually
             }
             finally
@@ -301,6 +300,34 @@ public sealed partial class BarberRotationPage : Page
     {
         _messageText.Text = text;
         _messageText.Foreground = success ? Brush(17, 105, 88) : Brush(154, 58, 47);
+    }
+
+    private static string FormatErrorDetails(Exception exception)
+    {
+        var lines = new List<string>
+        {
+            $"{exception.GetType().FullName}: {exception.Message}"
+        };
+
+        var inner = exception.InnerException;
+        var depth = 1;
+        while (inner is not null && depth <= 3)
+        {
+            lines.Add($"Inner {depth}: {inner.GetType().FullName}: {inner.Message}");
+            inner = inner.InnerException;
+            depth++;
+        }
+
+        var stackLines = exception.StackTrace?
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Take(4)
+            .Select(line => line.Trim());
+        if (stackLines is not null)
+        {
+            lines.AddRange(stackLines);
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private static SolidColorBrush Brush(byte r, byte g, byte b)

@@ -9,6 +9,7 @@ public sealed record KioskCheckInSnapshot(
 public sealed record KioskCheckInResult(
     int DisplayTicketNumber,
     string InternalTicketNumber,
+    string QrPayload,
     string CustomerName,
     DateTimeOffset CheckedInAt,
     string? AssignedBarberName,

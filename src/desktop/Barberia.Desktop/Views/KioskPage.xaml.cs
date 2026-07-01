@@ -18,7 +18,7 @@ namespace Barberia.Desktop.Views;
 
 public sealed partial class KioskPage : Page
 {
-    private readonly KioskCheckInService _checkInService = new();
+    private readonly IKioskStationService _checkInService = StationServiceFactory.CreateKioskService();
     private readonly Dictionary<Guid, Button> _barberButtons = [];
     private readonly HashSet<Guid> _selectedBarberIds = [];
     private int _barberColumnCount = 4;
@@ -624,3 +624,4 @@ public sealed partial class KioskPage : Page
         return new SolidColorBrush(ColorHelper.FromArgb(255, red, green, blue));
     }
 }
+

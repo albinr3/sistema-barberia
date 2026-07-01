@@ -59,17 +59,17 @@ public sealed class XamlArchitectureTests
     [Fact]
     public void PayrollUsesFullScreenChromeAndShellMenu()
     {
-        var mainWindowPath = Path.Combine(
+        var desktopRoot = Path.Combine(
             FindRepositoryRoot(),
             "src",
             "desktop",
-            "Barberia.Desktop",
-            "MainWindow.xaml.cs");
-        var source = File.ReadAllText(mainWindowPath);
+            "Barberia.Desktop");
+        var mainWindowSource = File.ReadAllText(Path.Combine(desktopRoot, "MainWindow.xaml.cs"));
+        var shellPageFactorySource = File.ReadAllText(Path.Combine(desktopRoot, "Shell", "ShellPageFactory.cs"));
 
-        Assert.Contains("ShellModuleKey.Payroll", source, StringComparison.Ordinal);
-        Assert.Contains("page is PayrollPage payrollPage", source, StringComparison.Ordinal);
-        Assert.Contains("payrollPage.ShellMenuRequested += (_, _) => ShowShellMenu();", source, StringComparison.Ordinal);
+        Assert.Contains("ShellModuleKey.Payroll", mainWindowSource, StringComparison.Ordinal);
+        Assert.Contains("case PayrollPage payrollPage:", shellPageFactorySource, StringComparison.Ordinal);
+        Assert.Contains("payrollPage.ShellMenuRequested += (_, _) => shellMenuRequested();", shellPageFactorySource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,3 +138,6 @@ public sealed class XamlArchitectureTests
         throw new InvalidOperationException("Could not locate repository root from test output directory.");
     }
 }
+
+
+

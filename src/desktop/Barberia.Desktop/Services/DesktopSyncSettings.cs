@@ -30,7 +30,7 @@ internal sealed record DesktopSyncSettings(
                 return null;
             }
 
-            return settings with { PollSeconds = Math.Max(settings.PollSeconds, 60) };
+            return settings with { PollSeconds = Math.Max(settings.PollSeconds, 30) };
         }
         catch (JsonException)
         {
